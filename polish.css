@@ -1,0 +1,922 @@
+/* === appended polish === */
+:root{--serif:'Cormorant Garamond',Georgia,serif}
+.announcement{letter-spacing:.1em}
+.site-header{padding-right:max(calc(5vw + 5px),29px)}
+.skip-link{position:fixed;left:12px;top:12px;z-index:20;padding:10px 14px;background:var(--ink);color:#fff;transform:translateY(-160%);transition:transform .2s}.skip-link:focus{transform:translateY(0)}
+.icon-btn:focus-visible,.menu-toggle:focus-visible,.btn:focus-visible,.pill:focus-visible,.variant:focus-visible,.thumb:focus-visible,.finder-option:focus-visible,.remove:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #d18a70;outline-offset:3px}
+.gallery-main{width:100%}
+.gallery-img{width:100%;height:480px;object-fit:cover;border-radius:12px;background:#eee}
+.gallery-thumbs{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
+.thumb{border:2px solid transparent;border-radius:8px;padding:0;overflow:hidden;background:none;cursor:pointer;width:76px;height:76px}
+.thumb.active{border-color:var(--accent)}
+.thumb-img{width:100%;height:100%;object-fit:cover;display:block}
+.collections-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
+.collection-card{position:relative;overflow:hidden;border-radius:14px;background:#eee}
+.collection-card a{display:block}
+.collection-card img{width:100%;height:260px;object-fit:cover;display:block;transition:transform .4s}
+.collection-card:hover img{transform:scale(1.04)}
+.collection-card div{position:absolute;left:18px;bottom:18px;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.4)}
+.collection-card h3{margin:0;font-family:var(--serif);font-size:26px}
+.collection-card p{margin:2px 0 0;font-size:13px}
+.related{margin-top:48px}
+.related h2{font-family:var(--serif);font-size:28px;margin:0 0 18px}
+.btn.ghost{background:transparent;border:1px solid var(--line)}
+.btn.ghost:hover{border-color:var(--accent);color:var(--accent)}
+.btn.small{padding:8px 14px;font-size:13px}
+.field-error{display:block;font-size:12px;color:#b4432a;min-height:14px;margin-top:4px}
+input.invalid,select.invalid{border-color:#b4432a}
+.skeleton-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.skeleton-card{background:#f2efe8;border-radius:12px;padding:14px}
+.skeleton-img{height:300px;background:linear-gradient(90deg,#eee 25%,#f6f4ee 50%,#eee 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:8px}
+.skeleton-line{height:14px;background:#e6e2d8;border-radius:4px;margin:12px 0 6px}
+.skeleton-line.short{width:60%}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.img-fallback{filter:grayscale(.2)}
+.product-card{transition:transform .2s ease}
+.product-image{border-radius:12px}
+.heart{box-shadow:0 2px 10px rgba(29,38,32,.12);transition:transform .2s ease,background .2s ease}
+.heart:hover{background:#fff;transform:scale(1.06)}
+.btn{border-radius:999px;transition:transform .2s ease,background .2s ease,color .2s ease,border-color .2s ease}
+.btn:active{transform:translateY(1px)}
+.select{border-radius:999px}
+.search-inner{box-shadow:0 12px 35px rgba(29,38,32,.16)}
+@media (hover:hover){.product-card:hover{transform:translateY(-3px)}}
+.finder-teaser{margin:48px 0 0;padding:42px 48px;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:28px;border-radius:14px}.finder-teaser h2{font:500 clamp(28px,3vw,42px)/1.1 var(--serif);margin:0 0 10px}.finder-teaser p:not(.eyebrow){color:#cbd8ca;max-width:430px;margin:0}.finder-teaser .eyebrow{color:#a6b7a7}.finder-page{max-width:960px}.finder-intro{max-width:560px;font-size:18px;color:var(--muted);margin:0 0 34px}.finder-options{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin:34px 0 28px;max-width:760px}.finder-option{border:1px solid var(--line);background:var(--paper);padding:24px;text-align:left;font:500 18px var(--serif);display:flex;justify-content:space-between;align-items:center;transition:border-color .2s,background .2s,transform .2s}.finder-option:hover{border-color:var(--accent);background:#fbf5ef;transform:translateY(-2px)}.finder-option span{font:24px var(--sans);color:var(--accent)}.finder-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:34px}
+@media (max-width:900px){
+ .hero{grid-template-columns:1fr;min-height:auto}
+ .hero-image{min-height:320px}
+ .collections-grid{grid-template-columns:1fr}
+ .gallery-img{height:360px}
+ .detail{grid-template-columns:1fr}
+ .cart-layout{grid-template-columns:1fr}
+ .checkout{grid-template-columns:1fr}
+ .about-grid{grid-template-columns:1fr}
+  .finder-teaser{align-items:flex-start;flex-direction:column;padding:32px}
+}
+@media (max-width:640px){
+ .main-nav{display:none;position:absolute;top:83px;left:0;right:0;background:var(--paper);flex-direction:column;padding:16px 5vw;border-bottom:1px solid var(--line);gap:12px}
+ .main-nav.open{display:flex}
+ .menu-toggle{display:block}
+ .product-grid{grid-template-columns:repeat(2,1fr);gap:14px}
+  .skeleton-grid{grid-template-columns:repeat(2,1fr)}
+  .finder-options{grid-template-columns:1fr}
+  .finder-teaser{margin-top:30px;padding:26px 22px}
+  .site-header{gap:14px;height:72px}.main-nav{top:72px}.wordmark{font-size:20px}.header-actions{gap:5px}.icon-btn{font-size:20px}.cart-item{grid-template-columns:64px 1fr auto;gap:10px}.cart-item img{width:64px;height:80px}
+}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
+.promise-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border-bottom:1px solid var(--line)}
+.promise-bar>div{background:var(--paper);padding:24px max(3vw,24px);display:flex;flex-direction:column;gap:3px}
+.promise-bar strong{font:500 17px var(--serif)}
+.promise-bar span{font-size:12px;color:var(--muted)}
+.product-card{transition:transform .25s ease}
+.product-card:hover{transform:translateY(-4px)}
+.quick-add{border:0;border-bottom:1px solid var(--ink);background:none;padding:6px 0 3px;margin-top:10px;font-size:12px;letter-spacing:.04em;color:var(--ink);opacity:.72;transition:opacity .2s,color .2s}
+.product-card:hover .quick-add,.product-card:focus-within .quick-add{opacity:1}
+.quick-add span{color:var(--accent);font-size:17px;line-height:0;vertical-align:-1px;margin-left:4px}
+.quick-add:hover{color:var(--accent)}
+.shipping-progress{max-width:720px;margin:0 0 30px;padding:16px 18px;background:#f3f1e9;border-radius:10px}
+.shipping-progress-head{display:flex;justify-content:space-between;gap:16px;font-size:12px;color:var(--muted);margin-bottom:9px}
+.shipping-progress-head span:last-child{font-variant-numeric:tabular-nums;color:var(--ink)}
+.progress-track{height:5px;border-radius:99px;background:#dfe3dc;overflow:hidden}
+.progress-track span{display:block;height:100%;border-radius:inherit;background:var(--accent);transition:width .35s ease}
+#toast{z-index:30}
+@media (max-width:640px){
+ .promise-bar{grid-template-columns:1fr}
+ .promise-bar>div{padding:14px 5vw;flex-direction:row;align-items:baseline;justify-content:space-between;gap:12px}
+ .promise-bar strong{font-size:15px}
+ .quick-add{opacity:1}
+ }
+
+/* Parrfums Vault brand direction: warm ivory, ink, and antique gold. */
+:root{--ink:#211b18;--muted:#766b61;--cream:#f2ede5;--paper:#fbf9f5;--sage:#d9cbbb;--line:#dfd5ca;--accent:#a97845;--serif:'Cormorant Garamond',serif;--shadow-soft:0 18px 48px rgba(49,34,21,.1)}
+body{background:var(--paper)}
+.announcement{background:#211b18;letter-spacing:.12em}
+.wordmark{letter-spacing:.01em;text-transform:lowercase;font-weight:600}
+.wordmark i{font:600 18px var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-left:5px}
+.hero{background:var(--sage)}
+.hero h1,.page-title,.feature-copy h2,.finder-teaser h2,.about-grid h1{font-weight:600}
+.hero-image{filter:saturate(.78) sepia(.12)}
+.btn.primary{background:var(--ink);border-color:var(--ink)}
+.btn.primary:hover{background:var(--accent);border-color:var(--accent)}
+.promise-bar strong{font-family:var(--serif);font-size:20px}
+.quick-add{border-color:var(--accent)}
+.finder-teaser{background:var(--ink)}
+footer{background:#f1ebe3}
+footer .wordmark{font-size:26px}
+
+/* final detail pass: quieter chrome, stronger rhythm, and safer small screens */
+:root{--shadow-soft:0 18px 48px rgba(29,38,32,.08)}
+body{font-size:16px;color:#202a23;-webkit-font-smoothing:antialiased}
+.announcement{min-height:34px;display:flex;align-items:center;justify-content:center;gap:0}
+.site-header{height:78px;padding-left:max(5vw,28px);padding-right:max(5vw,28px);box-shadow:0 1px 0 rgba(29,38,32,.03)}
+.site-header .wordmark{font-size:25px}
+.main-nav a,.footer-links a{position:relative;transition:color .2s ease}
+.main-nav a:after{content:"";position:absolute;left:0;right:100%;bottom:-8px;height:1px;background:var(--accent);transition:right .2s ease}
+.main-nav a:hover:after,.main-nav a:focus-visible:after{right:0}
+.header-actions{gap:10px}
+.icon-btn{width:38px;height:38px;display:grid;place-items:center;border-radius:50%;transition:background .2s ease,color .2s ease}
+.icon-btn:hover{background:#f1eee6;color:var(--accent)}
+.icon-btn b{top:2px;right:0;min-width:18px;height:18px;font-size:9px;box-shadow:0 0 0 2px var(--paper)}
+.hero{min-height:620px}
+.hero-copy{padding:clamp(42px,8vw,120px)}
+.hero h1{max-width:520px}
+.hero-image{min-height:440px;background-position:center 42%}
+.section{padding-top:clamp(72px,8vw,112px);padding-bottom:clamp(72px,8vw,112px)}
+.section-head{margin-bottom:34px}
+.product-grid{row-gap:42px}
+.product-image{overflow:hidden;box-shadow:var(--shadow-soft)}
+.product-image img{transition:transform .55s cubic-bezier(.2,.7,.2,1)}
+.product-card:hover .product-image img{transform:scale(1.035)}
+.product-meta{padding-left:2px;padding-right:2px}
+.product-meta h3{letter-spacing:-.02em}
+.price{font-variant-numeric:tabular-nums}
+.feature{box-shadow:var(--shadow-soft);overflow:hidden}
+.feature img{display:block}
+.finder-teaser{box-shadow:var(--shadow-soft)}
+.page-shell{padding-top:clamp(54px,7vw,96px);padding-bottom:clamp(72px,9vw,128px)}
+.page-title{letter-spacing:-.035em}
+.pill{transition:background .2s ease,color .2s ease,border-color .2s ease,transform .2s ease}
+.pill:hover{transform:translateY(-1px)}
+.summary{box-shadow:var(--shadow-soft)}
+.btn.primary{box-shadow:0 8px 18px rgba(29,38,32,.14)}
+.btn.primary:hover{box-shadow:0 10px 22px rgba(29,38,32,.2)}
+.search-drawer{backdrop-filter:blur(5px)}
+.search-inner{border:1px solid rgba(223,227,220,.9)}
+footer{border-top:1px solid var(--line)}
+@media (max-width:900px){.hero{min-height:0}.hero-copy{padding:72px 8vw}.hero-image{min-height:400px}.section,.page-shell{padding-left:6vw;padding-right:6vw}}
+@media (max-width:640px){
+ .announcement{font-size:10px;letter-spacing:.05em;padding:8px 14px}
+ .site-header{height:72px;padding-left:18px;padding-right:18px;gap:10px}
+ .site-header .wordmark{font-size:21px}
+ .header-actions{gap:2px}
+ .icon-btn{width:34px;height:34px;font-size:18px}
+ .hero-copy{padding:58px 7vw 64px}
+ .hero h1{font-size:clamp(42px,13vw,58px)}
+ .hero-image{min-height:300px}
+ .section,.page-shell{padding-left:6vw;padding-right:6vw}
+ .section-head{align-items:flex-end}
+ .section-head h2{font-size:38px}
+ .product-grid{row-gap:30px}
+ .product-image{box-shadow:none}
+ .finder-teaser{border-radius:10px}
+}
+
+/* Parrfums Vault identity pass: an editorial Mumbai-made point of view. */
+:root{
+ --ink:#241d1a;
+ --paper:#fcfaf6;
+ --cream:#eee4da;
+ --sage:#e6ddd4;
+ --line:#ded2c7;
+ --accent:#a86d43;
+ --muted:#786b61;
+}
+body{background:var(--paper);color:var(--ink)}
+::selection{background:#c89a72;color:#241d1a}
+.announcement{background:var(--ink);color:#f8f0e8;border-bottom:2px solid var(--accent);font-weight:500}
+.site-header{background:rgba(252,250,246,.96);border-bottom-color:#d9cabe}
+.site-header .wordmark{letter-spacing:.015em}
+.wordmark i{color:var(--accent);font-size:.66em;letter-spacing:.16em}
+.hero{background:var(--cream)}
+.hero-copy{position:relative}
+
+.hero .eyebrow{color:#66584e}
+.hero h1{color:var(--ink);text-wrap:balance}
+.hero h1:focus{outline:none}
+.hero p{color:#5f5148}
+.hero-image{background-color:#b99b83;filter:saturate(.72) sepia(.18);box-shadow:inset 18px 0 0 rgba(252,250,246,.08)}
+.promise-bar{border-top:1px solid var(--line);border-bottom-color:var(--line)}
+.promise-bar>div{background:#faf6f0}
+.promise-bar strong{color:var(--ink)}
+.promise-bar span{color:var(--muted)}
+.section-head h2,.feature-copy h2,.page-title{color:var(--ink)}
+.feature{background:#eee4da}
+.finder-teaser{background:var(--ink);border:1px solid #3c302a}
+.finder-teaser .eyebrow{color:#d2a77e}
+footer{background:#eee4da}
+@media (max-width:640px){
+ 
+ .hero-image{box-shadow:none}
+}
+
+/* ==========================================================================
+   PARRFUMS VAULT — BRAND LAYER
+   Palette, voice and photography verified against @parrfums.vault (Oct 2026).
+   Appended after the original sheets so it wins the cascade.
+   ========================================================================== */
+
+:root{
+  --wa:#128c4a;
+  --wa-tint:rgba(18,140,74,.08);
+  --header-h:78px;
+  --ring:0 0 0 2px var(--paper);
+  --shadow-soft:0 18px 48px rgba(36,29,26,.09);
+}
+@media (max-width:1024px){:root{--header-h:76px}}
+@media (max-width:760px){:root{--header-h:72px}}
+
+/* ---------------------------------------------------------------- utility */
+.sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
+.landing-inner h1.sr-only{position:fixed!important;left:-10000px!important;top:0!important;width:1px!important;height:1px!important;overflow:hidden!important;clip-path:inset(50%)!important;font-size:1px!important;line-height:1px!important}
+body.drawer-open{overflow:hidden}
+.btn.full{width:100%}
+.contact-link{color:inherit}
+
+/* ----------------------------------------------------------------- header */
+.site-header{height:var(--header-h)}
+@media (max-width:760px){
+  .site-header{height:var(--header-h);gap:12px}
+  .main-nav{top:var(--header-h);z-index:6;box-shadow:0 18px 34px rgba(36,29,26,.10)}
+}
+@media (max-width:640px){
+  .site-header{height:var(--header-h);padding-left:16px;padding-right:16px}
+  .main-nav{top:var(--header-h)}
+}
+.brand{display:flex;align-items:center;gap:10px;white-space:nowrap}
+.brand-mark{display:flex;align-items:center;flex:0 0 auto}
+.brand .wordmark{font-size:25px}
+@media (max-width:640px){
+  .brand{gap:8px}
+  .brand .wordmark{font-size:19px}
+  .brand-mark svg{width:24px;height:24px}
+}
+.main-nav a[aria-current="page"]{color:var(--accent)}
+.main-nav a[aria-current="page"]:after{right:0}
+.main-nav a[aria-current="page"]:hover:after{right:0}
+
+/* count badge — full circle, never clipped, always legible */
+.icon-btn b{
+  top:1px;right:0;min-width:19px;height:19px;padding:0 5px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:600;line-height:1;border-radius:999px;
+  background:var(--accent);color:#fff;box-shadow:var(--ring);
+  font-variant-numeric:tabular-nums;letter-spacing:0;
+}
+@media (max-width:640px){
+  .icon-btn{width:32px;height:32px}
+  .icon-btn b{top:-2px;right:0;min-width:18px;height:18px;font-size:10px}
+}
+
+/* WhatsApp CTA in the header */
+.header-cta{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:9px 15px;border-radius:999px;
+  border:1px solid rgba(18,140,74,.34);background:var(--wa-tint);
+  color:var(--wa);font-size:11px;letter-spacing:.09em;text-transform:uppercase;
+  font-weight:600;white-space:nowrap;
+  transition:background .2s ease,color .2s ease,transform .2s ease;
+}
+.header-cta:hover{background:var(--wa);color:#fff;border-color:var(--wa)}
+.header-cta:active{transform:translateY(1px)}
+.header-cta .wa-icon{width:15px;height:15px;flex:0 0 auto}
+@media (max-width:1000px){.header-cta{display:none}}
+
+/* ------------------------------------------------------------- announcement */
+.announcement{background:var(--ink);color:#fff;font-size:11px;letter-spacing:.08em;padding:9px 16px}
+.announcement-inner{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px 18px;max-width:100%}
+.announcement-inner>span{color:#efe7dd}
+.announcement-link{color:#e6b98f;border-bottom:1px solid rgba(230,185,143,.45);padding-bottom:1px;white-space:nowrap;transition:color .2s ease,border-color .2s ease}
+.announcement-link:hover{color:#fff;border-color:#fff}
+@media (max-width:640px){
+  .announcement{font-size:10px;letter-spacing:.05em;padding:9px 14px;text-align:center}
+  .announcement-inner{gap:3px 12px}
+}
+
+/* -------------------------------------------------------------- WhatsApp CTA */
+.wa-icon{width:16px;height:16px;flex:0 0 auto;fill:currentColor}
+.btn.wa-btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  border-color:rgba(18,140,74,.38);background:var(--wa-tint);color:var(--wa);font-weight:600;
+}
+.btn.wa-btn:hover{background:var(--wa);border-color:var(--wa);color:#fff}
+.btn.wa-btn .wa-icon{fill:currentColor}
+
+/* ------------------------------------------------------------------ buttons */
+.hero-actions,.feature-actions,.offer-actions,.checkout-actions{
+  display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:26px;
+}
+.checkout-actions{margin-top:22px}
+@media (max-width:560px){
+  .hero-actions,.feature-actions,.offer-actions,.checkout-actions{flex-direction:column;align-items:stretch;gap:10px}
+  .hero-actions .btn,.feature-actions .btn,.offer-actions .btn,.checkout-actions .btn{width:100%}
+}
+
+/* ------------------------------------------------------------------- prices */
+.price{font-variant-numeric:tabular-nums;display:flex;align-items:baseline;gap:7px;margin-top:9px}
+.price-amount{font-family:var(--serif);font-size:21px;font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+.price-size{font-family:var(--sans);font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.price-ladder{
+  display:flex;flex-wrap:wrap;align-items:center;gap:2px 7px;
+  margin-top:5px;font-size:11.5px;line-height:1.5;color:var(--muted);
+}
+.price-ladder>span[aria-hidden]{opacity:.5}
+
+/* ------------------------------------------------------------------ offers */
+.offer-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:26px}
+.offer-card{
+  display:flex;flex-direction:column;overflow:hidden;
+  background:var(--paper);border:1px solid var(--line);border-radius:4px;
+  box-shadow:var(--shadow-soft);
+}
+.offer-img{position:relative;overflow:hidden;background:var(--cream)}
+.offer-img img{display:block;width:100%;aspect-ratio:16/11;object-fit:cover}
+.offer-badge{
+  position:absolute;top:12px;left:12px;z-index:1;
+  background:var(--ink);color:#fdf9f4;padding:5px 10px;border-radius:999px;
+  font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;
+}
+.offer-body{padding:22px 24px 26px;display:flex;flex-direction:column;flex:1}
+.offer-body h3{font:600 27px/1.15 var(--serif);margin:0 0 10px;letter-spacing:-.015em}
+.offer-per{font-size:13px;font-weight:600;color:var(--accent);margin:0 0 6px;letter-spacing:.01em}
+.offer-notes{font-size:12.5px;color:var(--muted);margin:0 0 14px;line-height:1.55}
+.offer-price{font:600 32px/1 var(--serif);color:var(--ink);margin:0 0 2px;font-variant-numeric:tabular-nums}
+.offer-actions{margin-top:auto;padding-top:18px}
+
+/* ------------------------------------------------------------ contact strip */
+.contact-strip{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:2px;
+  margin-top:clamp(40px,6vw,72px);
+  border:1px solid var(--line);border-radius:4px;overflow:hidden;background:var(--line);
+}
+.contact-item{
+  display:flex;align-items:center;gap:13px;
+  padding:20px 22px;background:var(--paper);
+  transition:background .2s ease;
+}
+.contact-item:hover{background:var(--cream)}
+.contact-item .wa-icon,.contact-glyph{
+  width:34px;height:34px;flex:0 0 auto;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(168,109,67,.10);color:var(--accent);font-size:15px;
+}
+.contact-item .wa-icon{background:var(--wa-tint);color:var(--wa);padding:9px;width:34px;height:34px}
+.contact-item strong{display:block;font-size:14px;font-weight:600;color:var(--ink)}
+.contact-item small{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+@media (max-width:760px){
+  .contact-strip{grid-template-columns:1fr}
+  .contact-item{padding:16px 18px}
+}
+
+/* --------------------------------------------------------------------- feed */
+.feed-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.feed-tile{display:block;overflow:hidden;border-radius:3px;background:var(--cream)}
+.feed-tile img{display:block;width:100%;aspect-ratio:1;object-fit:cover;transition:transform .55s cubic-bezier(.2,.7,.2,1)}
+.feed-tile:hover img{transform:scale(1.05)}
+@media (max-width:560px){.feed-grid{grid-template-columns:repeat(2,1fr)}}
+
+/* ------------------------------------------------------------------ details */
+.page-intro{max-width:62ch;font-size:16px;line-height:1.75;color:var(--muted);margin:14px 0 40px}
+.gallery-note{margin-top:10px;font-size:11px;color:var(--muted);letter-spacing:.02em}
+.collection-img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}
+.about-img{display:block;width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:3px}
+.heart-icon{width:18px;height:18px;display:block}
+.heart{width:38px;height:38px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(252,250,246,.92);border:0;padding:0;box-shadow:0 2px 10px rgba(36,29,26,.14);transition:transform .18s ease,color .18s ease}
+.heart:hover{transform:scale(1.08)}
+.heart.active{color:var(--accent)}
+.sum-line small{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+.quick-add.added{background:var(--accent);border-color:var(--accent);color:#fff}
+
+/* -------------------------------------------------------------------- hero */
+.hero-image{background:url('assets/hero.jpg') center/cover no-repeat;min-height:460px;filter:none}
+@media (max-width:900px){.hero-image{min-height:360px}}
+@media (max-width:640px){.hero-image{min-height:260px}}
+.feature img{width:100%;object-fit:cover;height:100%;min-height:320px}
+
+/* -------------------------------------------------------------------- grid */
+.product-grid{grid-template-columns:repeat(3,1fr);gap:22px 20px}
+@media (max-width:1023px){.product-grid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:399px){.product-grid{grid-template-columns:1fr}}
+
+/* ------------------------------------------------------------------ search */
+.search-result .sr-img{width:46px;height:56px;object-fit:cover;border-radius:2px;flex:0 0 auto}
+.search-result{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+
+/* ------------------------------------------------------------------ footer */
+footer{
+  background:#f1ebe3;color:var(--ink);
+  grid-template-columns:1.6fr 1fr 1fr 1.15fr;
+  gap:34px 30px;padding:56px max(5vw,24px) 30px;
+}
+footer p,footer small{color:var(--muted)}
+.footer-col h4{
+  margin:0 0 14px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--ink);font-weight:600;
+}
+.footer-brand p{max-width:34ch;margin:14px 0 0;line-height:1.7}
+.footer-note{font-size:12px!important;letter-spacing:.03em;margin-top:8px!important}
+.footer-col .footer-links{display:flex;flex-direction:column;gap:10px;font-size:13.5px;grid-column:auto;grid-row:auto}
+.footer-col .footer-links a{color:var(--ink);opacity:.78;transition:opacity .2s ease,color .2s ease}
+.footer-col .footer-links a:hover{opacity:1;color:var(--accent)}
+.footer-legal{
+  grid-column:1/-1;margin-top:26px;padding-top:22px;
+  border-top:1px solid var(--line);font-size:12px;color:var(--muted);
+}
+@media (max-width:900px){
+  footer{grid-template-columns:1fr 1fr;gap:30px 26px}
+}
+@media (max-width:560px){
+  footer{grid-template-columns:1fr;padding:44px 6vw 26px}
+}
+
+/* ---- icon system addendum: official brand marks + consistent Lucide UI set ---- */
+.ig-icon{width:16px;height:16px;flex:0 0 auto;fill:currentColor}
+.ph-icon{width:16px;height:16px;flex:0 0 auto;stroke:currentColor}
+
+.contact-item .wa-icon,
+.contact-item .ph-icon,
+.contact-item .ig-icon{
+  width:34px;height:34px;flex:0 0 auto;border-radius:50%;padding:9px;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(168,109,67,.10);color:var(--accent);
+}
+.contact-item .wa-icon{background:var(--wa-tint);color:var(--wa)}
+
+.footer-col .footer-links a{display:flex;align-items:center;gap:9px}
+.footer-col .footer-links a .wa-icon,
+.footer-col .footer-links a .ig-icon{width:15px;height:15px;flex:0 0 auto;fill:currentColor}
+.footer-col .footer-links a .ph-icon{width:15px;height:15px;flex:0 0 auto;stroke:currentColor}
+
+.ig-link{display:inline-flex;align-items:center;gap:8px}
+.ig-link .ig-icon{width:15px;height:15px;fill:currentColor}
+
+/* ==========================================================================
+   FINAL FIXES — verified by measurement
+   1. 320px header overflow: brand + actions + toggle exceeded the header box.
+   2. Footer body text was 4.35:1 on the cream footer (AA needs 4.5:1).
+   ========================================================================== */
+
+/* --- 1. narrow-phone header that cannot overflow ------------------------- */
+.brand{min-width:0}
+.brand .wordmark{overflow:hidden;text-overflow:ellipsis}
+@media (max-width:380px){
+  .site-header{gap:8px;padding-left:14px;padding-right:14px}
+  .brand{gap:0}
+  .brand-mark{display:none}
+  .brand .wordmark{font-size:18px}
+  .header-actions{gap:0}
+  .icon-btn{width:30px;height:30px}
+  .icon-btn b{top:-3px;right:0;min-width:17px;height:17px;font-size:9px}
+  .menu-toggle{margin-left:2px;width:30px;height:30px;display:flex;align-items:center;justify-content:center}
+}
+
+/* --- 2. footer text contrast (AA) ---------------------------------------- */
+footer p,footer small,.footer-note,footer .footer-legal{color:#6a5d53}
+.footer-col .footer-links a{color:#3a302a}
+.footer-col .footer-links a:hover{color:var(--accent)}
+
+/* ==========================================================================
+   HIERARCHY LAYER
+   The page now reads as chapters: Promise -> Proof -> Offer -> Product ->
+   Discovery -> Story -> Contact. Each chapter sits on its own band so the
+   eye can tell where it is without reading.
+   ========================================================================== */
+
+/* ---------------------------------------------------------- band system */
+.band{padding:clamp(52px,6.5vw,96px) max(5vw,24px)}
+.band-cream{background:var(--cream)}
+.band-paper{background:var(--paper)}
+.band-sage{background:var(--sage)}
+.band-ink{background:var(--ink);color:#fdf9f4}
+.band-ink .eyebrow{color:#dcb891}
+.band-ink h2,.band-ink h3{color:#fdf9f4}
+.band-ink .sub{color:#c3b2a2}
+.band-ink .text-link{color:#e0b083}
+
+.section.band-cream,
+.section.band-paper{
+  padding-top:clamp(52px,6.5vw,96px);
+  padding-bottom:clamp(52px,6.5vw,96px);
+}
+
+/* ------------------------------------------------------ promise / USP row */
+.usp-strip{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:1px;
+  background:rgba(255,255,255,.13);border-bottom:1px solid rgba(255,255,255,.13);
+}
+.usp-item{
+  background:var(--ink);padding:24px max(3vw,24px);
+  display:flex;align-items:center;gap:14px;
+}
+.usp-item svg{width:21px;height:21px;flex:0 0 auto;stroke:#e0b083;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.usp-item strong{display:block;font:500 18px/1.2 var(--serif);color:#fdf9f4;letter-spacing:-.01em}
+.usp-item small{display:block;font-size:12px;color:#c3b2a2;margin-top:3px}
+@media (max-width:860px){.usp-strip{grid-template-columns:1fr 1fr}}
+@media (max-width:400px){.usp-strip{grid-template-columns:1fr}.usp-item{padding:16px 5vw}}
+
+/* -------------------------------------------------------- hero micro-copy */
+.hero-note{
+  margin:26px 0 0;font-size:11.5px;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--muted);
+}
+
+/* ----------------------------------------------------- featured big offer */
+.offer-feature{
+  display:grid;grid-template-columns:1.05fr 1fr;align-items:stretch;
+  background:var(--paper);border:1px solid var(--line);border-radius:4px;
+  overflow:hidden;box-shadow:var(--shadow-soft);
+}
+.offer-feature-img{position:relative;overflow:hidden;background:var(--cream)}
+.offer-feature-img img{display:block;width:100%;height:100%;object-fit:cover;min-height:360px}
+.offer-feature-copy{padding:clamp(28px,4.2vw,56px);display:flex;flex-direction:column;justify-content:center}
+.offer-feature-copy h2{
+  font:600 clamp(30px,3.4vw,44px)/1.08 var(--serif);margin:0 0 12px;letter-spacing:-.03em;color:var(--ink);
+}
+.offer-feature-copy .offer-per{font-size:14px}
+.offer-feature-copy .offer-price{font:600 40px/1 var(--serif);margin:18px 0 8px}
+.offer-save{font-size:13.5px;line-height:1.65;color:var(--muted);margin:0;max-width:44ch}
+@media (max-width:900px){
+  .offer-feature{grid-template-columns:1fr}
+  .offer-feature-img img{min-height:280px;aspect-ratio:16/10}
+}
+
+/* secondary offer as a wide row */
+.offer-row{margin-top:26px}
+.offer-row .offer-card{display:grid;grid-template-columns:minmax(190px,290px) 1fr;align-items:stretch}
+.offer-row .offer-img img{aspect-ratio:auto;height:100%;min-height:220px}
+@media (max-width:700px){
+  .offer-row .offer-card{grid-template-columns:1fr}
+  .offer-row .offer-img img{aspect-ratio:16/9;min-height:0;height:auto}
+}
+
+/* -------------------------------------------------------------- mood chips */
+.mood-chips{display:flex;flex-wrap:wrap;gap:9px;margin:0}
+.mood-chip{
+  border:1px solid var(--line);background:transparent;border-radius:999px;
+  padding:9px 18px;font-size:11.5px;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--muted);font-weight:500;transition:background .2s ease,color .2s ease,border-color .2s ease;
+}
+.mood-chip:hover{border-color:var(--accent);color:var(--accent)}
+.mood-chip.active{background:var(--ink);border-color:var(--ink);color:#fff}
+.section .mood-chips{margin-bottom:34px}
+
+/* ---------------------------------------------------------- shop page foot */
+.shop-foot{
+  margin-top:clamp(46px,6vw,78px);padding:clamp(28px,4vw,46px);
+  background:var(--cream);border-radius:4px;
+  display:flex;align-items:center;justify-content:space-between;gap:26px;flex-wrap:wrap;
+}
+.shop-foot h2{font:600 clamp(24px,2.6vw,34px)/1.12 var(--serif);margin:0 0 8px;letter-spacing:-.025em}
+.shop-foot p:not(.eyebrow){margin:0;color:var(--muted);max-width:46ch}
+@media (max-width:560px){.shop-foot .btn{width:100%}}
+
+/* --------------------------------------------------------- contact band */
+.contact-band-head{max-width:56ch;margin-bottom:28px}
+.contact-band-head h2{font:600 clamp(28px,3.2vw,42px)/1.1 var(--serif);margin:0 0 12px;letter-spacing:-.03em;color:#fdf9f4}
+.band-ink .contact-strip{border-color:rgba(255,255,255,.18);background:rgba(255,255,255,.14)}
+.band-ink .contact-item{background:var(--ink)}
+.band-ink .contact-item:hover{background:#2f2622}
+.band-ink .contact-item strong{color:#fdf9f4}
+.band-ink .contact-item small{color:#c3b2a2}
+.band-ink .contact-item .wa-icon{background:rgba(18,140,74,.24);color:#63d795}
+.band-ink .contact-item .ph-icon,
+.band-ink .contact-item .ig-icon{background:rgba(168,109,67,.22);color:#e0b083}
+.band-ink .contact-strip{margin-top:0}
+
+/* --------------------------------------------------------- about / feed */
+.feed-block{margin-top:clamp(46px,6vw,78px)}
+.feed-block .section-head{margin-bottom:26px}
+.feed-block h2{font:600 clamp(28px,3.2vw,40px)/1.1 var(--serif);margin:0;letter-spacing:-.03em}
+
+/* --------------------------------------------------- collections upgrade */
+.collections-grid{gap:22px}
+.collection-card a{display:block;overflow:hidden;border:1px solid var(--line);border-radius:4px;background:var(--paper);transition:transform .25s ease,box-shadow .25s ease}
+.collection-card a:hover{transform:translateY(-3px);box-shadow:var(--shadow-soft)}
+.collection-copy{padding:20px 22px 24px}
+.collection-copy h3{font:600 26px/1.1 var(--serif);margin:0 0 8px;letter-spacing:-.02em}
+.collection-copy p{font-size:13px;color:var(--muted);margin:0 0 12px;line-height:1.6}
+.collection-count{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);font-weight:600}
+
+/* ----------------------------------------------------------- hero image */
+.hero-image{background:url('assets/hero.jpg') center/cover no-repeat}
+
+/* ==========================================================================
+   LANDING — the front door.
+   One screen, one image, one promise, one way in.
+   ========================================================================== */
+
+body.is-landing{background:#171210}
+body.is-landing .announcement,
+body.is-landing .site-header,
+body.is-landing footer{display:none}
+
+.landing{
+  position:relative;
+  min-height:100vh;min-height:100svh;
+  display:grid;grid-template-rows:auto 1fr auto;
+  overflow:hidden;background:#171210;color:#fdf9f4;
+}
+.landing-bg{
+  position:absolute;inset:0;z-index:0;
+  background-image:url('assets/landing-1.jpg');
+  background-size:cover;background-position:center 36%;
+  animation:landingDrift 30s ease-in-out infinite alternate;
+}
+@keyframes landingDrift{
+  from{background-position:52% 44%}
+  to{background-position:45% 27%}
+
+}
+.landing-scrim{
+  position:absolute;inset:0;z-index:1;
+  background:
+    linear-gradient(100deg,rgba(20,15,13,.93) 0%,rgba(20,15,13,.76) 32%,rgba(20,15,13,.30) 60%,rgba(20,15,13,.10) 100%),
+    linear-gradient(to top,rgba(20,15,13,.80) 0%,rgba(20,15,13,0) 44%);
+}
+
+/* ------------------------------------------------------------------- top */
+.landing-top{
+  position:relative;z-index:2;
+  display:flex;align-items:center;justify-content:space-between;gap:20px;
+  padding:clamp(20px,3vw,38px) clamp(20px,4.5vw,64px);
+}
+.landing-brand{color:#fdf9f4}
+.landing-brand .wordmark{font-size:clamp(20px,2vw,26px);color:#fdf9f4}
+.landing-brand .wordmark i{color:#e0b083}
+
+
+.landing-enter{
+  display:inline-flex;align-items:center;gap:10px;
+  font-size:11px;letter-spacing:.18em;text-transform:uppercase;font-weight:600;
+  color:#fdf9f4;padding:11px 20px;border-radius:999px;
+  border:1px solid rgba(253,249,244,.32);
+  transition:background .25s ease,border-color .25s ease,color .25s ease;
+}
+.landing-enter:hover{background:#fdf9f4;color:#241d1a;border-color:#fdf9f4}
+.landing-enter svg{transition:transform .25s ease}
+.landing-enter:hover svg{transform:translateX(4px)}
+
+/* ---------------------------------------------------------------- centre */
+.landing-inner{
+  position:relative;z-index:2;
+  align-self:center;
+  padding:0 clamp(20px,4.5vw,64px);
+  max-width:min(1200px,100%);
+}
+.landing-eyebrow{
+  margin:0 0 clamp(16px,2vw,26px);
+  font-size:clamp(10px,.95vw,12px);letter-spacing:.34em;text-transform:uppercase;
+  color:#e0b083;font-weight:600;
+}
+.landing-inner h1{
+  margin:0;
+  font:600 clamp(46px,8.4vw,116px)/.95 var(--serif);
+  letter-spacing:-.035em;color:#fdf9f4;
+}
+.landing-inner h1:focus{outline:none}
+.landing-inner h1 em{font-style:italic;color:#e8c6a3}
+.landing-sub{
+  margin:clamp(20px,2.4vw,30px) 0 0;
+  max-width:48ch;font-size:clamp(15px,1.3vw,17.5px);line-height:1.72;
+  color:rgba(253,249,244,.82);
+}
+.landing-actions{display:flex;flex-wrap:wrap;gap:14px;margin-top:clamp(28px,3.4vw,44px)}
+.btn.lg{padding:16px 34px;font-size:12px;letter-spacing:.14em}
+.landing-actions .btn.ghost{background:rgba(253,249,244,.07);border-color:rgba(253,249,244,.32);color:#fdf9f4}
+.landing-actions .btn.ghost:hover{background:#fdf9f4;color:#241d1a;border-color:#fdf9f4}
+.landing-actions .btn.wa-btn{background:rgba(18,140,74,.18);border-color:rgba(18,140,74,.52);color:#86e3ad}
+.landing-actions .btn.wa-btn:hover{background:#128c4a;border-color:#128c4a;color:#fff}
+
+/* ------------------------------------------------------------------ foot */
+.landing-foot{
+  position:relative;z-index:2;
+  display:flex;flex-wrap:wrap;gap:10px 32px;
+  padding:clamp(18px,2.4vw,26px) clamp(20px,4.5vw,64px) clamp(24px,3vw,38px);
+  font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:rgba(253,249,244,.6);
+}
+.landing-foot span{display:inline-flex;align-items:center;gap:10px}
+.landing-foot span::before{content:"";width:4px;height:4px;border-radius:50%;background:#e0b083;flex:0 0 auto}
+
+/* --------------------------------------------------------------- mobile */
+@media (max-width:700px){
+  .landing-scrim{
+    background:
+      linear-gradient(to bottom,rgba(20,15,13,.70) 0%,rgba(20,15,13,.42) 34%,rgba(20,15,13,.90) 76%,rgba(20,15,13,.96) 100%);
+  }
+  .landing-bg{background-position:center 30%}
+  .landing-inner{align-self:end;padding-bottom:8px}
+  .landing-actions{flex-direction:column;align-items:stretch}
+  .landing-actions .btn{width:100%}
+  .landing-foot{gap:8px 18px;font-size:9.5px;letter-spacing:.12em}
+  .landing-enter{padding:10px 16px;font-size:10px}
+}
+@media (max-width:400px){
+  .landing-brand .wordmark{font-size:18px}
+  .landing-foot span:last-child{display:none}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .landing-bg{animation:none}
+}
+
+/* ------------------------------------------- brand mark: shared classes */
+
+
+
+/* ------------------------------------------- back to the front door */
+.front-door-link{
+  display:inline-flex;align-items:center;gap:8px;margin-top:16px;
+  font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;
+  color:var(--accent);border-bottom:1px solid rgba(168,109,67,.4);padding-bottom:3px;
+  transition:color .2s ease,border-color .2s ease;
+}
+.front-door-link:hover{color:var(--ink);border-color:var(--ink)}
+
+/* ==========================================================================
+   LANDING REVISION — the brand name is the focal point.
+   The site carries no slogan headline, so nothing repeats between pages.
+   ========================================================================== */
+.landing-brand .wordmark{display:none}
+.landing-brand .brand-mark svg{width:34px;height:34px}
+.landing-inner h1.landing-brand-name{
+  margin:0;
+  font:600 clamp(52px,10.5vw,148px)/.88 var(--serif);
+  letter-spacing:-.045em;color:#fdf9f4;
+  text-transform:none;text-wrap:balance;
+}
+.landing-brand-name em{font-style:italic;color:#e8c6a3}
+@media (max-width:700px){
+  .landing-inner h1.landing-brand-name{font-size:clamp(44px,15vw,72px)}
+}
+
+/* ==========================================================================
+   LANDING EXTENSION — the splash now scrolls.
+   hero (100svh) -> featured offer -> the six fragrances -> order CTA
+   ========================================================================== */
+
+.landing-scroll{
+  margin-left:auto;display:inline-flex;align-items:center;justify-content:center;
+  background:transparent;cursor:pointer;padding:0;
+  width:40px;height:40px;border-radius:50%;flex:0 0 auto;
+  border:1px solid rgba(253,249,244,.28);color:#fdf9f4;
+  transition:background .25s ease,color .25s ease,transform .25s ease;
+}
+.landing-scroll:hover{background:#fdf9f4;color:#241d1a;transform:translateY(2px)}
+.landing-scroll svg{animation:landingNudge 2.4s ease-in-out infinite}
+@keyframes landingNudge{0%,100%{transform:translateY(-2px)}50%{transform:translateY(2px)}}
+@media (prefers-reduced-motion:reduce){.landing-scroll svg{animation:none}}
+
+/* --- the six fragrances, as a compact teaser grid --- */
+.landing-scent-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px}
+.landing-scent{
+  display:block;overflow:hidden;border-radius:3px;
+  background:var(--cream);border:1px solid var(--line);
+  transition:transform .25s ease,box-shadow .25s ease;
+}
+.landing-scent:hover{transform:translateY(-4px);box-shadow:var(--shadow-soft)}
+.landing-scent img{display:block;width:100%;aspect-ratio:4/5;object-fit:cover}
+.landing-scent-meta{display:block;padding:13px 14px 16px}
+.landing-scent-meta strong{display:block;font:500 16px/1.2 var(--serif);color:var(--ink);letter-spacing:-.01em}
+.landing-scent-meta small{display:block;font-size:11px;line-height:1.5;color:var(--muted);margin-top:4px}
+.landing-scent-meta em{
+  display:block;font-style:normal;font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--accent);font-weight:600;margin-top:9px;
+}
+@media (max-width:1000px){.landing-scent-grid{grid-template-columns:repeat(3,1fr);gap:12px}}
+@media (max-width:460px){.landing-scent-grid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:360px){
+  .landing-scent-meta strong{font-size:15px}
+  .landing-scent-meta small{display:none}
+}
+
+/* --- the featured offer on the landing: a touch more air --- */
+.landing .offer-feature{border-radius:4px}
+
+/* ==========================================================================
+   LANDING TRIM — keep it to roughly 2.5-3 screens.
+   The six fragrances become a horizontal snap strip below 1000px instead of
+   a tall stacked grid, and the offer image is shorter on phones.
+   ========================================================================== */
+
+.landing-scent-grid{
+  display:grid;grid-template-columns:repeat(6,1fr);gap:14px;
+  scrollbar-width:none;
+}
+.landing-scent-grid::-webkit-scrollbar{display:none}
+
+@media (max-width:1000px){
+  .landing-scent-grid{
+    grid-template-columns:none;
+    grid-auto-flow:column;grid-auto-columns:42vw;gap:12px;
+    overflow-x:auto;scroll-snap-type:x proximity;
+    padding-bottom:8px;
+    margin-right:calc(-1 * max(5vw,24px));
+    padding-right:max(5vw,24px);
+  }
+  .landing-scent{scroll-snap-align:start}
+}
+@media (max-width:520px){
+  .landing-scent-grid{grid-auto-columns:62vw}
+}
+@media (max-width:360px){
+  .landing-scent-grid{grid-auto-columns:72vw}
+}
+
+/* shorter offer image on phones */
+@media (max-width:700px){
+  .landing .offer-feature-img img{min-height:190px;aspect-ratio:16/9}
+  .landing .offer-feature-copy{padding:26px 22px 30px}
+  .landing .offer-feature-copy h2{font-size:28px}
+  .landing .offer-feature-copy .offer-price{font-size:32px;margin:14px 0 6px}
+  .landing .offer-save{display:none}
+}
+
+/* tighter contact band on phones */
+@media (max-width:700px){
+  .landing .contact-band-head{margin-bottom:18px}
+  .landing .contact-band{padding:48px 6vw 40px}
+}
+
+/* ==========================================================================
+   LANDING TRIM 2 — kill the 1px bleed, tighten the vertical rhythm.
+   ========================================================================== */
+
+/* the strip was pulling itself 1px past the viewport with a negative margin */
+@media (max-width:1000px){
+  .landing-scent-grid{
+    margin-right:0;padding-right:0;
+  }
+}
+
+/* landing sections breathe a little less than store sections */
+.landing + .section,
+.landing ~ .section{padding-top:clamp(46px,5.4vw,82px);padding-bottom:clamp(46px,5.4vw,82px)}
+.landing ~ .band{padding-top:clamp(44px,5vw,76px);padding-bottom:clamp(44px,5vw,76px)}
+
+@media (max-width:700px){
+  .landing ~ .section,
+  .landing ~ .band{padding-top:42px;padding-bottom:42px}
+  .landing ~ .section .section-head{margin-bottom:20px}
+  .landing ~ .section .section-head h2{font-size:29px}
+  .landing .offer-notes{display:none}
+  .landing .offer-per{font-size:13px}
+  .landing .contact-item{padding:13px 16px}
+  .landing .contact-item strong{font-size:13.5px}
+  .landing .contact-item small{font-size:11.5px}
+  .landing .contact-band-head h2{font-size:26px}
+  .landing .contact-band-head .sub{font-size:13px}
+  .landing-scent-meta{padding:10px 12px 13px}
+  .landing-scent-meta small{display:none}
+}
+
+/* ==========================================================================
+   THE PARRFUMS VAULT MARK
+   A circular seal: deep slate ground, gold calligraphic script.
+   Great Vibes carries the script; textLength keeps the lockup inside the
+   circle no matter when the webfont lands.
+   ========================================================================== */
+
+:root{
+  --logo-ink:#26333a;
+  --logo-gold:#d9b87c;
+  --logo-gold-bright:#e8c88a;
+  --script:'Great Vibes','Snell Roundhand','Segoe Script','Brush Script MT',cursive;
+}
+
+.logo-image{
+  display:block;width:44px;height:44px;object-fit:contain;flex:0 0 auto;
+}
+.footer-logo{display:block;width:76px;height:76px;object-fit:contain;margin-bottom:12px}
+.footer-logo-link{display:inline-flex}
+
+/* the lockup, set as type so it can be sized with the type scale */
+.logo-script-main{
+  display:block;font-family:var(--script);font-weight:400;
+  font-size:clamp(62px,12.5vw,178px);line-height:.84;
+  color:var(--logo-gold-bright);letter-spacing:0;
+}
+.logo-script-sub{
+  display:block;font-family:var(--script);font-weight:400;
+  font-size:clamp(40px,7.2vw,104px);line-height:.9;
+  color:var(--logo-gold-bright);text-align:right;
+  margin-top:-.16em;padding-right:.10em;
+}
+.landing-inner h1.landing-brand-name{
+  margin:0;font-family:var(--serif);font-weight:400;letter-spacing:0;
+}
+@media (max-width:700px){
+  .logo-script-main{font-size:clamp(56px,19vw,104px)}
+  .logo-script-sub{font-size:clamp(36px,12vw,68px)}
+}
+@media (max-width:400px){
+  .logo-image{width:38px;height:38px}
+}
+
+/* ==========================================================================
+   LOGO SIZING — the seal replaces the old bottle monogram, so it needs
+   its own rules (the old .brand-mark svg rules targeted a 28px square).
+   ========================================================================== */
+.brand-mark .logo-image{width:44px;height:44px}
+@media (max-width:900px){
+  .brand-mark .logo-image{width:38px;height:38px}
+}
+@media (max-width:640px){
+  .brand-mark .logo-image{width:34px;height:34px}
+  .brand{gap:8px}
+}
+@media (max-width:380px){
+  /* no room for badge + wordmark on the narrowest phones: the seal stands alone */
+  .brand{gap:0}
+  .brand-mark{display:flex}
+  .brand .wordmark{display:none}
+  .brand-mark .logo-image{width:38px;height:38px}
+}
