@@ -20,6 +20,11 @@ const HERO_SIZE = 100;
 const FREE_SHIP_THRESHOLD = 999;
 const SHIPPING_FEE = 79;
 
+// Publishable key is designed for browser use; RLS and SELECT-only grants are
+// the security boundary. Never replace this with a secret/service-role key.
+const CATALOGUE_API = 'https://atxvfmvhnidknnhgwgaq.supabase.co/rest/v1';
+const CATALOGUE_KEY = 'sb_publishable_fG_F6QyyAtg7hcSp9y2rMw_bJS2ZLYk';
+
 /* Photography — Unsplash perfume imagery, self-hosted under assets/ */
 const IMG = {
   angel: ['assets/angel-1.jpg', 'assets/angel-2.jpg', 'assets/angel-3.jpg'],
@@ -107,6 +112,10 @@ let state = {
 
 const app = document.querySelector('#app');
 const announcer = document.querySelector('#route-announcer');
+let catalogueUserInteracted = false;
+for (const event of ['pointerdown', 'keydown', 'wheel', 'touchstart']) {
+  document.addEventListener(event, () => { catalogueUserInteracted = true; }, { once: true, passive: true });
+}
 const money = n => `₹${Number(n).toLocaleString('en-IN')}`;
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const get = id => products.find(p => p.id === id) || combos.find(c => c.id === id);
@@ -114,7 +123,7 @@ const isCombo = p => !!p && p.kind === 'combo';
 
 const FALLBACK_IMG = IMG.hero;
 const imgTag = (src, alt, cls = '') =>
-  `<img src="${esc(src)}" alt="${esc(alt)}" loading="lazy" decoding="async" class="${cls}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}'">`;
+  `<img src="${esc(src)}" alt="${esc(alt)}" loading="lazy" decoding="async" class="${cls}" data-image-fallback="${FALLBACK_IMG}">`;
 
 const heartSvg = filled =>
   `<svg class="heart-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="${filled ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>`;
@@ -140,8 +149,60 @@ const phoneLink = (label = 'Call us') =>
 const igLink = (label = 'Instagram') =>
   `<a class="text-link ig-link" href="${BRAND.instagram}" target="_blank" rel="noreferrer">${igSvg}<span>${esc(label)}</span></a>`;
 
-const priceFor = (p, size) => isCombo(p) ? p.price : (SIZE_PRICES[size] || SIZE_PRICES[DEFAULT_SIZE]);
+const priceFor = (p, size) => isCombo(p) ? p.price : (p.prices?.[size] || SIZE_PRICES[size] || SIZE_PRICES[DEFAULT_SIZE]);
 const priceLabel = (p, size) => isCombo(p) ? 'Combo' : `${size}ml`;
+
+async function loadCatalogue() {
+  const read = async (resource, select) => {
+    const url = `${CATALOGUE_API}/${resource}?select=${select}`;
+    const response = await fetch(url, { headers: { apikey: CATALOGUE_KEY }, cache: 'no-store' });
+    if (!response.ok) throw new Error(`Catalogue request failed (${response.status})`);
+    return response.json();
+  };
+  const safeImage = path => typeof path === 'string' && /^assets\/[a-zA-Z0-9._/-]+$/.test(path) && !path.includes('..');
+
+  try {
+    const [rows, prices, offersRows] = await Promise.all([
+      read('products', 'id,name,category,gender,notes,description,image_path,gallery_paths,sizes_ml,sort_order&active=eq.true&order=sort_order'),
+      read('product_prices', 'product_id,size_ml,price_inr&order=product_id,size_ml'),
+      read('offers', 'id,name,price_inr,badge,notes,description,image_path,sort_order&active=eq.true&order=sort_order')
+    ]);
+    if (!Array.isArray(rows) || !rows.length || !Array.isArray(prices) || !Array.isArray(offersRows)) throw new Error('Invalid catalogue response');
+
+    const priceMap = new Map();
+    for (const row of prices) {
+      if (typeof row.product_id !== 'string' || !Number.isSafeInteger(row.size_ml) || !Number.isSafeInteger(row.price_inr) || row.price_inr <= 0) throw new Error('Invalid price row');
+      const sizes = priceMap.get(row.product_id) || {};
+      sizes[row.size_ml] = row.price_inr;
+      priceMap.set(row.product_id, sizes);
+    }
+    const nextProducts = rows.map(row => {
+      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(row.id) || !safeImage(row.image_path) || !Array.isArray(row.gallery_paths) || !row.gallery_paths.every(safeImage) || !Array.isArray(row.sizes_ml)) throw new Error('Invalid product row');
+      const productPrices = priceMap.get(row.id) || {};
+      const sizes = row.sizes_ml.filter(size => Number.isSafeInteger(size) && size > 0 && Number.isSafeInteger(productPrices[size]));
+      if (!sizes.length) throw new Error('Product has no priced sizes');
+      return { id: row.id, name: row.name, category: row.category, gender: row.gender, notes: row.notes, desc: row.description, img: row.image_path, gallery: row.gallery_paths, sizes, prices: productPrices };
+    });
+    const nextOffers = offersRows.map(row => {
+      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(row.id) || !safeImage(row.image_path) || !Number.isSafeInteger(row.price_inr) || row.price_inr <= 0) throw new Error('Invalid offer row');
+      return { id: row.id, name: row.name, kind: 'combo', price: row.price_inr, badge: row.badge, notes: row.notes, desc: row.description, img: row.image_path };
+    });
+
+    products.splice(0, products.length, ...nextProducts);
+    combos.splice(0, combos.length, ...nextOffers);
+    const firstPrices = nextProducts[0].prices;
+    Object.assign(SIZE_PRICES, firstPrices);
+    // A database change can invalidate a stored variant choice; normalize it.
+    for (const product of nextProducts) {
+      if (!product.sizes.includes(state.selectedSize[product.id])) state.selectedSize[product.id] = product.sizes.includes(DEFAULT_SIZE) ? DEFAULT_SIZE : product.sizes[0];
+    }
+    // Do not interrupt an in-progress gesture/scroll if the network responds late.
+    if (!catalogueUserInteracted) render(location.hash.slice(1) || 'landing', { keepScroll: true });
+  } catch {
+    // Keep the bundled catalogue available if the network/API is unavailable.
+    console.warn('Using the built-in catalogue because the live catalogue could not be loaded.');
+  }
+}
 
 const save = () => {
   try {
@@ -169,6 +230,13 @@ const toast = t => {
 
 const announce = msg => { if (announcer) announcer.textContent = msg; };
 
+document.addEventListener('error', event => {
+  const image = event.target;
+  if (!(image instanceof HTMLImageElement) || !image.dataset.imageFallback || image.dataset.fallbackTried) return;
+  image.dataset.fallbackTried = 'true';
+  image.src = image.dataset.imageFallback;
+}, true);
+
 /* ---------- shared fragments ---------- */
 
 const icon = name => {
@@ -187,8 +255,10 @@ const priceBlock = p => {
     return `<div class="price"><span class="price-amount">${money(p.price)}</span><span class="price-size">combo</span></div>
             <div class="price-ladder"><span>${esc(p.badge)}</span></div>`;
   }
-  return `<div class="price"><span class="price-amount">${money(SIZE_PRICES[HERO_SIZE])}</span><span class="price-size">${HERO_SIZE}ml</span></div>
-          <div class="price-ladder">${[30, 50].map(s => `<span>${s}ml ${money(SIZE_PRICES[s])}</span>`).join('<span aria-hidden="true">·</span>')}</div>`;
+  const sizes = p.sizes || Object.keys(SIZE_PRICES).map(Number);
+  const heroSize = sizes.includes(HERO_SIZE) ? HERO_SIZE : sizes[sizes.length - 1];
+  return `<div class="price"><span class="price-amount">${money(priceFor(p, heroSize))}</span><span class="price-size">${heroSize}ml</span></div>
+          <div class="price-ladder">${sizes.filter(s => s !== heroSize).map(s => `<span>${s}ml ${money(priceFor(p, s))}</span>`).join('<span aria-hidden="true">·</span>')}</div>`;
 }
 
 function card(p) {
@@ -285,7 +355,7 @@ function landing() {
       <a class="text-link" href="#shop">Shop the vault</a>
     </div>
     <div class="landing-scent-grid">
-      ${products.map(p => `<a class="landing-scent" href="#product/${p.id}">${imgTag(p.img, `${p.name} fragrance`)}<span class="landing-scent-meta"><strong>${esc(p.name)}</strong><small>${esc(p.notes)}</small><em>From ₹399</em></span></a>`).join('')}
+      ${products.map(p => `<a class="landing-scent" href="#product/${p.id}">${imgTag(p.img, `${p.name} fragrance`)}<span class="landing-scent-meta"><strong>${esc(p.name)}</strong><small>${esc(p.notes)}</small><em>From ${money(Math.min(...p.sizes.map(s => priceFor(p, s))))}</em></span></a>`).join('')}
     </div>
   </section>
 
@@ -496,8 +566,8 @@ function productView(p) {
     </div></section>`;
   }
   const gi = state.galleryIndex[p.id] || 0;
-  const selSize = state.selectedSize[p.id] || DEFAULT_SIZE;
-  const sizeButtons = p.sizes.map(s => `<button class="variant ${s === selSize ? 'selected' : ''}" data-size="${s}" aria-pressed="${s === selSize}">${s}ml · ${money(SIZE_PRICES[s])}</button>`).join('');
+  const selSize = p.sizes.includes(state.selectedSize[p.id]) ? state.selectedSize[p.id] : (p.sizes.includes(DEFAULT_SIZE) ? DEFAULT_SIZE : p.sizes[0]);
+  const sizeButtons = p.sizes.map(s => `<button class="variant ${s === selSize ? 'selected' : ''}" data-size="${s}" aria-pressed="${s === selSize}">${s}ml · ${money(priceFor(p, s))}</button>`).join('');
   const wished = state.wish.includes(p.id);
   const related = products.filter(x => x.id !== p.id && x.category === p.category).slice(0, 3);
   const relatedFill = related.length ? related : products.filter(x => x.id !== p.id).slice(0, 3);
@@ -512,13 +582,13 @@ function productView(p) {
     <div class="detail-copy">
       <p class="eyebrow">${esc(p.category)} fragrance · ${esc(p.gender)}</p>
       <h1>${esc(p.name)}</h1><p class="sub">${esc(p.notes)}</p>
-      <p class="large-price" id="detail-price">${money(SIZE_PRICES[selSize])} <span class="price-size">${selSize}ml</span></p>
+      <p class="large-price" id="detail-price">${money(priceFor(p, selSize))} <span class="price-size">${selSize}ml</span></p>
       <p>${esc(p.desc)}</p>
       <p class="variant-label">Choose size</p>
       <div class="variant-row" role="group" aria-label="Choose size">${sizeButtons}</div>
       <button class="btn primary full" data-add="${p.id}">Add to bag</button>
       <button class="btn ghost full" data-wish="${p.id}" style="margin-top:10px">${heartSvg(wished)} ${wished ? 'In wishlist' : 'Add to wishlist'}</button>
-      ${waLink(`Hi Parrfums Vault! I'd like to order ${p.name} (${selSize}ml — ${money(SIZE_PRICES[selSize])}).`, 'Order on WhatsApp', 'btn ghost full wa-btn')}
+      ${waLink(`Hi Parrfums Vault! I'd like to order ${p.name} (${selSize}ml — ${money(priceFor(p, selSize))}).`, 'Order on WhatsApp', 'btn ghost full wa-btn')}
       <p class="sub" style="margin-top:18px">Pan-India delivery · Limited stock · ${BRAND.city}</p>
     </div></div>
     <div class="related"><h2>You may also like</h2><div class="product-grid">${relatedFill.map(card).join('')}</div></div>
@@ -830,7 +900,7 @@ document.addEventListener('click', e => {
     if (p) {
       state.selectedSize[p.id] = size;
       const priceEl = document.querySelector('#detail-price');
-      if (priceEl) priceEl.innerHTML = `${money(SIZE_PRICES[size])} <span class="price-size">${size}ml</span>`;
+      if (priceEl) priceEl.innerHTML = `${money(priceFor(p, size))} <span class="price-size">${size}ml</span>`;
     }
     return;
   }
@@ -976,3 +1046,4 @@ document.addEventListener('submit', e => {
 
 render();
 updateCounts();
+loadCatalogue();

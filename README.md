@@ -23,8 +23,17 @@ Import this GitHub repository in Vercel. Use the repository root as the project 
 - `styles.css`, `polish.css` — base and brand styling
 - `assets/` — self-hosted photography and the supplied Parrfums Vault logo
 - `BRAND.md` — verified brand facts, product names, and prices
+- `supabase/migrations/` — versioned public read-only catalogue schema and seed data
 
 Business contacts and prices are shown on the storefront; update them only after confirming the current official details.
+
+## Supabase catalogue
+
+The storefront reads active products, size prices, and offers from the Parrfums Vault Supabase Data API at startup. It uses the project's public publishable key, which is safe for browser use only because the exposed tables have RLS enabled and SELECT-only grants. If the API is unavailable or returns invalid data, the bundled catalogue remains available. The catalogue data schema and seed are in `supabase/migrations/`.
+
+Orders/customer data are not sent to Supabase; ordering remains WhatsApp-based. Never place a database password or secret/service-role key in frontend code or Git. The project is intended to be transferable to the client organization at handoff.
+
+`vercel.json` sets a restrictive Content Security Policy and standard browser security headers. The policy permits scripts only from this site and limits network connections to the configured Supabase project. These hosting headers take effect after deployment; local static-server tests do not apply them.
 
 ## Reuse and ownership
 
