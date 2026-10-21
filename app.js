@@ -24,6 +24,10 @@ const SHIPPING_FEE = 79;
 // the security boundary. Never replace this with a secret/service-role key.
 const CATALOGUE_API = 'https://atxvfmvhnidknnhgwgaq.supabase.co/rest/v1';
 const CATALOGUE_KEY = 'sb_publishable_fG_F6QyyAtg7hcSp9y2rMw_bJS2ZLYk';
+const SUPABASE_URL = 'https://atxvfmvhnidknnhgwgaq.supabase.co';
+const supabaseClient = window.supabase?.createClient(SUPABASE_URL, CATALOGUE_KEY, {
+  auth: { flowType: 'pkce', detectSessionInUrl: true, persistSession: true, autoRefreshToken: true, storageKey: 'pv-auth-v1' }
+});
 
 /* Photography — Unsplash perfume imagery, self-hosted under assets/ */
 const IMG = {
@@ -109,6 +113,14 @@ let state = {
   query: '', category: 'All', sort: 'featured',
   galleryIndex: {}, finderAnswers: [], selectedSize: {}
 };
+let authUser = null;
+let authReady = !supabaseClient;
+let authNotice = '';
+let accountProfile = null;
+let savedAddresses = [];
+let accountOrders = [];
+let accountLoading = false;
+let guestWishlist = [...state.wish];
 
 const app = document.querySelector('#app');
 const announcer = document.querySelector('#route-announcer');
@@ -207,7 +219,7 @@ async function loadCatalogue() {
 const save = () => {
   try {
     localStorage.setItem('am-cart', JSON.stringify(state.cart));
-    localStorage.setItem('am-wish', JSON.stringify(state.wish));
+    if (!authUser) localStorage.setItem('am-wish', JSON.stringify(state.wish));
   } catch { toast('Your changes will last for this visit only'); }
   updateCounts();
 };
@@ -652,30 +664,319 @@ function wishlist() {
     </article>`).join('')}</div></section>`;
 }
 
+function account() {
+  if (!supabaseClient) return `<section class="page-shell"><p class="eyebrow">Your account</p><h1 class="page-title">Accounts unavailable</h1><p class="sub">The sign-in client did not load. Please try again later.</p></section>`;
+  if (!authReady) return `<section class="page-shell"><p class="eyebrow">Your account</p><h1 class="page-title">Checking your account…</h1></section>`;
+  if (!authUser) return `<section class="page-shell"><p class="eyebrow">Your account</p><h1 class="page-title">Your account, your vault.</h1>
+    <p class="sub">Sign in to sync your wishlist, save delivery addresses, and see order requests you place while signed in.</p>
+    ${authNotice ? `<p class="error" role="alert">${esc(authNotice)}</p>` : ''}
+    <button class="btn primary" type="button" data-auth-sign-in>Continue with Google</button>
+    <p class="sub" style="margin-top:18px">We store account details and order requests securely. Orders remain unpaid until confirmed; this site does not process payments. <a href="#privacy">Read account data information</a>.</p>
+  </section>`;
+
+  const profileName = accountProfile?.full_name || authUser.user_metadata?.full_name || authUser.user_metadata?.name || '';
+  const profilePhone = accountProfile?.phone || '';
+  const addressCards = savedAddresses.length ? savedAddresses.map(a => `<article class="offer-card" style="padding:18px;margin-bottom:12px">
+    <strong>${esc(a.label)}${a.is_default ? ' · Default' : ''}</strong><p>${esc(a.recipient_name)} · ${esc(a.phone)}</p>
+    <p>${esc(a.address_line1)}${a.address_line2 ? `, ${esc(a.address_line2)}` : ''}, ${esc(a.city)}, ${esc(a.state)} ${esc(a.postal_code)}</p>
+    <div class="offer-actions">${a.is_default ? '' : `<button class="btn small" type="button" data-address-default="${esc(a.id)}">Make default</button>`}
+      <button class="btn small" type="button" data-address-delete="${esc(a.id)}">Remove</button></div>
+  </article>`).join('') : '<p class="sub">No saved addresses yet. Add one below.</p>';
+  const ordersContent = accountOrders.length ? accountOrders.map(o => `<article class="offer-card" style="padding:18px;margin-bottom:12px">
+    <strong>Order ${esc(o.id.slice(0, 8).toUpperCase())}</strong><span class="sub"> · ${esc(new Date(o.created_at).toLocaleDateString('en-IN'))}</span>
+    <p>${esc(o.status)} · ${esc(o.payment_status)} · ${money(o.total_inr)}</p>
+    <ul>${(o.customer_order_items || []).map(i => `<li>${esc(i.item_name)}${i.size_ml ? ` · ${i.size_ml}ml` : ''} × ${i.quantity} — ${money(i.line_total_inr)}</li>`).join('')}</ul>
+  </article>`).join('') : '<p class="sub">No saved order requests yet.</p>';
+
+  return `<section class="page-shell account-page">
+    <div class="section-head"><div><p class="eyebrow">Signed in as ${esc(authUser.email || 'Google account')}</p><h1 class="page-title">Your account</h1></div>
+      <button class="btn ghost" type="button" data-auth-sign-out>Sign out</button></div>
+    ${accountLoading ? '<p class="sub" role="status">Loading your account data…</p>' : ''}
+    ${authNotice ? `<p class="error" role="alert">${esc(authNotice)}</p>` : ''}
+    <section class="account-section"><h2>Profile</h2>
+      <form id="account-profile-form" class="form-grid">
+        <div class="field"><label for="account-name">Full name</label><input id="account-name" name="full_name" maxlength="120" required value="${esc(profileName)}"></div>
+        <div class="field"><label for="account-phone">Mobile number</label><input id="account-phone" name="phone" type="tel" inputmode="numeric" maxlength="10" required value="${esc(profilePhone)}"></div>
+        <button class="btn primary" type="submit">Save profile</button>
+      </form>
+    </section>
+    <section class="account-section"><h2>Saved delivery addresses</h2>${addressCards}
+      <form id="account-address-form" class="form-grid">
+        <div class="field"><label for="address-label">Label</label><input id="address-label" name="label" maxlength="40" value="Home" required></div>
+        <div class="field"><label for="address-recipient">Recipient name</label><input id="address-recipient" name="recipient_name" maxlength="120" required></div>
+        <div class="field"><label for="address-phone">Mobile number</label><input id="address-phone" name="phone" type="tel" inputmode="numeric" maxlength="10" required></div>
+        <div class="field full-field"><label for="address-line1">Address</label><input id="address-line1" name="address_line1" maxlength="200" autocomplete="street-address" required></div>
+        <div class="field full-field"><label for="address-line2">Apartment / area (optional)</label><input id="address-line2" name="address_line2" maxlength="200"></div>
+        <div class="field"><label for="address-city">City</label><input id="address-city" name="city" maxlength="80" required></div>
+        <div class="field"><label for="address-state">State</label><input id="address-state" name="state" maxlength="80" required></div>
+        <div class="field"><label for="address-postal">PIN code</label><input id="address-postal" name="postal_code" inputmode="numeric" maxlength="6" required></div>
+        <label class="field full-field"><span><input type="checkbox" name="is_default"> Make this my default address</span></label>
+        <button class="btn primary" type="submit">Save address</button>
+      </form>
+    </section>
+    <section class="account-section"><h2>Order history</h2>${ordersContent}</section>
+    <p class="sub">You can sign out at any time. Saved addresses and order details are visible only to your account. <a href="#privacy">Privacy information</a>.</p>
+  </section>`;
+}
+
+function privacyNotice() {
+  return `<section class="page-shell"><p class="eyebrow">Your information</p><h1 class="page-title">Privacy &amp; account data</h1>
+    <p>This storefront uses Google sign-in through Supabase. If you create an account, Supabase stores your account identity. Details you choose to save include your name, phone number, wishlist, and delivery addresses. When you submit an order request while signed in, the store saves its items, server-calculated prices, delivery details, and pending/unpaid status so you can see its history.</p>
+    <p>This storefront does not collect your Google password or payment-card details and does not process payments. If you choose WhatsApp ordering, you send that message to WhatsApp yourself. The Supabase project is hosted in Mumbai, India.</p>
+    <p>To ask the store to correct or remove your account information, contact Parrfums Vault at <a href="tel:+918591935352">+91 85919 35352</a> or <a href="https://wa.me/918591935352" target="_blank" rel="noreferrer">WhatsApp</a>. Account deletion currently requires store-admin assistance.</p>
+    <p class="sub">Owner review required before production: confirm this notice, data-retention period, and contact process with the client. This plain-language draft is not legal advice.</p>
+    <a class="btn ghost" href="#account">Back to account</a>
+  </section>`;
+}
+
+async function refreshAccountData(user) {
+  if (!supabaseClient || !user) return;
+  accountLoading = true;
+  try {
+    const [profileResult, addressResult, wishlistResult, ordersResult] = await Promise.all([
+      supabaseClient.from('customer_profiles').select('full_name,phone').eq('user_id', user.id).maybeSingle(),
+      supabaseClient.from('customer_addresses').select('id,label,recipient_name,phone,address_line1,address_line2,city,state,postal_code,is_default,created_at').eq('user_id', user.id).order('is_default', { ascending: false }).order('created_at', { ascending: false }),
+      supabaseClient.from('wishlist_items').select('product_id').eq('user_id', user.id),
+      supabaseClient.from('customer_orders').select('id,recipient_name,total_inr,status,payment_status,created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(25)
+    ]);
+    if (authUser?.id !== user.id) return;
+    if (profileResult.error || addressResult.error || wishlistResult.error || ordersResult.error) throw new Error('Account data request failed');
+    accountProfile = profileResult.data;
+    savedAddresses = addressResult.data || [];
+    const remoteWish = (wishlistResult.data || []).map(row => row.product_id);
+    const guestWish = guestWishlist.filter(id => products.some(p => p.id === id));
+    const combinedWish = [...new Set([...remoteWish, ...guestWish])];
+    const addWish = combinedWish.filter(id => !remoteWish.includes(id));
+    if (addWish.length) {
+      const { error } = await supabaseClient.from('wishlist_items').insert(addWish.map(product_id => ({ user_id: user.id, product_id })));
+      if (error && error.code !== '23505') throw new Error('Wishlist sync failed');
+    }
+    // Guest wishlist is imported once, never replayed after a signed-in removal.
+    guestWishlist = [];
+    state.wish = combinedWish;
+    const orders = ordersResult.data || [];
+    if (orders.length) {
+      const { data: lines, error } = await supabaseClient.from('customer_order_items')
+        .select('order_id,item_name,size_ml,quantity,line_total_inr').in('order_id', orders.map(o => o.id));
+      if (error) throw new Error('Order history request failed');
+      const byOrder = new Map();
+      for (const line of lines || []) byOrder.set(line.order_id, [...(byOrder.get(line.order_id) || []), line]);
+      accountOrders = orders.map(order => ({ ...order, customer_order_items: byOrder.get(order.id) || [] }));
+    } else accountOrders = [];
+    authNotice = '';
+  } catch {
+    authNotice = 'We could not load your account data. Please try again.';
+  } finally {
+    if (authUser?.id === user.id) {
+      accountLoading = false;
+      updateCounts();
+      if (currentPath === 'account') render('account', { keepScroll: true });
+      else if (currentPath === 'checkout') render('checkout', { keepScroll: true });
+      else if (currentPath === 'wishlist') render('wishlist', { keepScroll: true });
+    }
+  }
+}
+
+async function startGoogleSignIn() {
+  if (!supabaseClient) return;
+  authNotice = '';
+  try { sessionStorage.setItem('pv-auth-return', '#account'); } catch {}
+  const { error } = await supabaseClient.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: `${location.origin}${location.pathname}`, queryParams: { prompt: 'select_account' } }
+  });
+  if (error) {
+    try { sessionStorage.removeItem('pv-auth-return'); } catch {}
+    authNotice = 'Google sign-in is not configured yet. Ask the store administrator to finish the Google OAuth setup.';
+    render('account', { keepScroll: true });
+  }
+}
+
+async function signOutAccount() {
+  if (!supabaseClient) return;
+  const { error } = await supabaseClient.auth.signOut();
+  if (error) { authNotice = 'Could not sign out. Please try again.'; render('account', { keepScroll: true }); }
+}
+
+async function saveProfile(form) {
+  if (!authUser) return;
+  const data = new FormData(form);
+  const full_name = String(data.get('full_name') || '').trim();
+  const phone = String(data.get('phone') || '').trim();
+  if (!full_name || !/^[6-9]\d{9}$/.test(phone)) {
+    authNotice = 'Enter your name and a valid 10-digit Indian mobile number.';
+    render('account', { keepScroll: true });
+    return;
+  }
+  const { error } = await supabaseClient.from('customer_profiles').upsert({ user_id: authUser.id, full_name, phone, updated_at: new Date().toISOString() });
+  authNotice = error ? 'Profile could not be saved. Please check your details and try again.' : 'Profile saved.';
+  if (!error) { await refreshAccountData(authUser); authNotice = 'Profile saved.'; render('account', { keepScroll: true }); }
+  else render('account', { keepScroll: true });
+}
+
+async function saveAddress(form) {
+  if (!authUser) return;
+  const data = new FormData(form);
+  const address = Object.fromEntries(['label','recipient_name','phone','address_line1','address_line2','city','state','postal_code'].map(k => [k, String(data.get(k) || '').trim()]));
+  address.user_id = authUser.id;
+  address.is_default = data.get('is_default') === 'on' || savedAddresses.length === 0;
+  if (!/^[6-9]\d{9}$/.test(address.phone) || !/^\d{6}$/.test(address.postal_code)) {
+    authNotice = 'Enter a valid 10-digit mobile number and 6-digit PIN code.';
+    render('account', { keepScroll: true });
+    return;
+  }
+  if (address.is_default) {
+    const { error: clearError } = await supabaseClient.from('customer_addresses').update({ is_default: false }).eq('user_id', authUser.id).eq('is_default', true);
+    if (clearError) { authNotice = 'Address could not be saved. Please try again.'; render('account', { keepScroll: true }); return; }
+  }
+  const { error } = await supabaseClient.from('customer_addresses').insert(address);
+  authNotice = error ? 'Address could not be saved. Please check the fields and try again.' : 'Address saved.';
+  if (!error) { await refreshAccountData(authUser); authNotice = 'Address saved.'; render('account', { keepScroll: true }); }
+  else render('account', { keepScroll: true });
+}
+
+async function setDefaultAddress(id) {
+  if (!authUser) return;
+  const { error: clearError } = await supabaseClient.from('customer_addresses').update({ is_default: false }).eq('user_id', authUser.id).eq('is_default', true);
+  let failed = Boolean(clearError);
+  if (!clearError) {
+    const { error } = await supabaseClient.from('customer_addresses').update({ is_default: true }).eq('id', id).eq('user_id', authUser.id);
+    failed = Boolean(error);
+  }
+  await refreshAccountData(authUser);
+  authNotice = failed ? 'Default address could not be changed.' : '';
+  render('account', { keepScroll: true });
+}
+
+async function deleteAddress(id) {
+  if (!authUser) return;
+  const { error } = await supabaseClient.from('customer_addresses').delete().eq('id', id).eq('user_id', authUser.id);
+  await refreshAccountData(authUser);
+  authNotice = error ? 'Address could not be removed.' : '';
+  render('account', { keepScroll: true });
+}
+
+async function persistWishlistItem(id, shouldSave) {
+  if (!authUser || !supabaseClient) return;
+  const ownerId = authUser.id;
+  const result = shouldSave
+    ? await supabaseClient.from('wishlist_items').insert({ user_id: ownerId, product_id: id })
+    : await supabaseClient.from('wishlist_items').delete().eq('user_id', ownerId).eq('product_id', id);
+  if (authUser?.id !== ownerId) return;
+  if (result.error && !(shouldSave && result.error.code === '23505')) {
+    state.wish = shouldSave ? state.wish.filter(item => item !== id) : [...state.wish, id];
+    authNotice = 'Wishlist update failed. Please try again.';
+    render(currentPath || 'wishlist', { keepScroll: true });
+  }
+}
+
+function initializeAuth() {
+  if (!supabaseClient) { authReady = true; authNotice = 'Account sign-in is unavailable right now.'; return; }
+  supabaseClient.auth.onAuthStateChange((event, session) => {
+    const previousId = authUser?.id || null;
+    authUser = session?.user || null;
+    authReady = true;
+    if (previousId !== (authUser?.id || null)) {
+      accountProfile = null; savedAddresses = []; accountOrders = []; authNotice = '';
+    }
+    if (!authUser) {
+      state.wish = [...guestWishlist];
+      save();
+    }
+    if (authUser) {
+      let returnTo = '';
+      try { returnTo = sessionStorage.getItem('pv-auth-return') || ''; sessionStorage.removeItem('pv-auth-return'); } catch {}
+      if (returnTo === '#account' && location.hash !== returnTo) location.hash = returnTo;
+    }
+    if (currentPath === 'account') render('account', { keepScroll: true });
+    if (authUser && (previousId !== authUser.id || event === 'INITIAL_SESSION')) {
+      queueMicrotask(() => { void refreshAccountData(authUser); });
+    }
+  });
+}
+
+async function createCustomerOrder(form) {
+  if (!authUser || !supabaseClient) return;
+  const value = id => String(document.getElementById(id)?.value || '').trim();
+  const recipient = `${value('first')} ${value('last')}`.trim();
+  const items = state.cart.map(item => ({
+    kind: item.combo ? 'offer' : 'product', id: item.id,
+    ...(item.combo ? {} : { size_ml: item.size }), quantity: item.qty
+  }));
+  const delivery = {
+    recipient_name: recipient, phone: value('phone'), address_line1: value('address'), address_line2: '',
+    city: value('city'), state: value('state'), postal_code: value('pin')
+  };
+  const button = form.querySelector('[type="submit"]');
+  if (button) button.disabled = true;
+  const formError = document.querySelector('#form-error');
+  const { data: orderId, error } = await supabaseClient.rpc('create_customer_order', { p_items: items, p_delivery: delivery });
+  if (error || !orderId) {
+    if (button) button.disabled = false;
+    if (formError) formError.textContent = 'We could not save the order request. Check your details and try again.';
+    return;
+  }
+  const { data: storedOrder } = await supabaseClient.from('customer_orders')
+    .select('total_inr,shipping_inr,subtotal_inr').eq('id', orderId).maybeSingle();
+  const confirmedTotal = storedOrder?.total_inr;
+  state.cart = [];
+  save();
+  await refreshAccountData(authUser);
+  currentPath = null;
+  app.innerHTML = `<section class="page-shell"><div class="success" role="status">
+    <p class="eyebrow">Order request saved</p><h1>Thank you, ${esc(recipient)}.</h1>
+    <p class="sub">Reference: ${esc(orderId)}${Number.isSafeInteger(confirmedTotal) ? ` · Total ${money(confirmedTotal)}` : ''}</p>
+    <p class="sub">This request is pending and unpaid. The store will confirm availability and delivery; no payment has been taken.</p>
+    ${waLink(`Hi Parrfums Vault! I submitted order request ${orderId}. Please confirm availability and delivery.`, 'Send reference on WhatsApp', 'btn primary wa-btn')}
+    <a class="btn ghost" href="#account" style="margin-top:10px">View order history</a>
+  </div></section>`;
+  window.scrollTo(0, 0);
+  updateCounts();
+  announce('Order request saved');
+}
+
 function checkout() {
   if (!state.cart.length) return `<section class="page-shell"><div class="empty" role="status"><h2>Your bag is empty.</h2><a class="btn" href="#shop">Shop fragrance</a></div></section>`;
+  if (!authUser) {
+    const list = state.cart.map(i => `• ${i.name} (${i.combo ? i.badge : `${i.size}ml`}) × ${i.qty}`).join('\n');
+    return `<section class="page-shell"><p class="eyebrow">Guest order</p><h1 class="page-title">Order on WhatsApp</h1>
+      <p class="sub">No account needed. Send your item list and the store will confirm current prices, availability, and delivery details in chat. Nothing is saved to a customer account.</p>
+      ${waLink(`Hi Parrfums Vault! I'd like to place a guest order.\n${list}\nPlease confirm current prices, availability and delivery.`, 'Continue to WhatsApp', 'btn primary wa-btn')}
+      <p class="sub" style="margin-top:18px">Want saved wishlists, addresses, and order history? <a href="#account">Sign in with Google</a>.</p>
+      <a class="btn ghost" href="#cart" style="margin-top:10px">Return to bag</a>
+    </section>`;
+  }
   const total = state.cart.reduce((n, i) => n + i.price * i.qty, 0);
   const ship = total >= FREE_SHIP_THRESHOLD ? 0 : SHIPPING_FEE;
   const grand = total + ship;
+  const defaultAddress = savedAddresses.find(a => a.is_default) || savedAddresses[0];
+  const fullName = accountProfile?.full_name || authUser?.user_metadata?.full_name || authUser?.user_metadata?.name || '';
+  const nameParts = fullName.trim().split(/\s+/).filter(Boolean);
+  const addressNameParts = (defaultAddress?.recipient_name || '').trim().split(/\s+/).filter(Boolean);
+  const firstName = nameParts.shift() || addressNameParts.shift() || '';
+  const lastName = nameParts.join(' ') || addressNameParts.join(' ');
   return `<section class="page-shell">
     <p class="eyebrow">Almost yours</p><h1 class="page-title">Checkout</h1>
+    ${authUser ? '<p class="sub">Submitting saves a pending order request and its delivery details to your account. No payment is taken here.</p>' : '<p class="sub">Sign in to save order history. For guest ordering, use the WhatsApp option below.</p>'}
     <div class="checkout">
       <form id="checkout-form" novalidate>
         <div class="form-grid">
-          <div class="field"><label for="first">First name</label><input id="first" name="first" required autocomplete="given-name" aria-describedby="err-first"><span class="field-error" id="err-first"></span></div>
-          <div class="field"><label for="last">Last name</label><input id="last" name="last" required autocomplete="family-name" aria-describedby="err-last"><span class="field-error" id="err-last"></span></div>
-          <div class="field full-field"><label for="email">Email</label><input id="email" name="email" type="email" required autocomplete="email" aria-describedby="err-email"><span class="field-error" id="err-email"></span></div>
-          <div class="field full-field"><label for="phone">Phone number</label><input id="phone" name="phone" type="tel" required inputmode="numeric" maxlength="10" placeholder="10-digit mobile number" autocomplete="tel-national" aria-describedby="err-phone"><span class="field-error" id="err-phone"></span></div>
-          <div class="field full-field"><label for="address">Address</label><input id="address" name="address" required autocomplete="street-address" aria-describedby="err-address"><span class="field-error" id="err-address"></span></div>
-          <div class="field"><label for="city">City</label><input id="city" name="city" required autocomplete="address-level2" aria-describedby="err-city"><span class="field-error" id="err-city"></span></div>
-          <div class="field"><label for="pin">PIN code</label><input id="pin" name="pin" required inputmode="numeric" maxlength="6" pattern="[0-9]{6}" placeholder="6 digits" autocomplete="postal-code" aria-describedby="err-pin"><span class="field-error" id="err-pin"></span></div>
+          <div class="field"><label for="first">First name</label><input id="first" name="first" required autocomplete="given-name" value="${esc(firstName || defaultAddress?.recipient_name?.split(/\s+/)[0] || '')}" aria-describedby="err-first"><span class="field-error" id="err-first"></span></div>
+          <div class="field"><label for="last">Last name</label><input id="last" name="last" required autocomplete="family-name" value="${esc(lastName)}" aria-describedby="err-last"><span class="field-error" id="err-last"></span></div>
+          <div class="field full-field"><label for="email">Email</label><input id="email" name="email" type="email" required autocomplete="email" value="${esc(authUser?.email || '')}" aria-describedby="err-email"><span class="field-error" id="err-email"></span></div>
+          <div class="field full-field"><label for="phone">Phone number</label><input id="phone" name="phone" type="tel" required inputmode="numeric" maxlength="10" placeholder="10-digit mobile number" autocomplete="tel-national" value="${esc(defaultAddress?.phone || accountProfile?.phone || '')}" aria-describedby="err-phone"><span class="field-error" id="err-phone"></span></div>
+          <div class="field full-field"><label for="address">Address</label><input id="address" name="address" required autocomplete="street-address" value="${esc(defaultAddress?.address_line1 || '')}" aria-describedby="err-address"><span class="field-error" id="err-address"></span></div>
+          <div class="field"><label for="city">City</label><input id="city" name="city" required autocomplete="address-level2" value="${esc(defaultAddress?.city || '')}" aria-describedby="err-city"><span class="field-error" id="err-city"></span></div>
+          <div class="field"><label for="state">State</label><input id="state" name="state" required autocomplete="address-level1" value="${esc(defaultAddress?.state || '')}" aria-describedby="err-state"><span class="field-error" id="err-state"></span></div>
+          <div class="field"><label for="pin">PIN code</label><input id="pin" name="pin" required inputmode="numeric" maxlength="6" pattern="[0-9]{6}" placeholder="6 digits" autocomplete="postal-code" value="${esc(defaultAddress?.postal_code || '')}" aria-describedby="err-pin"><span class="field-error" id="err-pin"></span></div>
         </div>
+        ${authUser ? '<label class="order-consent"><input type="checkbox" id="order-consent"> I agree to save this delivery information and order request to my account. <a href="#privacy">Privacy details</a>.</label>' : ''}
         <p class="error" id="form-error" role="alert"></p>
         <div class="checkout-actions">
-          <button class="btn primary" type="submit">Place order · ${money(grand)}</button>
+          <button class="btn primary" type="submit">${authUser ? `Save order request · ${money(grand)}` : `Continue to WhatsApp · ${money(grand)}`}</button>
           ${waLink(`Hi Parrfums Vault! I'd like to place an order for ${money(grand)}.\n${state.cart.map(i => `• ${i.name} (${i.combo ? i.badge : i.size + 'ml'}) × ${i.qty}`).join('\n')}\nPlease confirm availability and delivery.`, 'Order on WhatsApp instead', 'btn ghost wa-btn')}
         </div>
-        <p class="sub">No payment is processed on this site. Orders are confirmed on WhatsApp or by phone.</p>
+        <p class="sub">${authUser ? 'Order requests are saved as pending and unpaid. The store confirms availability and delivery before payment.' : 'Guest orders are sent to WhatsApp; this form does not save your delivery details.'}</p>
       </form>
       <aside class="summary">
         <h2>In your bag</h2>
@@ -714,7 +1015,7 @@ function about() {
 let currentPath = null;
 
 function setActiveNav(path) {
-  const map = { shop: '#shop', collections: '#collections', finder: '#finder', about: '#about', offers: '#offers' };
+  const map = { shop: '#shop', collections: '#collections', finder: '#finder', about: '#about', offers: '#offers', account: '#account' };
   const active = path.startsWith('product/') ? '#shop' : (map[path] || (path === 'home' ? '#home' : ''));
   document.querySelectorAll('.main-nav a').forEach(a => {
     const href = a.getAttribute('href');
@@ -723,7 +1024,7 @@ function setActiveNav(path) {
   });
 }
 
-const ROUTES = new Set(['landing', 'home', 'shop', 'collections', 'finder', 'about', 'offers', 'cart', 'checkout', 'wishlist']);
+const ROUTES = new Set(['landing', 'home', 'shop', 'collections', 'finder', 'about', 'offers', 'cart', 'checkout', 'wishlist', 'account', 'privacy']);
 
 function render(route, opts = {}) {
   const path = route || (location.hash.slice(1) || 'landing');
@@ -756,6 +1057,8 @@ function render(route, opts = {}) {
   else if (path === 'cart') view = cart();
   else if (path === 'checkout') view = checkout();
   else if (path === 'wishlist') view = wishlist();
+  else if (path === 'account') view = account();
+  else if (path === 'privacy') view = privacyNotice();
   else if (path.startsWith('product/')) view = productView(get(path.split('/')[1]));
   else if (path === '404' || path === '') view = path === '' ? home() : notFound();
   else view = notFound();
@@ -792,6 +1095,13 @@ function flashAdded(btn) {
 }
 
 document.addEventListener('click', e => {
+  if (e.target.closest('[data-auth-sign-in]')) { void startGoogleSignIn(); return; }
+  if (e.target.closest('[data-auth-sign-out]')) { void signOutAccount(); return; }
+  const addressDefault = e.target.closest('[data-address-default]');
+  if (addressDefault) { void setDefaultAddress(addressDefault.dataset.addressDefault); return; }
+  const addressDelete = e.target.closest('[data-address-delete]');
+  if (addressDelete) { void deleteAddress(addressDelete.dataset.addressDelete); return; }
+
   const scrollTo = e.target.closest('[data-scroll-to]');
   if (scrollTo) {
     const target = document.getElementById(scrollTo.dataset.scrollTo);
@@ -804,6 +1114,8 @@ document.addEventListener('click', e => {
     const id = wish.dataset.wish;
     state.wish = state.wish.includes(id) ? state.wish.filter(x => x !== id) : [...state.wish, id];
     save();
+    if (authUser) void persistWishlistItem(id, state.wish.includes(id));
+    else guestWishlist = [...state.wish];
     render(null, { keepScroll: true });
     toast(state.wish.includes(id) ? 'Added to wishlist' : 'Removed from wishlist');
     return;
@@ -999,11 +1311,20 @@ if (menuToggle) {
 
 /* ---------- checkout validation ---------- */
 
-document.addEventListener('submit', e => {
-  if (!e.target.matches('#checkout-form')) return;
-  e.preventDefault();
+document.addEventListener('submit', async e => {
   const form = e.target;
-  const fields = ['first', 'last', 'email', 'phone', 'address', 'city', 'pin'];
+  if (!form.matches('#account-profile-form, #account-address-form, #checkout-form')) return;
+  e.preventDefault();
+  if (form.matches('#account-profile-form')) { await saveProfile(form); return; }
+  if (form.matches('#account-address-form')) { await saveAddress(form); return; }
+  if (!form.matches('#checkout-form')) return;
+  if (!authUser) {
+    const items = state.cart.map(i => `• ${i.name} (${i.combo ? i.badge : `${i.size}ml`}) × ${i.qty}`).join('\n');
+    const message = `Hi Parrfums Vault! I'd like to place a guest order.\n${items}\nPlease confirm current price, availability and delivery.`;
+    window.open(`${BRAND.whatsappDirect}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+    return;
+  }
+  const fields = ['first', 'last', 'email', 'phone', 'address', 'city', 'state', 'pin'];
   let ok = true, firstBad = null;
   fields.forEach(id => {
     const input = document.getElementById(id);
@@ -1025,21 +1346,14 @@ document.addEventListener('submit', e => {
     if (firstBad) firstBad.focus();
     return;
   }
+  const consent = document.getElementById('order-consent');
+  if (!consent?.checked) {
+    formErr.textContent = 'Please confirm that you agree to save these delivery details and this order request to your account.';
+    consent?.focus();
+    return;
+  }
   formErr.textContent = '';
-  const name = (document.getElementById('first').value || '').trim();
-  state.cart = [];
-  save();
-  currentPath = null;
-  app.innerHTML = `<section class="page-shell"><div class="success" role="status">
-    <p class="eyebrow">Order received</p>
-    <h1>Thank you, ${esc(name)}.</h1>
-    <p class="sub">Your details are validated. We confirm every order personally on WhatsApp or by phone — usually within a few hours.</p>
-    ${waLink(`Hi Parrfums Vault! I just placed an order for ${esc(name)}.`, 'Send order details on WhatsApp', 'btn primary wa-btn')}
-    <a class="btn ghost" href="#shop" style="margin-top:10px">Continue shopping</a>
-  </div></section>`;
-  window.scrollTo(0, 0);
-  updateCounts();
-  announce('Order received');
+  await createCustomerOrder(form);
 });
 
 /* ---------- init ---------- */
@@ -1047,3 +1361,4 @@ document.addEventListener('submit', e => {
 render();
 updateCounts();
 loadCatalogue();
+initializeAuth();
