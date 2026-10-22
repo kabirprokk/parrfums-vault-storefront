@@ -14,7 +14,7 @@ Then open <http://localhost:8000>. The default route is the landing page; `#home
 
 The original full-screen landing entrance is preserved, with Shop now leading to the upgraded store. The combo slideshow remains below the landing hero and advances every four seconds with a 500ms crossfade. Only Combos appears in navigation; existing `#offers` links remain compatible.
 
-Light/dark controls are available on the landing page and in the store header. The first visit follows the system theme. A visitor's explicit choice is saved locally, synchronized across tabs, and applied by `theme.js` before styles load to avoid a bright flash. Product photographs keep their original colours in both themes. Reduced-motion preferences disable the crossfade and autoplay by default.
+Light/dark controls are available on the landing page and in the store header. The first visit follows the system theme. A visitor's explicit choice is saved locally, synchronized across tabs, and applied by `theme.js` before styles load to avoid a bright flash. Later changes use a 450ms page crossfade, with colour interpolation as a fallback. Rapid toggles finish the previous transition safely. Product photographs keep their original colours in both themes. Reduced-motion preferences disable the crossfade and autoplay by default.
 
 ## Deploy to Vercel
 

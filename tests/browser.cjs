@@ -110,12 +110,14 @@ fs.mkdirSync(artifacts,{recursive:true});
  await themed.goto(base,{waitUntil:'networkidle'});
  assert.equal(await themed.locator('html').getAttribute('data-theme'),'dark');
  await themed.locator('.landing-top [data-theme-toggle]').click();
+ await themed.waitForFunction(()=>document.documentElement.dataset.theme==='light');
  assert.equal(await themed.locator('html').getAttribute('data-theme'),'light');
  await themed.reload({waitUntil:'networkidle'});
  assert.equal(await themed.locator('html').getAttribute('data-theme'),'light');
  await themed.locator('.landing-enter').click();
  await themed.waitForFunction(()=>location.hash==='#home' && !document.body.classList.contains('is-landing'));
  await themed.locator('.site-header [data-theme-toggle]').click();
+ await themed.waitForFunction(()=>document.documentElement.dataset.theme==='dark');
  assert.equal(await themed.locator('html').getAttribute('data-theme'),'dark');
  assert.equal(await themed.locator('.site-header [data-theme-toggle]').getAttribute('aria-label'),'Switch to light mode');
  for(const width of [320,390,768,1440]){
