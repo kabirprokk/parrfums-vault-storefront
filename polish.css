@@ -91,8 +91,8 @@ input.invalid,select.invalid{border-color:#b4432a}
 :root{--ink:#211b18;--muted:#766b61;--cream:#f2ede5;--paper:#fbf9f5;--sage:#d9cbbb;--line:#dfd5ca;--accent:#a97845;--serif:'Cormorant Garamond',serif;--shadow-soft:0 18px 48px rgba(49,34,21,.1)}
 body{background:var(--paper)}
 .announcement{background:#211b18;letter-spacing:.12em}
-.wordmark{letter-spacing:.01em;text-transform:lowercase;font-weight:600}
-.wordmark i{font:600 18px var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-left:5px}
+.wordmark{font-family:'Allura',cursive;font-size:34px;line-height:.9;letter-spacing:0;text-transform:lowercase;font-weight:400}
+.wordmark i{font:600 10px/1 var(--sans);letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin-left:3px;vertical-align:baseline}
 .hero{background:var(--sage)}
 .hero h1,.page-title,.feature-copy h2,.finder-teaser h2,.about-grid h1{font-weight:600}
 .hero-image{filter:saturate(.78) sepia(.12)}

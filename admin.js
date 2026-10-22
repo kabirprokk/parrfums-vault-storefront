@@ -207,7 +207,7 @@ Object.assign(
             "text",
             'maxlength="500"',
           ) +
-          '<p class="sub">Enter a counted quantity. Zero marks this variant out of stock. Unknown quantities are never assumed.</p>';
+          '<p class="sub">Enter the actual counted quantity; increases and zero are supported. If Save is rejected, complete “Verify with authenticator” in Admin and retry. Unknown stock is never assumed.</p>';
       if (t === "offers")
         fields =
           field(
