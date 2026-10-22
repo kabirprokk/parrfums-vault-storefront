@@ -21,6 +21,7 @@ Import this GitHub repository in Vercel. Use the repository root as the project 
 - `index.html` — document shell, navigation, footer, metadata, and favicon
 - `app.js` — landing page, catalogue, routes, account flows, cart, checkout, and interactions
 - `styles.css`, `polish.css` — base and brand styling
+- `upgrade.css` — current collection layout, responsive navigation and combo presentation
 - `assets/` — self-hosted photography and the supplied Parrfums Vault logo
 - `BRAND.md` — verified brand facts, product names, and prices
 - `supabase/migrations/` — versioned catalogue and customer account schema, RLS, and server-calculated order RPC
@@ -29,6 +30,24 @@ Import this GitHub repository in Vercel. Use the repository root as the project 
 Business contacts and prices are shown on the storefront; update them only after confirming the current official details.
 
 ## Supabase catalogue
+
+### October 22 catalogue update
+
+Owner-confirmed bottle prices are ₹400 / ₹750 / ₹1,250 for 30 / 50 / 100ml. Shipping is extra on every order: Mumbai ₹100, outside Mumbai ₹120. `calculate_shipping()` and the order RPC calculate this on the server using the delivery city (trimmed, case-insensitive Mumbai/Bombay; other cities use ₹120). Cart location is an estimate; checkout uses the actual entered city. Existing order snapshots are preserved.
+
+Apply `supabase/migrations/20261022095133_owner_media_pricing_shipping.sql` before releasing this frontend. The `storefront_settings` revision prevents an outdated live catalogue from replacing the bundled owner-approved catalogue. If the current revision cannot be read, shopping and WhatsApp ordering remain available while saving account orders is disabled.
+
+`#combos` shows the two actual offers and all five supplied posters. The landing slideshow has previous/next, direct slide selection, pause/play, keyboard and touch support. Autoplay pauses during interaction, offscreen, and in background tabs; reduced-motion users start with autoplay off. Free fragrance choices are confirmed on WhatsApp.
+
+All 18 supplied images have 400 / 720 / 1080px WebP exports in `assets/media/`. They preserve the complete artwork; the hero alone uses a decorative crop. Images use responsive sources and explicit dimensions. The hero and first combo poster load eagerly; remaining images load lazily. Vercel caches media for a day with background revalidation.
+
+To regenerate exports, install `sharp` as a development dependency outside the served root, make it available through `NODE_PATH`, then run:
+
+```sh
+node scripts/optimize-media.cjs "path/to/Parrfum vault"
+```
+
+Runtime still has no build step or npm dependencies. To run the isolated database integration checks, make `@electric-sql/pglite` available through `NODE_PATH` and run `node tests/database.cjs`. Browser checks use Playwright via `node tests/browser.cjs` against the local server. Test packages are development tools, never loaded by customers.
 
 The storefront reads active products, size prices, and offers from the Parrfums Vault Supabase Data API at startup. It uses the project's public publishable key, which is safe for browser use only because the exposed tables have RLS enabled and SELECT-only grants. If the API is unavailable or returns invalid data, the bundled catalogue remains available. The catalogue data schema and seed are in `supabase/migrations/`.
 

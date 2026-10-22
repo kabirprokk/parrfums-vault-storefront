@@ -69,7 +69,7 @@ values
   ('vanilla-28', 'Vanilla 28', 'Sweet', 'Women', 'vanilla · tonka · amber', 'Sweet. Smooth. Unforgettable. Vanilla 28 layers tonka and amber over a deep vanilla pod - comfort with a signature.', 'assets/vanilla-1.jpg', array['assets/vanilla-1.jpg','assets/vanilla-2.jpg','assets/vanilla-3.jpg'], array[30,50,100], 60);
 
 insert into public.product_prices (product_id, size_ml, price_inr)
-select p.id, sizes.size_ml, prices.price_inr
+select p.id, sizes.size_ml, sizes.price_inr
 from public.products p
 cross join (values (30,399), (50,799), (100,1299)) as sizes(size_ml, price_inr)
 where p.id in ('angel-share','lavender-oud','candy','leather','guilty-man','vanilla-28');

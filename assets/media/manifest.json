@@ -1,0 +1,92 @@
+{
+  "angel-share": {
+    "width": 1080,
+    "height": 1440,
+    "source": "real products/11.png"
+  },
+  "lavender-oud": {
+    "width": 1080,
+    "height": 1440,
+    "source": "real products/14.png"
+  },
+  "candy": {
+    "width": 1080,
+    "height": 1440,
+    "source": "real products/12.png"
+  },
+  "leather": {
+    "width": 1080,
+    "height": 1440,
+    "source": "real products/9.png"
+  },
+  "guilty-man": {
+    "width": 1080,
+    "height": 1440,
+    "source": "real products/13.png"
+  },
+  "vanilla-28": {
+    "width": 1080,
+    "height": 1440,
+    "source": "real products/10.png"
+  },
+  "combo-duo-gift": {
+    "width": 1254,
+    "height": 1254,
+    "source": "combos/Elegant three-bottle perfume gift set.png"
+  },
+  "combo-duo-diwali": {
+    "width": 1254,
+    "height": 1254,
+    "source": "combos/Luxury Diwali perfume trio offer.png"
+  },
+  "combo-festive-diwali": {
+    "width": 1254,
+    "height": 1254,
+    "source": "combos/Parrfums Vault Diwali Gift Collection.png"
+  },
+  "combo-festive": {
+    "width": 1254,
+    "height": 1254,
+    "source": "combos/Parrfums Vault_ Buy 2, get 2 free.png"
+  },
+  "combo-duo": {
+    "width": 1254,
+    "height": 1254,
+    "source": "combos/Premium perfume trio, free 30 ml.png"
+  },
+  "editorial-evening": {
+    "width": 1080,
+    "height": 1440,
+    "source": "if need use this/1.png"
+  },
+  "editorial-lasting": {
+    "width": 1080,
+    "height": 1440,
+    "source": "if need use this/2.png"
+  },
+  "editorial-gifting": {
+    "width": 1080,
+    "height": 1440,
+    "source": "if need use this/3.png"
+  },
+  "editorial-discover": {
+    "width": 1080,
+    "height": 1440,
+    "source": "if need use this/4.png"
+  },
+  "editorial-essentials": {
+    "width": 1080,
+    "height": 1440,
+    "source": "if need use this/5.png"
+  },
+  "editorial-story": {
+    "width": 1080,
+    "height": 1440,
+    "source": "if need use this/6.png"
+  },
+  "editorial-ritual": {
+    "width": 1080,
+    "height": 1440,
+    "source": "if need use this/7.png"
+  }
+}

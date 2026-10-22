@@ -1,5 +1,16 @@
 # Parrfums Vault — Brand Source of Truth
 
+## Owner update — 22 October 2026
+
+The owner's direct instructions and supplied media supersede the earlier Instagram-derived details below.
+
+- Prices: **30ml ₹400 · 50ml ₹750 · 100ml ₹1,250**.
+- Shipping is always extra: **Mumbai ₹100 · outside Mumbai ₹120**. No free-shipping threshold.
+- Combos remain **The Duo Plus ₹1,600** and **The Festive Four ₹2,600**, as printed on the supplied posters. Free fragrance choices are Guilty Man or Vanilla 28; confirm the customer's selection personally on WhatsApp.
+- Use the owner's product portraits and campaign posters from `Downloads/Parrfum vault`. Web exports and source filenames are recorded in `assets/media/manifest.json`.
+- The supplied product portraits identify Leather and Vanilla 28 as unisex. Scent notes now follow these portraits.
+- Visual direction: warm ivory, espresso, terracotta, expressive serif headings, clear buying actions and subtle motion.
+
 > Everything below was extracted from the live Instagram profile `@parrfums.vault`
 > (handle: https://www.instagram.com/parrfums.vault/) on 2026-10-21.
 > The website must match this. Do not invent products, prices or claims.
@@ -67,12 +78,11 @@ Sizes: **30ml · 50ml · 100ml**.
 
 | Size | Price |
 |---|---|
-| 30ml | ₹399 |
-| 50ml | ₹799 |
-| 100ml | ₹1,299 |
+| 30ml | ₹400 |
+| 50ml | ₹750 |
+| 100ml | ₹1,250 |
 
-Proof: the live offer "Buy 2 × 50ml, get 1 × 30ml FREE — ₹1,600" → 2 × ₹799 = ₹1,598 ≈ ₹1,600.
-The live offer "Buy 2 × 100ml, get 2 × 30ml FREE — ₹2,600" → 2 × ₹1,299 = ₹2,598 ≈ ₹2,600.
+Individual bottle prices were confirmed directly by the owner on 22 October 2026. Combo prices are independently confirmed by the supplied posters; do not derive individual prices from bundle prices.
 
 ### Live offers to surface on the site
 

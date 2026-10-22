@@ -12,13 +12,15 @@ const BRAND = {
   city: 'Mumbai'
 };
 
-/* Price ladder — derived from the live offers:
-   2 x Rs 799 = Rs 1,598 ~ "Rs 1,600" combo.  2 x Rs 1,299 = Rs 2,598 ~ "Rs 2,600" combo. */
-const SIZE_PRICES = { 30: 399, 50: 799, 100: 1299 };
+/* Owner-confirmed prices, shipping and media, 22 October 2026. */
+const CATALOGUE_REVISION = '2026-10-22-owner-media';
+const SIZE_PRICES = { 30: 400, 50: 750, 100: 1250 };
 const DEFAULT_SIZE = 50;
-const HERO_SIZE = 100;
-const FREE_SHIP_THRESHOLD = 999;
-const SHIPPING_FEE = 79;
+const HERO_SIZE = 50;
+const SHIPPING = { mumbai: 100, outside: 120 };
+const shippingZone = city => /^(mumbai|bombay)$/i.test(String(city || '').trim()) ? 'mumbai' : 'outside';
+const shippingFee = city => SHIPPING[shippingZone(city)];
+let catalogueReady = false;
 
 // Publishable key is designed for browser use; RLS and SELECT-only grants are
 // the security boundary. Never replace this with a secret/service-role key.
@@ -29,55 +31,58 @@ const supabaseClient = window.supabase?.createClient(SUPABASE_URL, CATALOGUE_KEY
   auth: { flowType: 'pkce', detectSessionInUrl: true, persistSession: true, autoRefreshToken: true, storageKey: 'pv-auth-v1' }
 });
 
-/* Photography — Unsplash perfume imagery, self-hosted under assets/ */
+/* Owner-supplied artwork, optimized without cropping the product or its labels. */
+const media = slug => `assets/media/${slug}-1080.webp`;
 const IMG = {
-  angel: ['assets/angel-1.jpg', 'assets/angel-2.jpg', 'assets/angel-3.jpg'],
-  oud: ['assets/oud-1.jpg', 'assets/oud-2.jpg', 'assets/oud-3.jpg'],
-  candy: ['assets/candy-1.jpg', 'assets/candy-2.jpg', 'assets/candy-3.jpg'],
-  leather: ['assets/leather-1.jpg', 'assets/leather-2.jpg', 'assets/leather-3.jpg'],
-  guilty: ['assets/guilty-1.jpg', 'assets/guilty-2.jpg', 'assets/guilty-3.jpg'],
-  vanilla: ['assets/vanilla-1.jpg', 'assets/vanilla-2.jpg', 'assets/vanilla-3.jpg'],
-  hero: 'assets/hero.jpg',
-  botanicals: 'assets/botanicals.jpg',
-  offerFestive: 'assets/offer-festive.jpg',
-  offerDuo: 'assets/offer-duo.jpg'
+  angel: [media('angel-share')], oud: [media('lavender-oud')],
+  candy: [media('candy')], leather: [media('leather')],
+  guilty: [media('guilty-man')], vanilla: [media('vanilla-28')],
+  hero: media('editorial-essentials'), botanicals: media('editorial-ritual'),
+  offerFestive: media('combo-festive'), offerDuo: media('combo-duo')
 };
+const COMBO_SLIDES = [
+  { image: media('combo-festive'), offer: 'festive-four', label: 'The Festive Four' },
+  { image: media('combo-duo'), offer: 'duo-plus', label: 'The Duo Plus' },
+  { image: media('combo-festive-diwali'), offer: 'festive-four', label: 'The Diwali gift edit' },
+  { image: media('combo-duo-gift'), offer: 'duo-plus', label: 'One for you. One for them.' },
+  { image: media('combo-duo-diwali'), offer: 'duo-plus', label: 'A little more to give' }
+];
 
 const products = [
   {
     id: 'angel-share', name: 'Angel Share', category: 'Soft', gender: 'Unisex',
-    notes: 'skin musk · soft florals · amber',
-    desc: 'The finishing touch to your everyday essentials. Angel Share is soft, warm and close to the skin — a signature scent that says more than words ever could.',
+    notes: 'cinnamon · vanilla · amber',
+    desc: 'A warm, spicy signature with woody sweetness, vanilla, cinnamon and amber. A little warmth for your everyday ritual.',
     img: IMG.angel[0], gallery: IMG.angel, sizes: [30, 50, 100]
   },
   {
     id: 'lavender-oud', name: 'Lavender Oud', category: 'Oud', gender: 'Unisex',
-    notes: 'lavender · oud · amber',
-    desc: 'A refined fragrance that brings elegance to every occasion. Cool lavender over a deep oud base — composed for celebrations, and for the ones worth remembering.',
+    notes: 'citrus · oud · warm spice',
+    desc: 'Citrus and oud meet warm spice, woody depth and a fresh, leathery finish. Refined and ready for the occasions worth remembering.',
     img: IMG.oud[0], gallery: IMG.oud, sizes: [30, 50, 100]
   },
   {
     id: 'candy', name: 'Candy', category: 'Sweet', gender: 'Women',
-    notes: 'sugar · caramel · vanilla',
-    desc: 'Playful, premium and unforgettable. Candy opens sweet and stays smooth — the kind of scent that gets remembered every day.',
+    notes: 'vanilla · fruit · amber',
+    desc: 'Playful fruit and vanilla, with amber, aromatic woods and a soft spicy finish. Sweet, smooth and made to be remembered.',
     img: IMG.candy[0], gallery: IMG.candy, sizes: [30, 50, 100]
   },
   {
-    id: 'leather', name: 'Leather', category: 'Bold', gender: 'Men',
-    notes: 'leather · smoke · spice',
-    desc: 'Bold and sophisticated. Worn leather over a warm smoky base — built for the man who does not need to announce himself.',
+    id: 'leather', name: 'Leather', category: 'Bold', gender: 'Unisex',
+    notes: 'leather · vanilla · amber',
+    desc: 'Leather, vanilla and warm spice, softened with amber and white florals. Bold, sophisticated and made for everyone.',
     img: IMG.leather[0], gallery: IMG.leather, sizes: [30, 50, 100]
   },
   {
     id: 'guilty-man', name: 'Guilty Man', category: 'Bold', gender: 'Men',
-    notes: 'bergamot · vetiver · leather',
-    desc: 'A composed, quietly magnetic scent. Bright bergamot and green vetiver over worn leather — sophisticated without trying too hard.',
+    notes: 'woods · citrus · fresh spice',
+    desc: 'Woody and fresh spicy, with aromatic citrus, lavender and white florals. A composed, quietly magnetic signature.',
     img: IMG.guilty[0], gallery: IMG.guilty, sizes: [30, 50, 100]
   },
   {
-    id: 'vanilla-28', name: 'Vanilla 28', category: 'Sweet', gender: 'Women',
-    notes: 'vanilla · tonka · amber',
-    desc: 'Sweet. Smooth. Unforgettable. Vanilla 28 layers tonka and amber over a deep vanilla pod — comfort with a signature.',
+    id: 'vanilla-28', name: 'Vanilla 28', category: 'Sweet', gender: 'Unisex',
+    notes: 'vanilla · sweet woods · amber',
+    desc: 'Sweet vanilla and warm woods, with powdery musk, amber and a soft spicy finish. Comfort with a signature.',
     img: IMG.vanilla[0], gallery: IMG.vanilla, sizes: [30, 50, 100]
   }
 ];
@@ -87,14 +92,14 @@ const combos = [
   {
     id: 'festive-four', name: 'The Festive Four', kind: 'combo', price: 2600,
     badge: 'Buy 2 × 100ml, get 2 × 30ml FREE',
-    notes: 'Lavender Oud · Leather · Guilty Man · Vanilla 28',
+    notes: 'Choose your free fragrances: Guilty Man or Vanilla 28',
     desc: 'Four full fragrances — two 100ml bottles and two 30ml on the house. The festive edit, ready to gift.',
     img: IMG.offerFestive
   },
   {
     id: 'duo-plus', name: 'The Duo Plus', kind: 'combo', price: 1600,
     badge: 'Buy 2 × 50ml, get 1 × 30ml FREE',
-    notes: 'Two 50ml bottles + one 30ml on the house',
+    notes: 'Choose your free fragrance: Guilty Man or Vanilla 28',
     desc: 'The everyday trio. Two 50ml bottles and a 30ml you did not pay for — the easiest way to find your signature.',
     img: IMG.offerDuo
   }
@@ -111,7 +116,7 @@ let state = {
   cart: readStore('am-cart', []),
   wish: readStore('am-wish', []),
   query: '', category: 'All', sort: 'featured',
-  galleryIndex: {}, finderAnswers: [], selectedSize: {}
+  galleryIndex: {}, finderAnswers: [], selectedSize: {}, deliveryZone: ''
 };
 let authUser = null;
 let authReady = !supabaseClient;
@@ -134,8 +139,12 @@ const get = id => products.find(p => p.id === id) || combos.find(c => c.id === i
 const isCombo = p => !!p && p.kind === 'combo';
 
 const FALLBACK_IMG = IMG.hero;
-const imgTag = (src, alt, cls = '') =>
-  `<img src="${esc(src)}" alt="${esc(alt)}" loading="lazy" decoding="async" class="${cls}" data-image-fallback="${FALLBACK_IMG}">`;
+const imgTag = (src, alt, cls = '', eager = false) => {
+  const responsive = /^assets\/media\/[a-z0-9-]+-1080\.webp$/.test(src);
+  const base = responsive ? src.replace('-1080.webp', '') : '';
+  const portrait = !base.includes('combo-');
+  return `<img src="${esc(responsive ? `${base}-720.webp` : src)}" ${responsive ? `srcset="${base}-400.webp 400w, ${base}-720.webp 720w, ${base}-1080.webp 1080w" sizes="(max-width: 600px) 92vw, (max-width: 1000px) 50vw, 38vw" width="1080" height="${portrait ? 1440 : 1080}"` : ''} alt="${esc(alt)}" loading="${eager ? 'eager' : 'lazy'}" ${eager ? 'fetchpriority="high"' : ''} decoding="async" class="${cls}" data-image-fallback="${FALLBACK_IMG}">`;
+};
 
 const heartSvg = filled =>
   `<svg class="heart-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="${filled ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>`;
@@ -174,11 +183,13 @@ async function loadCatalogue() {
   const safeImage = path => typeof path === 'string' && /^assets\/[a-zA-Z0-9._/-]+$/.test(path) && !path.includes('..');
 
   try {
-    const [rows, prices, offersRows] = await Promise.all([
+    const [rows, prices, offersRows, settings] = await Promise.all([
       read('products', 'id,name,category,gender,notes,description,image_path,gallery_paths,sizes_ml,sort_order&active=eq.true&order=sort_order'),
       read('product_prices', 'product_id,size_ml,price_inr&order=product_id,size_ml'),
-      read('offers', 'id,name,price_inr,badge,notes,description,image_path,sort_order&active=eq.true&order=sort_order')
+      read('offers', 'id,name,price_inr,badge,notes,description,image_path,sort_order&active=eq.true&order=sort_order'),
+      read('storefront_settings', 'revision&id=eq.current')
     ]);
+    if (settings?.[0]?.revision !== CATALOGUE_REVISION) throw new Error('Catalogue update pending');
     if (!Array.isArray(rows) || !rows.length || !Array.isArray(prices) || !Array.isArray(offersRows)) throw new Error('Invalid catalogue response');
 
     const priceMap = new Map();
@@ -204,6 +215,8 @@ async function loadCatalogue() {
     combos.splice(0, combos.length, ...nextOffers);
     const firstPrices = nextProducts[0].prices;
     Object.assign(SIZE_PRICES, firstPrices);
+    catalogueReady = true;
+    normalizeCart();
     // A database change can invalidate a stored variant choice; normalize it.
     for (const product of nextProducts) {
       if (!product.sizes.includes(state.selectedSize[product.id])) state.selectedSize[product.id] = product.sizes.includes(DEFAULT_SIZE) ? DEFAULT_SIZE : product.sizes[0];
@@ -246,6 +259,7 @@ document.addEventListener('error', event => {
   const image = event.target;
   if (!(image instanceof HTMLImageElement) || !image.dataset.imageFallback || image.dataset.fallbackTried) return;
   image.dataset.fallbackTried = 'true';
+  image.removeAttribute('srcset');
   image.src = image.dataset.imageFallback;
 }, true);
 
@@ -279,7 +293,7 @@ function card(p) {
     <div class="product-image"><a href="#product/${p.id}" aria-label="View ${esc(p.name)}">${imgTag(p.img, `${p.name} — Parrfums Vault fragrance`)}</a>
       <button class="heart ${wished ? 'active' : ''}" data-wish="${p.id}" aria-label="${wished ? 'Remove' : 'Add'} ${esc(p.name)} ${wished ? 'from' : 'to'} wishlist" aria-pressed="${wished}">${heartSvg(wished)}</button></div>
     <div class="product-meta"><a href="#product/${p.id}"><h3>${esc(p.name)}</h3><p>${esc(p.notes)}</p>${priceBlock(p)}</a>
-      <button class="quick-add" data-add="${p.id}">Add to bag <span aria-hidden="true">+</span></button></div>
+      <button class="quick-add" data-add="${p.id}">Add ${DEFAULT_SIZE}ml · ${money(priceFor(p, DEFAULT_SIZE))} <span aria-hidden="true">+</span></button></div>
   </article>`;
 }
 
@@ -324,54 +338,96 @@ const arrowDownSvg = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none
 
 /* ---------------------------------------------------------------- landing */
 function landing() {
-  return `<section class="landing">
-    <div class="landing-bg" role="img" aria-label="Parrfums Vault fragrance photography"></div>
-    <div class="landing-scrim" aria-hidden="true"></div>
-
-    <div class="landing-top">
-      <a class="brand landing-brand" href="#home" aria-label="Parrfums Vault — enter the store">
-        ${brandMark}
-      </a>
-      <a class="landing-enter" href="#home">Shop now ${arrowSvg}</a>
+  return `<section class="vault-intro">
+    <div class="intro-copy">
+      <p class="eyebrow"><span class="live-dot" aria-hidden="true"></span> Handmade in Mumbai · Worn everywhere</p>
+      <h1>Luxury in<br> a <em>bottle.</em></h1>
+      <p class="intro-description">A scent for your everyday. A gift they’ll remember.<br>Meet your next signature, from ₹400.</p>
+      <div class="intro-actions"><a class="btn primary" href="#shop">Find your fragrance ${arrowSvg}</a><a class="text-link" href="#combos">Explore combos ${arrowSvg}</a></div>
+      <div class="intro-prices" aria-label="Fragrance prices"><span><strong>30<small>ml</small></strong>₹400</span><span><strong>50<small>ml</small></strong>₹750</span><span><strong>100<small>ml</small></strong>₹1,250</span></div>
+      <p class="delivery-note">${icon('truck')} Delivery across India · Mumbai ₹100 / elsewhere ₹120</p>
     </div>
-
-    <div class="landing-inner">
-      <p class="landing-eyebrow">Luxury in a bottle</p>
-      <h1 class="landing-brand-name">Parrfums Vault</h1>
-      <p class="landing-sub">Handmade, long-lasting fragrance from ${BRAND.city}. Unique, timeless scents in limited batches, delivered across India.</p>
-      <div class="landing-actions">
-        <a class="btn primary lg" href="#home">Shop now</a>
-        ${waLink('Hi Parrfums Vault! I would like to place an order.', 'Order on WhatsApp', 'btn ghost lg wa-btn')}
-      </div>
-    </div>
-
-    <div class="landing-foot">
-      <span>Handmade in ${BRAND.city}</span>
-      <span>Pan-India delivery</span>
-      <span>From ₹399</span>
-      <button class="landing-scroll" type="button" data-scroll-to="the-vault" aria-label="Scroll down to the vault">${arrowDownSvg}</button>
-    </div>
+    <div class="intro-art">${imgTag(IMG.hero, 'Angel Share by Parrfums Vault, an everyday essential', '', true)}<span class="art-caption">Your everyday, a little extraordinary.</span></div>
   </section>
-
-  <section class="section band-cream" id="the-vault">
-    <div class="section-head">
-      <div><p class="eyebrow">The vault offer</p><h2>Four fragrances, ₹2,600.</h2></div>
-      <a class="text-link" href="#offers">All offers</a>
-    </div>
-    ${offerHero(combos[0])}
+  <div class="vault-ribbon" aria-label="Our promise"><span>Small batches. Lasting impressions.</span><span>Handmade with intention</span><span>✨ Find your fragrance identity</span></div>
+  <section class="section combo-section" id="the-vault">
+    <div class="section-head"><div><p class="eyebrow">A little more to love</p><h2>Good things come <em>together.</em></h2></div><a class="text-link" href="#combos">All combos ${arrowSvg}</a></div>
+    ${comboSlideshow()}
   </section>
-
   <section class="section band-paper">
     <div class="section-head">
-      <div><p class="eyebrow">The vault</p><h2>Six fragrances, three sizes</h2></div>
+      <div><p class="eyebrow">Meet the collection</p><h2>Find a little <em>you.</em></h2></div>
       <a class="text-link" href="#shop">Shop the vault</a>
     </div>
-    <div class="landing-scent-grid">
-      ${products.map(p => `<a class="landing-scent" href="#product/${p.id}">${imgTag(p.img, `${p.name} fragrance`)}<span class="landing-scent-meta"><strong>${esc(p.name)}</strong><small>${esc(p.notes)}</small><em>From ${money(Math.min(...p.sizes.map(s => priceFor(p, s))))}</em></span></a>`).join('')}
-    </div>
+    <div class="product-grid">${products.map(card).join('')}</div>
   </section>
-
+  <section class="ritual-section"><div class="ritual-art">${imgTag(media('editorial-gifting'), 'Lavender Oud wrapped as a gift')}${imgTag(media('editorial-evening'), 'A Parrfums Vault fragrance for an evening out')}</div><div class="ritual-copy"><p class="eyebrow">Made for the moments</p><h2>Some gifts stay<br>with <em>you.</em></h2><p>For the celebrations, the everyday rituals, and the people who make both special. Handmade in Mumbai. Always personal.</p><a class="btn" href="#combos">Find their next favourite ${arrowSvg}</a><a class="text-link" href="#finder">Or find your own scent</a></div></section>
   ${contactBand('Ordering', 'Order on WhatsApp.', 'Send us your list and we will confirm stock, price and delivery personally — usually within a few hours.')}`;
+}
+
+function comboSlideshow() {
+  return `<div class="combo-carousel" role="region" aria-roledescription="carousel" aria-label="Fragrance combos" tabindex="0">
+    <div class="combo-stage">${COMBO_SLIDES.map((slide, index) => {
+      const c = get(slide.offer);
+      if (!c) return '';
+      return `<article class="combo-slide" role="group" aria-roledescription="slide" aria-label="${index + 1} of ${COMBO_SLIDES.length}: ${esc(slide.label)}" ${index ? 'hidden' : ''}>
+        <a class="combo-poster" href="#product/${c.id}" aria-label="Explore ${esc(c.name)}">${imgTag(slide.image, `${slide.label}: ${c.badge} for ${money(c.price)}. Shipping extra.`, '', index === 0)}</a>
+        <div class="combo-copy"><p class="eyebrow">The gifting edit · ${String(index + 1).padStart(2, '0')}</p><h3>${esc(c.name)}</h3><p class="combo-inclusion">${esc(c.badge)}</p><p class="combo-choice">${esc(c.notes)}</p><p class="combo-price">${money(c.price)} <small>+ shipping</small></p><div class="offer-actions"><a class="btn primary" href="#product/${c.id}">Explore this combo ${arrowSvg}</a>${waLink(`Hi Parrfums Vault! I'd like the ${c.name} for ${money(c.price)} plus shipping. Please help me choose my fragrances.`, 'Ask on WhatsApp', 'text-link wa-btn')}</div><p class="delivery-note">Mumbai ₹100 · Outside Mumbai ₹120</p></div>
+      </article>`;
+    }).join('')}</div>
+    <div class="carousel-controls"><span class="carousel-label">The combo collection</span><div class="carousel-dots" role="group" aria-label="Choose combo slide">${COMBO_SLIDES.map((s,i)=>`<button type="button" data-slide="${i}" aria-label="Show ${esc(s.label)}" aria-pressed="${i===0}"><span></span></button>`).join('')}</div><div class="carousel-buttons"><button type="button" data-carousel-prev aria-label="Previous combo">←</button><button type="button" data-carousel-pause aria-label="Pause slideshow" aria-pressed="false">Ⅱ</button><button type="button" data-carousel-next aria-label="Next combo">→</button></div><span class="sr-only" data-slide-status role="status" aria-live="polite"></span></div>
+  </div>`;
+}
+
+function comboPage() {
+  return `<section class="page-shell combos-page"><div class="section-head"><div><p class="eyebrow">More to gift. More to keep.</p><h1 class="page-title">The combo <em>collection.</em></h1></div><span class="collection-stamp">Made to be shared ✨</span></div><p class="page-intro">Two ways to build your fragrance wardrobe. Choose your scents with us on WhatsApp; your free fragrance can be Guilty Man or Vanilla 28.</p><div class="combo-grid">${combos.map(offerCard).join('')}</div><div class="shipping-notice">${icon('truck')} Shipping is extra on every order: Mumbai ₹100 · Outside Mumbai ₹120.</div><div class="section-head campaign-heading"><div><p class="eyebrow">From the gifting edit</p><h2>A little festive inspiration.</h2></div></div><div class="campaign-grid">${COMBO_SLIDES.filter(s=>s.image!==IMG.offerFestive&&s.image!==IMG.offerDuo).map(s=>`<a href="#product/${s.offer}">${imgTag(s.image,s.label)}<span>${esc(s.label)} ${arrowSvg}</span></a>`).join('')}</div>${contactStrip()}</section>`;
+}
+
+let carouselCleanup = () => {};
+function setupCarousel() {
+  carouselCleanup();
+  const root = document.querySelector('.combo-carousel');
+  if (!root) return;
+  const slides = [...root.querySelectorAll('.combo-slide')];
+  const dots = [...root.querySelectorAll('[data-slide]')];
+  const pause = root.querySelector('[data-carousel-pause]');
+  const motion = matchMedia('(prefers-reduced-motion: reduce)');
+  let index = 0, paused = motion.matches, hovered = false, focused = false, visible = true, startX = null;
+  const setPause = () => {
+    pause.textContent = paused ? '▶' : 'Ⅱ';
+    pause.setAttribute('aria-label', paused ? 'Play slideshow' : 'Pause slideshow');
+    pause.setAttribute('aria-pressed', String(paused));
+  };
+  const show = (next, manual = false) => {
+    index = (next + slides.length) % slides.length;
+    slides.forEach((s,i)=>{s.hidden=i!==index;});
+    dots.forEach((d,i)=>d.setAttribute('aria-pressed',String(i===index)));
+    if(manual) root.querySelector('[data-slide-status]').textContent=slides[index].getAttribute('aria-label');
+  };
+  root.addEventListener('click',e=>{
+    const dot=e.target.closest('[data-slide]');
+    if(dot) show(Number(dot.dataset.slide),true);
+    if(e.target.closest('[data-carousel-next]')) show(index+1,true);
+    if(e.target.closest('[data-carousel-prev]')) show(index-1,true);
+    if(e.target.closest('[data-carousel-pause]')) {paused=!paused;setPause();}
+  });
+  root.addEventListener('keydown',e=>{
+    if(e.target.matches('input,select,textarea'))return;
+    if(e.key==='ArrowRight'||e.key==='ArrowLeft'){e.preventDefault();show(index+(e.key==='ArrowRight'?1:-1),true);}
+  });
+  root.addEventListener('mouseenter',()=>{hovered=true;});
+  root.addEventListener('mouseleave',()=>{hovered=false;});
+  root.addEventListener('focusin',()=>{focused=true;});
+  root.addEventListener('focusout',e=>{focused=root.contains(e.relatedTarget);});
+  root.addEventListener('touchstart',e=>{startX=e.touches[0].clientX;},{passive:true});
+  root.addEventListener('touchend',e=>{if(startX!==null){const dx=e.changedTouches[0].clientX-startX;if(Math.abs(dx)>50)show(index+(dx<0?1:-1),true);startX=null;}},{passive:true});
+  const observer = new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;});
+  observer.observe(root);
+  const reduce = () => { if(motion.matches) {paused=true;setPause();} };
+  motion.addEventListener('change', reduce);
+  const timer=setInterval(()=>{if(!paused&&!hovered&&!focused&&!document.hidden&&visible)show(index+1);},6500);
+  setPause();
+  carouselCleanup=()=>{clearInterval(timer);observer.disconnect();motion.removeEventListener('change',reduce);};
 }
 
 function uspStrip() {
@@ -421,54 +477,7 @@ function contactBand(eyebrow = 'Ready when you are', heading = 'Two taps from yo
   </section>`;
 }
 
-function home() {
-  return `<section class="hero">
-    <div class="hero-copy">
-      <p class="eyebrow">Parrfums Vault · ${BRAND.city}</p>
-      <h1>Find your<br> fragrance identity.</h1>
-      <p>Handmade, long-lasting fragrance from ${BRAND.city}. Luxury in a bottle — unique, timeless scents in limited batches, delivered across India.</p>
-      <div class="hero-actions">
-        <a class="btn primary" href="#shop">Shop the vault</a>
-        ${waLink('Hi Parrfums Vault! I would like to place an order.', 'Order on WhatsApp', 'btn ghost wa-btn')}
-      </div>
-      <p class="hero-note">Six fragrances · 30ml / 50ml / 100ml · From ₹399</p>
-    </div>
-    <div class="hero-image" role="img" aria-label="Parrfums Vault fragrance photography" style="background-image:url('${IMG.hero}')"></div>
-  </section>
-  ${uspStrip()}
-  <section class="section band-cream">
-    <div class="section-head">
-      <div><p class="eyebrow">Gifting that gets remembered</p><h2>Some gifts are opened once. The best ones are remembered every day.</h2></div>
-      <a class="text-link" href="#offers">All offers</a>
-    </div>
-    ${offerHero(combos[0])}
-    <div class="offer-row">${[combos[1]].map(offerCard).join('')}</div>
-  </section>
-  <section class="section band-paper">
-    <div class="section-head">
-      <div><p class="eyebrow">The vault</p><h2>A fragrance for every mood</h2></div>
-      <a class="text-link" href="#shop">Shop all six</a>
-    </div>
-    ${moodChips('All')}
-    <div class="product-grid">${products.map(card).join('')}</div>
-  </section>
-  <section class="band band-sage">
-    <div class="finder-teaser">
-      <div><p class="eyebrow">The scent finder</p><h2>Three questions, then a shortlist.</h2><p>Answer three quick questions and we will narrow the vault down to the scents that fit you.</p></div>
-      <a class="btn" href="#finder">Find your scent</a>
-    </div>
-  </section>
-  <section class="feature">
-    <img src="${IMG.botanicals}" alt="Botanical ingredients used in Parrfums Vault fragrance">
-    <div class="feature-copy">
-      <p class="eyebrow">Luxury that smells like a steal</p>
-      <h2>Who says smelling expensive has to be expensive?</h2>
-      <p>Premium concentration, small-batch production and an honest price. This is fragrance that performs all day — without the luxury tax.</p>
-      <div class="feature-actions"><a class="btn" href="#shop">Find your scent</a>${waLink('Hi Parrfums Vault! Can you help me pick a fragrance?', 'Ask on WhatsApp', 'btn ghost wa-btn')}</div>
-    </div>
-  </section>
-  ${contactBand()}`;
-}
+function home() { return landing(); }
 
 function shop() {
   const q = state.query.trim().toLowerCase();
@@ -524,15 +533,6 @@ function collections() {
   </section>`;
 }
 
-function offers() {
-  return `<section class="page-shell">
-    <p class="eyebrow">Gifting</p><h1 class="page-title">The vault offers</h1>
-    <p class="page-intro">Two ways to build a fragrance shelf — and to gift something they will keep. Order in one tap on WhatsApp.</p>
-    ${offerHero(combos[0])}
-    <div class="offer-grid">${[combos[1]].map(offerCard).join('')}</div>
-    ${contactStrip()}
-  </section>`;
-}
 
 function finder() {
   const questions = [
@@ -612,28 +612,36 @@ function notFound() {
 }
 
 function cartSummary(total) {
-  const ship = total >= FREE_SHIP_THRESHOLD || total === 0 ? 0 : SHIPPING_FEE;
+  const ship = state.deliveryZone ? SHIPPING[state.deliveryZone] : null;
   return `<aside class="summary"><h2>Summary</h2>
     <div class="sum-line"><span>Subtotal</span><span>${money(total)}</span></div>
-    <div class="sum-line"><span>Shipping</span><span>${ship === 0 ? 'Complimentary' : money(ship)}</span></div>
-    <div class="sum-line total"><span>Total</span><span>${money(total + ship)}</span></div>
+    <label class="shipping-label" for="delivery-zone">Delivery location</label><select class="select shipping-select" id="delivery-zone"><option value="" ${!state.deliveryZone?'selected':''}>Choose your location</option><option value="mumbai" ${state.deliveryZone==='mumbai'?'selected':''}>Mumbai · ₹100</option><option value="outside" ${state.deliveryZone==='outside'?'selected':''}>Outside Mumbai · ₹120</option></select>
+    <div class="sum-line"><span>Shipping</span><span>${ship === null ? '₹100–₹120' : money(ship)}</span></div>
+    <div class="sum-line total"><span>${ship === null ? 'Total before shipping' : 'Total'}</span><span>${money(total + (ship || 0))}</span></div>
     <a class="btn primary full" href="#checkout">Continue to checkout</a>
-    ${waLink(`Hi Parrfums Vault! I'd like to order:\n${state.cart.map(i => `• ${i.name} (${i.combo ? i.badge : i.size + 'ml'}) × ${i.qty} — ${money(i.price * i.qty)}`).join('\n')}\nTotal: ${money(total + ship)}`, 'Send this order on WhatsApp', 'btn ghost full wa-btn')}
+    ${waLink(orderMessage(total, ship), 'Send this order on WhatsApp', 'btn ghost full wa-btn')}
   </aside>`;
+}
+
+function orderMessage(total, ship = null) {
+  return `Hi Parrfums Vault! I'd like to order:\n${state.cart.map(i => `• ${i.name} (${i.combo ? i.badge : i.size + 'ml'}) × ${i.qty} — ${money(i.price * i.qty)}`).join('\n')}\nSubtotal: ${money(total)}\n${ship === null ? 'Shipping extra: Mumbai ₹100 / outside Mumbai ₹120.' : `Shipping: ${money(ship)}\nTotal: ${money(total + ship)}`}\nPlease confirm availability${state.cart.some(i=>i.combo) ? ' and my fragrance choices' : ''}.`;
+}
+
+function normalizeCart() {
+  state.cart = state.cart.flatMap(item => {
+    const p = get(item?.id);
+    if (!p || !Number.isInteger(item.qty) || item.qty < 1 || (!isCombo(p) && !p.sizes.includes(item.size))) return [];
+    return [{ ...item, name:p.name, notes:p.notes, img:p.img, combo:isCombo(p), badge:p.badge || '', qty:Math.min(20,item.qty), price:priceFor(p,item.size) }];
+  });
 }
 
 function cart() {
   if (!state.cart.length) return `<section class="page-shell"><p class="eyebrow">Your ritual, gathered</p><h1 class="page-title">Your bag</h1>
     <div class="empty" role="status"><h2>Your bag is waiting.</h2><p>Discover something new for your shelf.</p><a class="btn" href="#shop">Shop fragrance</a></div></section>`;
   const total = state.cart.reduce((n, i) => n + i.price * i.qty, 0);
-  const gap = Math.max(0, FREE_SHIP_THRESHOLD - total);
-  const progress = Math.min(100, total / FREE_SHIP_THRESHOLD * 100);
   return `<section class="page-shell">
     <p class="eyebrow">Your ritual, gathered</p><h1 class="page-title">Your bag</h1>
-    <div class="shipping-progress">
-      <div class="shipping-progress-head"><span>${gap ? `Add ${money(gap)} for complimentary shipping` : 'Complimentary shipping unlocked'}</span><span>${Math.round(progress)}%</span></div>
-      <div class="progress-track"><span style="width:${progress}%"></span></div>
-    </div>
+    <div class="shipping-notice">${icon('truck')} Shipping extra on every order · Mumbai ₹100 · Outside Mumbai ₹120</div>
     <div class="cart-layout">
       <div>${state.cart.map((i, n) => `<div class="cart-item">
         ${imgTag(i.img, i.name)}
@@ -897,6 +905,7 @@ function initializeAuth() {
 
 async function createCustomerOrder(form) {
   if (!authUser || !supabaseClient) return;
+  if (!catalogueReady) { document.querySelector('#form-error').textContent = 'Online order saving is temporarily unavailable. Please order on WhatsApp.'; return; }
   const value = id => String(document.getElementById(id)?.value || '').trim();
   const recipient = `${value('first')} ${value('last')}`.trim();
   const items = state.cart.map(item => ({
@@ -941,15 +950,16 @@ function checkout() {
     const list = state.cart.map(i => `• ${i.name} (${i.combo ? i.badge : `${i.size}ml`}) × ${i.qty}`).join('\n');
     return `<section class="page-shell"><p class="eyebrow">Guest order</p><h1 class="page-title">Order on WhatsApp</h1>
       <p class="sub">No account needed. Send your item list and the store will confirm current prices, availability, and delivery details in chat. Nothing is saved to a customer account.</p>
-      ${waLink(`Hi Parrfums Vault! I'd like to place a guest order.\n${list}\nPlease confirm current prices, availability and delivery.`, 'Continue to WhatsApp', 'btn primary wa-btn')}
+      <div class="shipping-notice">${icon('truck')} Shipping extra · Mumbai ₹100 · Outside Mumbai ₹120</div>
+      ${waLink(orderMessage(state.cart.reduce((n,i)=>n+i.price*i.qty,0),state.deliveryZone ? SHIPPING[state.deliveryZone] : null), 'Continue to WhatsApp', 'btn primary wa-btn')}
       <p class="sub" style="margin-top:18px">Want saved wishlists, addresses, and order history? <a href="#account">Sign in with Google</a>.</p>
       <a class="btn ghost" href="#cart" style="margin-top:10px">Return to bag</a>
     </section>`;
   }
   const total = state.cart.reduce((n, i) => n + i.price * i.qty, 0);
-  const ship = total >= FREE_SHIP_THRESHOLD ? 0 : SHIPPING_FEE;
-  const grand = total + ship;
   const defaultAddress = savedAddresses.find(a => a.is_default) || savedAddresses[0];
+  const ship = defaultAddress?.city ? shippingFee(defaultAddress.city) : null;
+  const grand = total + ship;
   const fullName = accountProfile?.full_name || authUser?.user_metadata?.full_name || authUser?.user_metadata?.name || '';
   const nameParts = fullName.trim().split(/\s+/).filter(Boolean);
   const addressNameParts = (defaultAddress?.recipient_name || '').trim().split(/\s+/).filter(Boolean);
@@ -973,41 +983,37 @@ function checkout() {
         ${authUser ? '<label class="order-consent"><input type="checkbox" id="order-consent"> I agree to save this delivery information and order request to my account. <a href="#privacy">Privacy details</a>.</label>' : ''}
         <p class="error" id="form-error" role="alert"></p>
         <div class="checkout-actions">
-          <button class="btn primary" type="submit">${authUser ? `Save order request · ${money(grand)}` : `Continue to WhatsApp · ${money(grand)}`}</button>
-          ${waLink(`Hi Parrfums Vault! I'd like to place an order for ${money(grand)}.\n${state.cart.map(i => `• ${i.name} (${i.combo ? i.badge : i.size + 'ml'}) × ${i.qty}`).join('\n')}\nPlease confirm availability and delivery.`, 'Order on WhatsApp instead', 'btn ghost wa-btn')}
+          <button class="btn primary" type="submit" ${!catalogueReady?'disabled':''}>${ship===null?'Save order request':`Save order request · ${money(grand)}`}</button>
+          <span data-checkout-whatsapp>${waLink(orderMessage(total,ship), 'Order on WhatsApp instead', 'btn ghost wa-btn')}</span>
         </div>
+        ${!catalogueReady?'<p class="error" role="status">Online order saving is temporarily unavailable. You can order on WhatsApp.</p>':''}
         <p class="sub">${authUser ? 'Order requests are saved as pending and unpaid. The store confirms availability and delivery before payment.' : 'Guest orders are sent to WhatsApp; this form does not save your delivery details.'}</p>
       </form>
       <aside class="summary">
         <h2>In your bag</h2>
         ${state.cart.map(i => `<div class="sum-line"><span>${esc(i.name)} × ${i.qty}<small>${i.combo ? esc(i.badge) : i.size + 'ml'}</small></span><span>${money(i.price * i.qty)}</span></div>`).join('')}
         <div class="sum-line"><span>Subtotal</span><span>${money(total)}</span></div>
-        <div class="sum-line"><span>Shipping</span><span>${ship === 0 ? 'Complimentary' : money(ship)}</span></div>
-        <div class="sum-line total"><span>Total</span><span>${money(grand)}</span></div>
+        <div class="sum-line"><span>Shipping</span><span data-checkout-shipping>${ship===null?'Enter your city':money(ship)}</span></div>
+        <div class="sum-line total"><span data-checkout-total-label>${ship===null?'Before shipping':'Total'}</span><span data-checkout-total>${money(grand)}</span></div>
+        <p class="delivery-note">Mumbai ₹100 · Outside Mumbai ₹120. Shipping is extra on every order.</p>
       </aside>
     </div>
   </section>`;
 }
 
+function offers() { return comboPage(); }
+
 function about() {
-  return `<section class="page-shell">
-    <div class="about-grid">
-      ${imgTag(IMG.botanicals, 'Botanical ingredients used in Parrfums Vault fragrance', 'about-img')}
-      <div><p class="eyebrow">Our story</p><h1>Luxury in a bottle.</h1>
-        <p>Parrfums Vault was born in ${BRAND.city} from a simple idea: fragrance should feel personal — the kind that becomes part of how people remember you.</p>
-        <p>We release in small batches. Every bottle is handmade, unique and made to stay with you — and priced so that smelling expensive does not have to be expensive.</p>
-        <p>Some gifts are opened once. The best ones are remembered every day. That is what we are making.</p>
-        <div class="feature-actions"><a class="btn" href="#shop">Find your scent</a>${waLink('Hi Parrfums Vault! I would like to know more about your fragrances.', 'Talk to us', 'btn ghost wa-btn')}</div>
-      </div>
-    </div>
-    <div class="feed-block">
-      <div class="section-head"><div><p class="eyebrow">From the feed</p><h2>As we post it</h2></div>${igLink('Follow @parrfums.vault')}</div>
-      <div class="feed-grid">
-        ${[IMG.oud[1], IMG.guilty[0], IMG.vanilla[0], IMG.hero].map((src, i) => `<a class="feed-tile" href="${BRAND.instagram}" target="_blank" rel="noreferrer" aria-label="See our Instagram post ${i + 1}">${imgTag(src, `Parrfums Vault Instagram post ${i + 1}`)}</a>`).join('')}
-      </div>
-    </div>
-    ${contactStrip()}
-  </section>`;
+  const edit = [
+    ['editorial-evening', 'For a lasting impression.'],
+    ['editorial-lasting', 'Stays longer than you think.'],
+    ['editorial-gifting', 'A little more to give.'],
+    ['editorial-discover', 'Find your next favourite.'],
+    ['editorial-essentials', 'Your everyday essentials.'],
+    ['editorial-story', 'Tell a better story.'],
+    ['editorial-ritual', 'Make it your ritual.']
+  ];
+  return `<section class="page-shell"><div class="section-head"><div><p class="eyebrow">Handmade in Mumbai</p><h1 class="page-title">A little bottle.<br>A lasting <em>impression.</em></h1></div></div><p class="page-intro">Parrfums Vault brings together handmade fragrances, personal gifting and a scent for every mood. Six fragrances. Three sizes. A little luxury, every day.</p><div class="campaign-grid story-grid">${edit.map(([slug,label])=>`<a href="#shop">${imgTag(media(slug),label)}<span>${esc(label)} ${arrowSvg}</span></a>`).join('')}</div>${contactStrip()}</section>`;
 }
 
 /* ---------- router ---------- */
@@ -1015,7 +1021,7 @@ function about() {
 let currentPath = null;
 
 function setActiveNav(path) {
-  const map = { shop: '#shop', collections: '#collections', finder: '#finder', about: '#about', offers: '#offers', account: '#account' };
+  const map = { shop: '#shop', combos: '#combos', collections: '#collections', finder: '#finder', about: '#about', offers: '#offers', account: '#account' };
   const active = path.startsWith('product/') ? '#shop' : (map[path] || (path === 'home' ? '#home' : ''));
   document.querySelectorAll('.main-nav a').forEach(a => {
     const href = a.getAttribute('href');
@@ -1024,9 +1030,10 @@ function setActiveNav(path) {
   });
 }
 
-const ROUTES = new Set(['landing', 'home', 'shop', 'collections', 'finder', 'about', 'offers', 'cart', 'checkout', 'wishlist', 'account', 'privacy']);
+const ROUTES = new Set(['landing', 'home', 'shop', 'combos', 'collections', 'finder', 'about', 'offers', 'cart', 'checkout', 'wishlist', 'account', 'privacy']);
 
 function render(route, opts = {}) {
+  normalizeCart();
   const path = route || (location.hash.slice(1) || 'landing');
 
   /* An in-page anchor (e.g. #the-vault) is not a route. Scroll to it and keep
@@ -1050,6 +1057,7 @@ function render(route, opts = {}) {
   if (isLanding) view = landing();
   else if (path === 'home') view = home();
   else if (path === 'shop') view = shop();
+  else if (path === 'combos') view = comboPage();
   else if (path === 'collections') view = collections();
   else if (path === 'finder') view = finder();
   else if (path === 'about') view = about();
@@ -1067,6 +1075,7 @@ function render(route, opts = {}) {
   currentPath = path;
   updateCounts();
   setActiveNav(path);
+  setupCarousel();
 
   if (keepScroll) {
     window.scrollTo({ top: prevY, behavior: 'instant' });
@@ -1144,6 +1153,7 @@ document.addEventListener('click', e => {
       price = priceFor(p, size);
     }
     const existing = state.cart.find(i => i.id === p.id && i.size === size);
+    if (existing && existing.qty >= 20) { toast('You can order up to 20 of each item'); return; }
     if (existing) existing.qty++;
     else state.cart.push({ id: p.id, name: p.name, notes: p.notes, img: p.img, size, price, qty: 1, combo: isCombo(p), badge });
     save();
@@ -1156,7 +1166,7 @@ document.addEventListener('click', e => {
   if (qty) {
     const i = state.cart[Number(qty.dataset.qty)];
     if (!i) return;
-    i.qty += Number(qty.dataset.delta);
+    i.qty = Math.min(20, i.qty + Number(qty.dataset.delta));
     if (i.qty < 1) state.cart.splice(Number(qty.dataset.qty), 1);
     save();
     render(null, { keepScroll: true });
@@ -1231,6 +1241,18 @@ document.addEventListener('click', e => {
 
 document.addEventListener('change', e => {
   if (e.target.id === 'sort') { state.sort = e.target.value; render(null, { keepScroll: true }); }
+  if (e.target.id === 'delivery-zone') { state.deliveryZone = e.target.value; render(null, {keepScroll:true}); }
+});
+
+document.addEventListener('input', e => {
+  if(e.target.id !== 'city' || !document.querySelector('#checkout-form')) return;
+  const total=state.cart.reduce((n,i)=>n+i.price*i.qty,0);
+  const ship=e.target.value.trim() ? shippingFee(e.target.value) : null;
+  document.querySelector('[data-checkout-shipping]').textContent=ship===null?'Enter your city':money(ship);
+  document.querySelector('[data-checkout-total-label]').textContent=ship===null?'Before shipping':'Total';
+  document.querySelector('[data-checkout-total]').textContent=money(total+(ship||0));
+  document.querySelector('#checkout-form [type="submit"]').textContent=ship===null?'Save order request':`Save order request · ${money(total+ship)}`;
+  document.querySelector('[data-checkout-whatsapp]').innerHTML=waLink(orderMessage(total,ship),'Order on WhatsApp instead','btn ghost wa-btn');
 });
 
 window.addEventListener('hashchange', () => render());
