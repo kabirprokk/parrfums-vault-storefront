@@ -1,81 +1,47 @@
 # Parrfums Vault
 
-Client-ready storefront for Parrfums Vault, Mumbai. This is a static website built with plain HTML, CSS, and JavaScript; it has no build step. Guest orders go through WhatsApp; signed-in customers can save an unpaid order request to Supabase.
+Buildless storefront for Parrfums Vault. The presentation landing page remains an editorial introduction; `#home` opens the separate shop. Guest enquiries continue through WhatsApp. Persistent checkout and online payment require a signed-in customer and owner-configured provider credentials. The site never treats a browser-supplied price or payment result as authoritative.
 
-## Run locally
+## Local development
 
-From this directory, run a static file server:
+Install the pinned development tools with `npm ci`, then run `npm start` and open `http://127.0.0.1:8000`. The customer-facing site itself is plain HTML, CSS and JavaScript and does not require a build step. `npm run test:all` runs isolated database/payment/security/SEO tests, browser integration tests and the full-page accessibility/layout audit. `npm run test:live` is a read-only check against configured Supabase; it performs no production writes. GitHub Actions runs the deterministic suites and dependency audit.
 
-```sh
-python -m http.server 8000
-```
+## Application map
 
-Then open <http://localhost:8000>. The default route is the landing page; `#home` opens the store.
+- `index.html`, `app.js`, `styles.css`, `polish.css`, `upgrade.css`, `theme.js`: existing storefront, landing page, theme, cart, account and responsive UI.
+- `commerce.js`, `commerce-views.js`, `commerce.css`, `admin.js`, `seo.js`: commerce integration, customer order/wishlist/review views, owner console, product metadata and SEO helpers.
+- `api/`: Vercel server-rendered product metadata and sitemap endpoints. `robots.txt` controls crawlers. `vercel.json` contains rewrites and security/cache headers.
+- `supabase/migrations/`: ordered, versioned SQL changes. `supabase/functions/`: isolated payment initiation, verification and webhook handlers.
+- `tests/`: PGlite database invariants, payment provider fixtures, frontend/security/SEO checks, browser journeys, accessibility audit, and optional read-only live smoke test.
+- `assets/` and `vendor/`: supplied media, optimized responsive image exports, and pinned self-hosted Supabase SDK.
 
-The full-screen landing page is a brand presentation: story, a non-clickable combo artwork slideshow, six fragrance portraits, and editorial photography. It has no purchase buttons, product links, wishlist controls, checkout, ordering links, or added price labels. A neutral Enter the vault link opens the separate `#home` storefront. The store footer is hidden on the landing page. Supplied posters retain their original printed artwork. The slideshow advances every four seconds with a 500ms crossfade. Only Combos appears in store navigation; existing `#offers` links remain compatible.
+## Commerce and catalog rules
 
-Light/dark controls are available on the landing page and in the store header. The first visit follows the system theme. A visitor's explicit choice is saved locally, synchronized across tabs, and applied by `theme.js` before styles load to avoid a bright flash. Later changes use a 450ms page crossfade, with colour interpolation as a fallback. Rapid toggles finish the previous transition safely. Product photographs keep their original colours in both themes. Reduced-motion preferences disable the crossfade and autoplay by default.
+Owner-confirmed prices are ₹400 / ₹750 / ₹1,250 for 30 / 50 / 100 ml. Shipping is ₹100 within Mumbai and ₹120 elsewhere. The database recalculates prices, shipping, coupons, stock availability and totals at checkout. Variants retain `NULL` available quantity until the owner supplies counted stock; this intentionally blocks paid checkout for unconfirmed stock. Combo recipes must also be configured from real component variants before an online combo order is allowed. Existing offers and WhatsApp enquiry flows remain available.
 
-## Deploy to Vercel
+The public catalogue is read through the Supabase publishable key and RLS-protected read-only projection views. No service-role key belongs in the browser. Reviews are visible only after moderation. Product facts and review ratings are shown only when present in database records. Guest recently viewed IDs stay in local storage. Wishlist sync remains owner-scoped in Supabase. Optional first-party analytics requires explicit local consent and respects browser privacy signals.
 
-Import this GitHub repository in Vercel. Use the repository root as the project root; leave the framework preset as **Other** and the build and output commands empty. Vercel serves `index.html` and the local assets directly. Pushes to the production branch trigger deployments.
+## Migrations and database
 
-## Project files
+The following production migrations are present and were applied to the connected Supabase project:
 
-- `index.html` — document shell, navigation, footer, metadata, and favicon
-- `app.js` — landing page, catalogue, routes, account flows, cart, checkout, and interactions
-- `theme.js` — early theme initialization, system preferences and persistent theme controls
-- `styles.css`, `polish.css` — base and brand styling
-- `upgrade.css` — current collection layout, responsive navigation and combo presentation
-- `assets/` — self-hosted photography and the supplied Parrfums Vault logo
-- `BRAND.md` — verified brand facts, product names, and prices
-- `supabase/migrations/` — versioned catalogue and customer account schema, RLS, and server-calculated order RPC
-- `vendor/` — pinned, self-hosted Supabase JavaScript client and MIT license
+1. `20261022105858_commerce_foundation.sql`
+2. `20261022105905_checkout_inventory_admin.sql`
+3. `20261022105916_payment_state.sql`
+4. `20261022110040_public_projection_security.sql`
 
-Business contacts and prices are shown on the storefront; update them only after confirming the current official details.
+Use Supabase migration tooling and review SQL before applying changes elsewhere. The checkout RPC takes product and variant identifiers, then reads current prices and inventory inside a transaction. It snapshots item details and totals, reserves stock idempotently, validates coupons, and maintains order/payment state separately. Admin RPCs check database membership and MFA assurance (`aal2`); hiding the admin route is not the security boundary. Private tables have RLS and no anonymous access. Payment webhook events have unique replay protection and signed payload validation.
 
-## Supabase catalogue
+## Security controls
 
-### October 22 catalogue update
+The storefront does not run a CMS or third-party plugin framework. The Supabase SDK is pinned and self-hosted; npm audit currently reports no known vulnerabilities in the locked development dependency tree. Database calls use the Supabase SDK's parameterized filters or typed RPC arguments. User-entered text is escaped before HTML rendering, metadata and JSON-LD are escaped, and the CSP blocks inline/eval scripts and unapproved origins. Vercel adds frame, MIME, referrer, transport and content-security headers. Public read models expose only the catalogue/review fields needed by customers.
 
-Owner-confirmed bottle prices are ₹400 / ₹750 / ₹1,250 for 30 / 50 / 100ml. Shipping is extra on every order: Mumbai ₹100, outside Mumbai ₹120. `calculate_shipping()` and the order RPC calculate this on the server using the delivery city (trimmed, case-insensitive Mumbai/Bombay; other cities use ₹120). Cart location is an estimate; checkout uses the actual entered city. Existing order snapshots are preserved.
+See [SECURITY.md](SECURITY.md) for the specific attack checks and their remaining boundaries. The Supabase browser session uses the SDK's PKCE local session storage; same-origin script execution could access a signed-in session, so preventing XSS and limiting script sources remain important. Production login is currently disabled until the owner configures Google OAuth. No administrator account, customer account, order, inventory count or payment secret was fabricated.
 
-Apply `supabase/migrations/20261022095133_owner_media_pricing_shipping.sql` before releasing this frontend. The `storefront_settings` revision prevents an outdated live catalogue from replacing the bundled owner-approved catalogue. If the current revision cannot be read, shopping and WhatsApp ordering remain available while saving account orders is disabled.
+## Required owner setup before production checkout
 
-`#combos` shows the two actual offers and all five supplied posters. The landing slideshow has previous/next, direct slide selection, pause/play, keyboard and touch support. Autoplay pauses during interaction, offscreen, and in background tabs; reduced-motion users start with autoplay off. Free fragrance choices are confirmed on WhatsApp.
+See [SECURITY.md](SECURITY.md) and the deployment settings. Google OAuth must be configured in Google and Supabase, production Site URL/redirect allowlists must be set, and the owner must sign in with MFA before an administrator membership is provisioned. Enter counted stock for the actual 18 variants and actual component recipes for each online combo. Configure Razorpay test/live credentials and webhook signing secret only as Supabase Edge Function secrets; set the actual Vercel origin allowlist. Enter and approve the store's privacy, terms, shipping, refund, cancellation and contact wording. Exact values and steps are listed in the final handoff in this repository's task report; do not add secrets to Git or the frontend.
 
-All 18 supplied images have 400 / 720 / 1080px WebP exports in `assets/media/`. They preserve the complete artwork; the hero alone uses a decorative crop. Images use responsive sources and explicit dimensions. The hero and first combo poster load eagerly; remaining images load lazily. Vercel caches media for a day with background revalidation.
+## Brand and media
 
-To regenerate exports, install `sharp` as a development dependency outside the served root, make it available through `NODE_PATH`, then run:
-
-```sh
-node scripts/optimize-media.cjs "path/to/Parrfum vault"
-```
-
-Runtime still has no build step or npm dependencies. To run the isolated database integration checks, make `@electric-sql/pglite` available through `NODE_PATH` and run `node tests/database.cjs`. Browser checks use Playwright via `node tests/browser.cjs` against the local server. Test packages are development tools, never loaded by customers.
-
-The storefront reads active products, size prices, and offers from the Parrfums Vault Supabase Data API at startup. It uses the project's public publishable key, which is safe for browser use only because the exposed tables have RLS enabled and SELECT-only grants. If the API is unavailable or returns invalid data, the bundled catalogue remains available. The catalogue data schema and seed are in `supabase/migrations/`.
-
-Google sign-in must be enabled by the client before accounts work. Signed-in profile/address/wishlist and pending order request data are stored in Supabase under owner-scoped RLS. Guest checkout stays on WhatsApp. Never place a database password or secret/service-role key in frontend code or Git. The project is intended to be transferable to the client organization at handoff.
-
-`vercel.json` sets a restrictive Content Security Policy and standard browser security headers. The policy permits scripts only from this site and limits network connections to the configured Supabase project. These hosting headers take effect after deployment; local static-server tests do not apply them.
-
-## Customer accounts (Google sign-in)
-
-The account flow uses a locally vendored, pinned Supabase JavaScript client and PKCE. Signed-in customers can sync wishlists, save/remove delivery addresses, update their profile, and see their own order requests. Checkout stores pending/unpaid requests only for signed-in customers; a database function re-reads catalogue prices and calculates shipping instead of trusting browser totals. Guest checkout continues through WhatsApp. No payment is taken. Tables use RLS and owner-scoped grants; customer order tables have no direct client write grant.
-
-### Owner setup still required
-
-Google sign-in is not enabled until the client completes OAuth setup:
-
-1. In Google Cloud Console, configure the OAuth consent screen/app branding for the store and create a **Web application** OAuth client.
-2. Add this exact authorized redirect URI in Google: `https://atxvfmvhnidknnhgwgaq.supabase.co/auth/v1/callback`.
-3. In Supabase Dashboard → Authentication → Sign-in providers → Google, enable Google and enter the OAuth client ID and client secret. Enter the secret only in Supabase Dashboard; never in Git or chat.
-4. In Supabase Authentication URL Configuration, set the production Site URL and allow the local URL `http://127.0.0.1:4321/**` plus the final production URL (and preview URLs only if needed).
-5. Review and approve the account/privacy notice in the storefront, then test Google sign-in, wishlist sync, address saving, and order history before launch.
-
-The Vercel project/domain is not yet available to this connection, so the production URL and production OAuth allowlist entry cannot be finalized here. The account data migration has been applied to the Supabase project; Google login stays blocked until the owner setup above is completed.
-
-## Reuse and ownership
-
-This repository is published for client handoff. No open-source license is included; public visibility does not by itself grant reuse rights. Confirm asset and code rights with the project owner before reuse or redistribution.
+The landing page is presentation-only and contains no buying controls. It retains the original brand style, dark/light mode, and four-second combo slideshow with a fade. The shop remains separate. Responsive image exports preserve original artwork and load below-the-fold media lazily. Owner-confirmed brand details live in `BRAND.md`; verify any business contact/policy change with the owner before publishing.

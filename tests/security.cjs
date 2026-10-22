@@ -1,0 +1,74 @@
+const assert = require("node:assert/strict"),
+  fs = require("node:fs"),
+  crypto = require("node:crypto"),
+  path = require("node:path");
+const root = path.resolve(__dirname, ".."),
+  read = (f) => fs.readFileSync(path.join(root, f), "utf8");
+const config = JSON.parse(read("vercel.json"));
+const headers = Object.fromEntries(
+  config.headers
+    .find((r) => r.source === "/(.*)")
+    .headers.map((h) => [h.key, h.value]),
+);
+const csp = headers["Content-Security-Policy"];
+for (const rule of [
+  "default-src 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+  "base-uri 'self'",
+])
+  assert.ok(csp.includes(rule), rule);
+const scripts = csp.split(";").find((s) => s.includes("script-src"));
+assert.ok(
+  !scripts.includes("unsafe-inline") &&
+    !scripts.includes("unsafe-eval") &&
+    !scripts.includes("*"),
+);
+assert.equal(headers["X-Content-Type-Options"], "nosniff");
+assert.equal(headers["X-Frame-Options"], "DENY");
+assert.ok(headers["Strict-Transport-Security"].includes("max-age="));
+const bundle = fs
+  .readFileSync(path.join(root, "vendor/supabase-js-2.118.0.js"), "utf8")
+  .replace(/\r\n/g, "\n");
+assert.equal(
+  crypto.createHash("sha256").update(bundle).digest("hex").toUpperCase(),
+  "EE3BE8DE192B97CB1D73D1E95D6B82BB1F6B658C0F97C4EF757FC331996ED3D3",
+);
+for (const file of [
+  "app.js",
+  "commerce.js",
+  "commerce-views.js",
+  "admin.js",
+  "seo.js",
+  "index.html",
+]) {
+  const source = read(file);
+  assert.doesNotMatch(
+    source,
+    /sb_secret_[A-Za-z0-9]+|service_role["']\s*[:=]\s*["'][^"']{20}/,
+    file + " contains secret material",
+  );
+  assert.doesNotMatch(
+    source,
+    /\beval\s*\(|new Function\s*\(|document\.write\s*\(/,
+    file + " dynamic execution",
+  );
+}
+assert.ok(read(".gitignore").includes(".env.*"));
+assert.ok(!read("app.js").includes("rpc('create_customer_order'"));
+const foundation = read(
+  "supabase/migrations/20261022105858_commerce_foundation.sql",
+);
+assert.ok(foundation.includes("auth.jwt()->>'aal'"));
+assert.ok(foundation.includes("='aal2'"));
+assert.ok(foundation.includes("revoke create on schema public"));
+for (const match of [
+  ...read(
+    "supabase/migrations/20261022105905_checkout_inventory_admin.sql",
+  ).matchAll(/security definer/gi),
+])
+  assert.ok(match.index >= 0);
+console.log(
+  "PASS: CSP and security headers, vendored SDK integrity, frontend secret/dynamic-code checks, ignored secrets, removal of legacy checkout and database MFA boundary.",
+);

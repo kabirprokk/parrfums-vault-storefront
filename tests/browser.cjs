@@ -9,6 +9,7 @@ fs.mkdirSync(artifacts,{recursive:true});
 (async()=>{
  const browser=await chromium.launch();
  const page=await browser.newPage({viewport:{width:1440,height:1000}});
+ await require('./catalogue-fixture.cjs')(page);
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  const failed=[];page.on('response',r=>{if(r.status()>=400&&r.url().startsWith(base))failed.push(`${r.status()} ${r.url()}`);});
  await page.goto(base,{waitUntil:'networkidle'});
@@ -61,16 +62,13 @@ fs.mkdirSync(artifacts,{recursive:true});
  assert.match(decodeURIComponent(whatsapp),/Shipping: ₹120/);
  assert.match(decodeURIComponent(whatsapp),/Total: ₹2,520/);
  await page.goto(base+'/#checkout',{waitUntil:'networkidle'});
- assert.match(await page.locator('h1').textContent(),/WhatsApp/);
+ assert.match(await page.locator('h1').textContent(),/signature/);
  // Inspect the signed-in checkout presentation without creating a real customer/order.
  await page.evaluate(()=>{authUser={id:'00000000-0000-4000-8000-000000000001',email:'test@example.invalid',user_metadata:{}};render('checkout');});
- await page.locator('#city').fill(' Mumbai ');
- assert.equal(await page.locator('[data-checkout-shipping]').textContent(),'₹100');
- assert.equal(await page.locator('[data-checkout-total]').textContent(),'₹2,500');
- await page.locator('#city').fill('Navi Mumbai');
- assert.equal(await page.locator('[data-checkout-shipping]').textContent(),'₹120');
- await page.locator('#city').fill('');
- assert.equal(await page.locator('[data-checkout-shipping]').textContent(),'Enter your city');
+ assert.match(await page.locator('[data-server-summary]').textContent(),/confirm prices/);
+ await page.locator('#checkout-form [type=submit]').click();
+ assert.equal(await page.locator('#first').getAttribute('aria-invalid'),'true');
+ assert.match(await page.locator('#err-first').textContent(),/Required/);
  await page.reload({waitUntil:'networkidle'});
  // Reprice an old persisted cart on startup.
  await page.evaluate(()=>localStorage.setItem('am-cart',JSON.stringify([{id:'angel-share',size:50,qty:1,price:1,name:'Old name',img:'bad.jpg'}])));
@@ -81,7 +79,7 @@ fs.mkdirSync(artifacts,{recursive:true});
  // Verify supported routes at narrow phone, tablet and desktop widths.
  for(const width of [320,390,768,1024,1440]){
    await page.setViewportSize({width,height:900});
-   for(const route of ['landing','home','combos','shop','product/angel-share','product/festive-four','cart','about','finder','account','privacy','collections','offers']){
+   for(const route of ['landing','home','combos','shop','product/angel-share','product/festive-four','cart','about','finder','account','privacy','terms','shipping','returns','cancellation','contact','faq','tracking','admin','collections','offers','orders/00000000-0000-4000-8000-000000000001']){
      await page.goto(`${base}/#${route}`,{waitUntil:'domcontentloaded'});
      const sizing=await page.evaluate(()=>({viewport:innerWidth,content:document.documentElement.scrollWidth}));
      assert.ok(sizing.content<=sizing.viewport+1,`${route} overflows at ${width}px: ${sizing.content}`);

@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<base href="/">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Parrfums Vault — Handmade fragrance from Mumbai</title>
 <meta name="description" content="Handmade, long-lasting fragrance from Mumbai. Luxury in a bottle — unique, timeless scents in limited batches. Pan-India delivery. Order on WhatsApp.">
@@ -21,6 +22,7 @@
 <link rel="stylesheet" href="styles.css">
 <link rel="stylesheet" href="polish.css">
 <link rel="stylesheet" href="upgrade.css">
+<link rel="stylesheet" href="commerce.css">
 </head>
 <body>
 <a class="skip-link" href="#app">Skip to content</a>
@@ -125,7 +127,7 @@
     </div>
   </div>
   <small class="footer-legal">© 2026 Parrfums Vault · Mumbai. Handmade with intention. Pan-India delivery.</small>
-</footer>
+<nav class="footer-policies" aria-label="Policies and help"><a href="#privacy">Privacy</a><a href="#terms">Terms</a><a href="#shipping">Shipping</a><a href="#returns">Returns & refunds</a><a href="#cancellation">Cancellation</a><a href="#contact">Contact</a><a href="#faq">FAQ</a><a href="#tracking">Track an order</a></nav></footer>
 
 <div class="search-drawer" role="dialog" aria-modal="true" aria-labelledby="search-label" hidden>
   <div class="search-inner">
@@ -140,6 +142,10 @@
 
 <div id="toast" role="status"></div>
 <script src="vendor/supabase-js-2.118.0.js"></script>
+<script src="commerce.js"></script>
+<script src="commerce-views.js"></script>
+<script src="admin.js"></script>
+<script src="seo.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

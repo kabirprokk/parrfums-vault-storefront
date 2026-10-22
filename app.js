@@ -13,7 +13,7 @@ const BRAND = {
 };
 
 /* Owner-confirmed prices, shipping and media, 22 October 2026. */
-const CATALOGUE_REVISION = '2026-10-22-owner-media';
+const CATALOGUE_REVISION = '2026-10-22-commerce';
 const SIZE_PRICES = { 30: 400, 50: 750, 100: 1250 };
 const DEFAULT_SIZE = 50;
 const HERO_SIZE = 50;
@@ -21,6 +21,7 @@ const SHIPPING = { mumbai: 100, outside: 120 };
 const shippingZone = city => /^(mumbai|bombay)$/i.test(String(city || '').trim()) ? 'mumbai' : 'outside';
 const shippingFee = city => SHIPPING[shippingZone(city)];
 let catalogueReady = false;
+let catalogueLoading=true;
 
 // Publishable key is designed for browser use; RLS and SELECT-only grants are
 // the security boundary. Never replace this with a secret/service-role key.
@@ -170,24 +171,26 @@ const phoneLink = (label = 'Call us') =>
 const igLink = (label = 'Instagram') =>
   `<a class="text-link ig-link" href="${BRAND.instagram}" target="_blank" rel="noreferrer">${igSvg}<span>${esc(label)}</span></a>`;
 
+const defaultSize=p=>p.sizes?.includes(DEFAULT_SIZE)?DEFAULT_SIZE:(p.sizes?.[0]||0);
 const priceFor = (p, size) => isCombo(p) ? p.price : (p.prices?.[size] || SIZE_PRICES[size] || SIZE_PRICES[DEFAULT_SIZE]);
 const priceLabel = (p, size) => isCombo(p) ? 'Combo' : `${size}ml`;
 
 async function loadCatalogue() {
   const read = async (resource, select) => {
     const url = `${CATALOGUE_API}/${resource}?select=${select}`;
-    const response = await fetch(url, { headers: { apikey: CATALOGUE_KEY }, cache: 'no-store' });
+    const response = await fetch(url, { headers: { apikey: CATALOGUE_KEY }, cache: 'no-store', signal: AbortSignal.timeout(15000) });
     if (!response.ok) throw new Error(`Catalogue request failed (${response.status})`);
     return response.json();
   };
-  const safeImage = path => typeof path === 'string' && /^assets\/[a-zA-Z0-9._/-]+$/.test(path) && !path.includes('..');
+  const safeImage = path => typeof path === 'string' && /^assets\/[a-zA-Z0-9._/-]+$/.test(path) && !path.includes('..') || typeof path === 'string' && path.startsWith('https://atxvfmvhnidknnhgwgaq.supabase.co/storage/v1/object/public/catalogue-media/') && !path.includes('..');
 
   try {
-    const [rows, prices, offersRows, settings] = await Promise.all([
-      read('products', 'id,name,category,gender,notes,description,image_path,gallery_paths,sizes_ml,sort_order&active=eq.true&order=sort_order'),
-      read('product_prices', 'product_id,size_ml,price_inr&order=product_id,size_ml'),
+    const [rows, prices, offersRows, settings, components, ratings, popularity] = await Promise.all([
+      read('products', '*&active=eq.true&order=sort_order'),
+      read('product_prices', 'product_id,size_ml,price_inr,sku,available_quantity,active,low_stock_threshold&order=product_id,size_ml'),
       read('offers', 'id,name,price_inr,badge,notes,description,image_path,sort_order&active=eq.true&order=sort_order'),
-      read('storefront_settings', 'revision&id=eq.current')
+      read('storefront_settings', 'revision&id=eq.current'),
+      read('offer_components','*'),read('product_review_summary','*'),read('product_popularity','*')
     ]);
     if (settings?.[0]?.revision !== CATALOGUE_REVISION) throw new Error('Catalogue update pending');
     if (!Array.isArray(rows) || !rows.length || !Array.isArray(prices) || !Array.isArray(offersRows)) throw new Error('Invalid catalogue response');
@@ -203,29 +206,31 @@ async function loadCatalogue() {
       if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(row.id) || !safeImage(row.image_path) || !Array.isArray(row.gallery_paths) || !row.gallery_paths.every(safeImage) || !Array.isArray(row.sizes_ml)) throw new Error('Invalid product row');
       const productPrices = priceMap.get(row.id) || {};
       const sizes = row.sizes_ml.filter(size => Number.isSafeInteger(size) && size > 0 && Number.isSafeInteger(productPrices[size]));
-      if (!sizes.length) throw new Error('Product has no priced sizes');
-      return { id: row.id, name: row.name, category: row.category, gender: row.gender, notes: row.notes, desc: row.description, img: row.image_path, gallery: row.gallery_paths, sizes, prices: productPrices };
+
+      return { ...row, variants: prices.filter(v=>v.product_id===row.id), id: row.id, name: row.name, category: row.category, gender: row.gender, notes: row.notes, desc: row.description, img: row.image_path, gallery: row.gallery_paths.length?row.gallery_paths:[row.image_path], sizes, prices: productPrices };
     });
     const nextOffers = offersRows.map(row => {
       if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(row.id) || !safeImage(row.image_path) || !Number.isSafeInteger(row.price_inr) || row.price_inr <= 0) throw new Error('Invalid offer row');
-      return { id: row.id, name: row.name, kind: 'combo', price: row.price_inr, badge: row.badge, notes: row.notes, desc: row.description, img: row.image_path };
+      return { ...row, variants: prices.filter(v=>v.product_id===row.id), id: row.id, name: row.name, kind: 'combo', price: row.price_inr, badge: row.badge, notes: row.notes, desc: row.description, img: row.image_path };
     });
 
+    Commerce.cache.components=components; Commerce.cache.summary=ratings; Commerce.cache.popularity=popularity;
     products.splice(0, products.length, ...nextProducts);
     combos.splice(0, combos.length, ...nextOffers);
     const firstPrices = nextProducts[0].prices;
     Object.assign(SIZE_PRICES, firstPrices);
-    catalogueReady = true;
+    catalogueReady = true; catalogueLoading=false;
     normalizeCart();
     // A database change can invalidate a stored variant choice; normalize it.
     for (const product of nextProducts) {
       if (!product.sizes.includes(state.selectedSize[product.id])) state.selectedSize[product.id] = product.sizes.includes(DEFAULT_SIZE) ? DEFAULT_SIZE : product.sizes[0];
     }
     // Do not interrupt an in-progress gesture/scroll if the network responds late.
-    if (!catalogueUserInteracted) render(location.hash.slice(1) || 'landing', { keepScroll: true });
+    if (!catalogueUserInteracted) render(location.hash.slice(1) || location.pathname.slice(1) || 'landing', { keepScroll: true });
   } catch {
     // Keep the bundled catalogue available if the network/API is unavailable.
-    console.warn('Using the built-in catalogue because the live catalogue could not be loaded.');
+    catalogueLoading=false;console.warn('Using the built-in catalogue because the live catalogue could not be loaded.');
+    if(currentPath==='shop')render('shop',{keepScroll:true});
   }
 }
 
@@ -282,6 +287,7 @@ const priceBlock = p => {
             <div class="price-ladder"><span>${esc(p.badge)}</span></div>`;
   }
   const sizes = p.sizes || Object.keys(SIZE_PRICES).map(Number);
+  if(!sizes.length)return '<p class="sub">Pricing awaiting confirmation</p>';
   const heroSize = sizes.includes(HERO_SIZE) ? HERO_SIZE : sizes[sizes.length - 1];
   return `<div class="price"><span class="price-amount">${money(priceFor(p, heroSize))}</span><span class="price-size">${heroSize}ml</span></div>
           <div class="price-ladder">${sizes.filter(s => s !== heroSize).map(s => `<span>${s}ml ${money(priceFor(p, s))}</span>`).join('<span aria-hidden="true">·</span>')}</div>`;
@@ -293,13 +299,13 @@ function card(p) {
     <div class="product-image"><a href="#product/${p.id}" aria-label="View ${esc(p.name)}">${imgTag(p.img, `${p.name} — Parrfums Vault fragrance`)}</a>
       <button class="heart ${wished ? 'active' : ''}" data-wish="${p.id}" aria-label="${wished ? 'Remove' : 'Add'} ${esc(p.name)} ${wished ? 'from' : 'to'} wishlist" aria-pressed="${wished}">${heartSvg(wished)}</button></div>
     <div class="product-meta"><a href="#product/${p.id}"><h3>${esc(p.name)}</h3><p>${esc(p.notes)}</p>${priceBlock(p)}</a>
-      <button class="quick-add" data-add="${p.id}">Add ${DEFAULT_SIZE}ml · ${money(priceFor(p, DEFAULT_SIZE))} <span aria-hidden="true">+</span></button></div>
+      <button class="quick-add" data-add="${p.id}" ${Commerce.available(p,defaultSize(p))?'':'disabled'}>${p.sizes.length?`Add ${defaultSize(p)}ml · ${money(priceFor(p, defaultSize(p)))}`:'Product unavailable'} <span aria-hidden="true">+</span></button></div>
   </article>`;
 }
 
 function offerCard(c) {
   return `<article class="offer-card">
-    <div class="offer-img">${imgTag(c.img, `${c.name} — ${c.badge}`)}<span class="offer-badge">Limited stock</span></div>
+    <div class="offer-img">${imgTag(c.img, `${c.name} — ${c.badge}`)}<span class="offer-badge">Combo</span></div>
     <div class="offer-body">
       <p class="eyebrow">The vault offer</p>
       <h3>${esc(c.name)}</h3>
@@ -342,7 +348,7 @@ function landing() {
   return `<section class="landing">
     <div class="landing-bg" role="img" aria-label="Parrfums Vault fragrance photography"></div>
     <div class="landing-scrim" aria-hidden="true"></div>
-    <div class="landing-top"><span class="brand landing-brand" aria-label="Parrfums Vault">${brandMark}</span><div class="landing-top-actions"><button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to dark mode">${themeIcon()}</button><a class="landing-enter" href="#home">Enter the vault ${arrowSvg}</a></div></div>
+    <div class="landing-top"><span class="brand landing-brand" role="img" aria-label="Parrfums Vault">${brandMark}</span><div class="landing-top-actions"><button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to dark mode">${themeIcon()}</button><a class="landing-enter" href="#home">Enter the vault ${arrowSvg}</a></div></div>
     <div class="landing-inner"><p class="landing-eyebrow">Luxury in a bottle</p><h1 class="landing-brand-name">Parrfums Vault</h1><p class="landing-sub">Handmade fragrance from ${BRAND.city}. A collection of scents, stories, and the moments that stay with you.</p><div class="landing-actions"><button class="landing-discover" type="button" data-scroll-to="landing-story">Discover our world ${arrowDownSvg}</button></div></div>
     <div class="landing-foot"><span>Handmade in ${BRAND.city}</span><span>Unique · Timeless</span><span>Six signature scents</span><button class="landing-scroll" type="button" data-scroll-to="landing-story" aria-label="Discover the Parrfums Vault story below">${arrowDownSvg}</button></div>
   </section>${landingShowcase()}`;
@@ -514,19 +520,15 @@ function contactBand(eyebrow = 'Ready when you are', heading = 'Two taps from yo
 
 
 function shop() {
-  const q = state.query.trim().toLowerCase();
-  let list = products.filter(p => (state.category === 'All' || p.category === state.category) &&
-    (`${p.name} ${p.notes} ${p.category} ${p.gender}`).toLowerCase().includes(q));
-  if (state.sort === 'name') list = [...list].sort((a, b) => a.name.localeCompare(b.name));
-  if (state.sort === 'name-desc') list = [...list].sort((a, b) => b.name.localeCompare(a.name));
-  if (state.sort === 'category') list = [...list].sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
+  const list = Commerce.list(products);
   const empty = list.length === 0;
   return `<section class="page-shell">
     <p class="eyebrow">The full collection</p><h1 class="page-title">Shop fragrance</h1>
-    <p class="page-intro">Six fragrances in three sizes each. Handmade in Mumbai, delivered across India.</p>
-    <div class="shop-toolbar">
+    <p class="page-intro">Explore the collection by scent, size and availability.</p>
+    ${!catalogueReady?`<p class="shipping-notice" role="status">${catalogueLoading?'Checking current availability…':'Live availability is temporarily unavailable. You can browse the saved catalogue or enquire with the store.'}</p>`:''}${Commerce.filters()}<div class="shop-toolbar">
       ${moodChips(state.category)}
       <select class="select" id="sort" aria-label="Sort products">
+        ${[['price-asc','Price: low to high'],['price-desc','Price: high to low'],['newest','Newest'],['popular','Popular']].map(([value,label])=>`<option value="${value}" ${state.sort===value?'selected':''}>${label}</option>`).join('')}
         <option value="featured" ${state.sort === 'featured' ? 'selected' : ''}>Sort: Featured</option>
         <option value="name" ${state.sort === 'name' ? 'selected' : ''}>Name: A–Z</option>
         <option value="name-desc" ${state.sort === 'name-desc' ? 'selected' : ''}>Name: Z–A</option>
@@ -606,11 +608,12 @@ function productView(p) {
         <p class="eyebrow">The vault offer</p><h1>${esc(p.name)}</h1><p class="sub">${esc(p.badge)}</p>
         <p class="large-price" id="detail-price">${money(p.price)}</p>
         <p>${esc(p.desc)}</p><p class="offer-notes">${esc(p.notes)}</p>
-        <button class="btn primary full" data-add="${p.id}">Add to bag</button>
+        ${Commerce.badge(p,isCombo(p)?0:state.selectedSize[p.id]||DEFAULT_SIZE)}<button class="btn primary full" data-add="${p.id}" ${Commerce.available(p,isCombo(p)?0:state.selectedSize[p.id]||DEFAULT_SIZE)?'':'disabled'}>Add to bag</button>
         ${waLink(`Hi Parrfums Vault! I'd like to order the ${p.name} — ${p.badge} for ${money(p.price)}.`, 'Order on WhatsApp', 'btn ghost full wa-btn')}
       </div>
     </div></section>`;
   }
+  if(!p.sizes.length)return `<section class="page-shell"><h1 class="page-title">${esc(p.name)}</h1><p>${esc(p.desc)}</p><p role="status">This product has no available sizes yet.</p>${Commerce.share(p)}</section>`;
   const gi = state.galleryIndex[p.id] || 0;
   const selSize = p.sizes.includes(state.selectedSize[p.id]) ? state.selectedSize[p.id] : (p.sizes.includes(DEFAULT_SIZE) ? DEFAULT_SIZE : p.sizes[0]);
   const sizeButtons = p.sizes.map(s => `<button class="variant ${s === selSize ? 'selected' : ''}" data-size="${s}" aria-pressed="${s === selSize}">${s}ml · ${money(priceFor(p, s))}</button>`).join('');
@@ -632,12 +635,12 @@ function productView(p) {
       <p>${esc(p.desc)}</p>
       <p class="variant-label">Choose size</p>
       <div class="variant-row" role="group" aria-label="Choose size">${sizeButtons}</div>
-      <button class="btn primary full" data-add="${p.id}">Add to bag</button>
+      ${Commerce.badge(p,isCombo(p)?0:state.selectedSize[p.id]||DEFAULT_SIZE)}<button class="btn primary full" data-add="${p.id}" ${Commerce.available(p,isCombo(p)?0:state.selectedSize[p.id]||DEFAULT_SIZE)?'':'disabled'}>Add to bag</button>
       <button class="btn ghost full" data-wish="${p.id}" style="margin-top:10px">${heartSvg(wished)} ${wished ? 'In wishlist' : 'Add to wishlist'}</button>
       ${waLink(`Hi Parrfums Vault! I'd like to order ${p.name} (${selSize}ml — ${money(priceFor(p, selSize))}).`, 'Order on WhatsApp', 'btn ghost full wa-btn')}
-      <p class="sub" style="margin-top:18px">Pan-India delivery · Limited stock · ${BRAND.city}</p>
+      <p class="sub" style="margin-top:18px">Pan-India delivery · ${BRAND.city}</p>
     </div></div>
-    <div class="related"><h2>You may also like</h2><div class="product-grid">${relatedFill.map(card).join('')}</div></div>
+    ${Commerce.facts(p)}${Commerce.share(p)}${Commerce.reviews(p)}${Commerce.recommendations(p)}
   </section>`;
 }
 
@@ -679,7 +682,7 @@ function cart() {
     <div class="cart-layout">
       <div>${state.cart.map((i, n) => `<div class="cart-item">
         ${imgTag(i.img, i.name)}
-        <div><h3>${esc(i.name)}</h3><p>${i.combo ? esc(i.badge) : `${i.size}ml · ${esc(i.notes)}`}</p>
+        <div><h3>${esc(i.name)}</h3><p>${i.combo ? esc(i.badge) : `${i.size}ml · ${esc(i.notes)}`}</p>${Commerce.badge(get(i.id),i.size)}
           <div class="qty" role="group" aria-label="Quantity for ${esc(i.name)}">
             <button data-qty="${n}" data-delta="-1" aria-label="Decrease quantity">−</button>
             <span>${i.qty}</span>
@@ -702,7 +705,7 @@ function wishlist() {
       <div class="product-image"><a href="#product/${p.id}" aria-label="View ${esc(p.name)}">${imgTag(p.img, `${esc(p.name)} fragrance`)}</a>
         <button class="heart active" data-wish="${p.id}" aria-label="Remove ${esc(p.name)} from wishlist" aria-pressed="true">${heartSvg(true)}</button></div>
       <div class="product-meta"><a href="#product/${p.id}"><h3>${esc(p.name)}</h3><p>${esc(p.notes)}</p>${priceBlock(p)}</a>
-        <button class="btn small" data-add="${p.id}" style="margin-top:10px">Add to bag</button></div>
+        ${Commerce.badge(p,DEFAULT_SIZE)}<button class="btn small" data-add="${p.id}" data-move-wishlist ${Commerce.available(p,defaultSize(p))?'':'disabled'} style="margin-top:10px">Move to bag</button></div>
     </article>`).join('')}</div></section>`;
 }
 
@@ -710,10 +713,10 @@ function account() {
   if (!supabaseClient) return `<section class="page-shell"><p class="eyebrow">Your account</p><h1 class="page-title">Accounts unavailable</h1><p class="sub">The sign-in client did not load. Please try again later.</p></section>`;
   if (!authReady) return `<section class="page-shell"><p class="eyebrow">Your account</p><h1 class="page-title">Checking your account…</h1></section>`;
   if (!authUser) return `<section class="page-shell"><p class="eyebrow">Your account</p><h1 class="page-title">Your account, your vault.</h1>
-    <p class="sub">Sign in to sync your wishlist, save delivery addresses, and see order requests you place while signed in.</p>
+    <p class="sub">Sign in to sync your wishlist, save delivery addresses, and track orders you place while signed in.</p>
     ${authNotice ? `<p class="error" role="alert">${esc(authNotice)}</p>` : ''}
     <button class="btn primary" type="button" data-auth-sign-in>Continue with Google</button>
-    <p class="sub" style="margin-top:18px">We store account details and order requests securely. Orders remain unpaid until confirmed; this site does not process payments. <a href="#privacy">Read account data information</a>.</p>
+    <p class="sub" style="margin-top:18px">We store account details and order requests securely. Payments are marked paid only after secure provider verification. Online payment availability depends on the store configuration. <a href="#privacy">Read account data information</a>.</p>
   </section>`;
 
   const profileName = accountProfile?.full_name || authUser.user_metadata?.full_name || authUser.user_metadata?.name || '';
@@ -724,14 +727,10 @@ function account() {
     <div class="offer-actions">${a.is_default ? '' : `<button class="btn small" type="button" data-address-default="${esc(a.id)}">Make default</button>`}
       <button class="btn small" type="button" data-address-delete="${esc(a.id)}">Remove</button></div>
   </article>`).join('') : '<p class="sub">No saved addresses yet. Add one below.</p>';
-  const ordersContent = accountOrders.length ? accountOrders.map(o => `<article class="offer-card" style="padding:18px;margin-bottom:12px">
-    <strong>Order ${esc(o.id.slice(0, 8).toUpperCase())}</strong><span class="sub"> · ${esc(new Date(o.created_at).toLocaleDateString('en-IN'))}</span>
-    <p>${esc(o.status)} · ${esc(o.payment_status)} · ${money(o.total_inr)}</p>
-    <ul>${(o.customer_order_items || []).map(i => `<li>${esc(i.item_name)}${i.size_ml ? ` · ${i.size_ml}ml` : ''} × ${i.quantity} — ${money(i.line_total_inr)}</li>`).join('')}</ul>
-  </article>`).join('') : '<p class="sub">No saved order requests yet.</p>';
+  const ordersContent = Commerce.orderHistory(accountOrders);
 
   return `<section class="page-shell account-page">
-    <div class="section-head"><div><p class="eyebrow">Signed in as ${esc(authUser.email || 'Google account')}</p><h1 class="page-title">Your account</h1></div>
+    <div class="section-head"><div><p class="eyebrow">Signed in as ${esc(authUser.email || 'Google account')}</p><h1 class="page-title">Your account</h1><a class="text-link" href="#admin">Administration</a></div>
       <button class="btn ghost" type="button" data-auth-sign-out>Sign out</button></div>
     ${accountLoading ? '<p class="sub" role="status">Loading your account data…</p>' : ''}
     ${authNotice ? `<p class="error" role="alert">${esc(authNotice)}</p>` : ''}
@@ -779,7 +778,7 @@ async function refreshAccountData(user) {
       supabaseClient.from('customer_profiles').select('full_name,phone').eq('user_id', user.id).maybeSingle(),
       supabaseClient.from('customer_addresses').select('id,label,recipient_name,phone,address_line1,address_line2,city,state,postal_code,is_default,created_at').eq('user_id', user.id).order('is_default', { ascending: false }).order('created_at', { ascending: false }),
       supabaseClient.from('wishlist_items').select('product_id').eq('user_id', user.id),
-      supabaseClient.from('customer_orders').select('id,recipient_name,total_inr,status,payment_status,created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(25)
+      supabaseClient.from('customer_orders').select('id,order_number,recipient_name,total_inr,status,payment_status,created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(25)
     ]);
     if (authUser?.id !== user.id) return;
     if (profileResult.error || addressResult.error || wishlistResult.error || ordersResult.error) throw new Error('Account data request failed');
@@ -799,7 +798,7 @@ async function refreshAccountData(user) {
     const orders = ordersResult.data || [];
     if (orders.length) {
       const { data: lines, error } = await supabaseClient.from('customer_order_items')
-        .select('order_id,item_name,size_ml,quantity,line_total_inr').in('order_id', orders.map(o => o.id));
+        .select('order_id,product_id,offer_id,item_name,size_ml,quantity,line_total_inr').in('order_id', orders.map(o => o.id));
       if (error) throw new Error('Order history request failed');
       const byOrder = new Map();
       for (const line of lines || []) byOrder.set(line.order_id, [...(byOrder.get(line.order_id) || []), line]);
@@ -917,9 +916,16 @@ function initializeAuth() {
   supabaseClient.auth.onAuthStateChange((event, session) => {
     const previousId = authUser?.id || null;
     authUser = session?.user || null;
+    setTimeout(() => { void Commerce.onAuth(authUser); }, 0);
     authReady = true;
     if (previousId !== (authUser?.id || null)) {
       accountProfile = null; savedAddresses = []; accountOrders = []; authNotice = '';
+      const protectedPath = currentPath;
+      if (protectedPath === 'checkout' || protectedPath === 'tracking' || protectedPath === 'admin' || protectedPath.startsWith('orders/')) {
+        setTimeout(() => {
+          if (currentPath === protectedPath) render(protectedPath, { keepScroll: true });
+        }, 0);
+      }
     }
     if (!authUser) {
       state.wish = [...guestWishlist];
@@ -932,108 +938,11 @@ function initializeAuth() {
     }
     if (currentPath === 'account') render('account', { keepScroll: true });
     if (authUser && (previousId !== authUser.id || event === 'INITIAL_SESSION')) {
-      queueMicrotask(() => { void refreshAccountData(authUser); });
+      setTimeout(() => { if(authUser)void refreshAccountData(authUser); }, 0);
     }
   });
 }
 
-async function createCustomerOrder(form) {
-  if (!authUser || !supabaseClient) return;
-  if (!catalogueReady) { document.querySelector('#form-error').textContent = 'Online order saving is temporarily unavailable. Please order on WhatsApp.'; return; }
-  const value = id => String(document.getElementById(id)?.value || '').trim();
-  const recipient = `${value('first')} ${value('last')}`.trim();
-  const items = state.cart.map(item => ({
-    kind: item.combo ? 'offer' : 'product', id: item.id,
-    ...(item.combo ? {} : { size_ml: item.size }), quantity: item.qty
-  }));
-  const delivery = {
-    recipient_name: recipient, phone: value('phone'), address_line1: value('address'), address_line2: '',
-    city: value('city'), state: value('state'), postal_code: value('pin')
-  };
-  const button = form.querySelector('[type="submit"]');
-  if (button) button.disabled = true;
-  const formError = document.querySelector('#form-error');
-  const { data: orderId, error } = await supabaseClient.rpc('create_customer_order', { p_items: items, p_delivery: delivery });
-  if (error || !orderId) {
-    if (button) button.disabled = false;
-    if (formError) formError.textContent = 'We could not save the order request. Check your details and try again.';
-    return;
-  }
-  const { data: storedOrder } = await supabaseClient.from('customer_orders')
-    .select('total_inr,shipping_inr,subtotal_inr').eq('id', orderId).maybeSingle();
-  const confirmedTotal = storedOrder?.total_inr;
-  state.cart = [];
-  save();
-  await refreshAccountData(authUser);
-  currentPath = null;
-  app.innerHTML = `<section class="page-shell"><div class="success" role="status">
-    <p class="eyebrow">Order request saved</p><h1>Thank you, ${esc(recipient)}.</h1>
-    <p class="sub">Reference: ${esc(orderId)}${Number.isSafeInteger(confirmedTotal) ? ` · Total ${money(confirmedTotal)}` : ''}</p>
-    <p class="sub">This request is pending and unpaid. The store will confirm availability and delivery; no payment has been taken.</p>
-    ${waLink(`Hi Parrfums Vault! I submitted order request ${orderId}. Please confirm availability and delivery.`, 'Send reference on WhatsApp', 'btn primary wa-btn')}
-    <a class="btn ghost" href="#account" style="margin-top:10px">View order history</a>
-  </div></section>`;
-  window.scrollTo(0, 0);
-  updateCounts();
-  announce('Order request saved');
-}
-
-function checkout() {
-  if (!state.cart.length) return `<section class="page-shell"><div class="empty" role="status"><h2>Your bag is empty.</h2><a class="btn" href="#shop">Shop fragrance</a></div></section>`;
-  if (!authUser) {
-    const list = state.cart.map(i => `• ${i.name} (${i.combo ? i.badge : `${i.size}ml`}) × ${i.qty}`).join('\n');
-    return `<section class="page-shell"><p class="eyebrow">Guest order</p><h1 class="page-title">Order on WhatsApp</h1>
-      <p class="sub">No account needed. Send your item list and the store will confirm current prices, availability, and delivery details in chat. Nothing is saved to a customer account.</p>
-      <div class="shipping-notice">${icon('truck')} Shipping extra · Mumbai ₹100 · Outside Mumbai ₹120</div>
-      ${waLink(orderMessage(state.cart.reduce((n,i)=>n+i.price*i.qty,0),state.deliveryZone ? SHIPPING[state.deliveryZone] : null), 'Continue to WhatsApp', 'btn primary wa-btn')}
-      <p class="sub" style="margin-top:18px">Want saved wishlists, addresses, and order history? <a href="#account">Sign in with Google</a>.</p>
-      <a class="btn ghost" href="#cart" style="margin-top:10px">Return to bag</a>
-    </section>`;
-  }
-  const total = state.cart.reduce((n, i) => n + i.price * i.qty, 0);
-  const defaultAddress = savedAddresses.find(a => a.is_default) || savedAddresses[0];
-  const ship = defaultAddress?.city ? shippingFee(defaultAddress.city) : null;
-  const grand = total + ship;
-  const fullName = accountProfile?.full_name || authUser?.user_metadata?.full_name || authUser?.user_metadata?.name || '';
-  const nameParts = fullName.trim().split(/\s+/).filter(Boolean);
-  const addressNameParts = (defaultAddress?.recipient_name || '').trim().split(/\s+/).filter(Boolean);
-  const firstName = nameParts.shift() || addressNameParts.shift() || '';
-  const lastName = nameParts.join(' ') || addressNameParts.join(' ');
-  return `<section class="page-shell">
-    <p class="eyebrow">Almost yours</p><h1 class="page-title">Checkout</h1>
-    ${authUser ? '<p class="sub">Submitting saves a pending order request and its delivery details to your account. No payment is taken here.</p>' : '<p class="sub">Sign in to save order history. For guest ordering, use the WhatsApp option below.</p>'}
-    <div class="checkout">
-      <form id="checkout-form" novalidate>
-        <div class="form-grid">
-          <div class="field"><label for="first">First name</label><input id="first" name="first" required autocomplete="given-name" value="${esc(firstName || defaultAddress?.recipient_name?.split(/\s+/)[0] || '')}" aria-describedby="err-first"><span class="field-error" id="err-first"></span></div>
-          <div class="field"><label for="last">Last name</label><input id="last" name="last" required autocomplete="family-name" value="${esc(lastName)}" aria-describedby="err-last"><span class="field-error" id="err-last"></span></div>
-          <div class="field full-field"><label for="email">Email</label><input id="email" name="email" type="email" required autocomplete="email" value="${esc(authUser?.email || '')}" aria-describedby="err-email"><span class="field-error" id="err-email"></span></div>
-          <div class="field full-field"><label for="phone">Phone number</label><input id="phone" name="phone" type="tel" required inputmode="numeric" maxlength="10" placeholder="10-digit mobile number" autocomplete="tel-national" value="${esc(defaultAddress?.phone || accountProfile?.phone || '')}" aria-describedby="err-phone"><span class="field-error" id="err-phone"></span></div>
-          <div class="field full-field"><label for="address">Address</label><input id="address" name="address" required autocomplete="street-address" value="${esc(defaultAddress?.address_line1 || '')}" aria-describedby="err-address"><span class="field-error" id="err-address"></span></div>
-          <div class="field"><label for="city">City</label><input id="city" name="city" required autocomplete="address-level2" value="${esc(defaultAddress?.city || '')}" aria-describedby="err-city"><span class="field-error" id="err-city"></span></div>
-          <div class="field"><label for="state">State</label><input id="state" name="state" required autocomplete="address-level1" value="${esc(defaultAddress?.state || '')}" aria-describedby="err-state"><span class="field-error" id="err-state"></span></div>
-          <div class="field"><label for="pin">PIN code</label><input id="pin" name="pin" required inputmode="numeric" maxlength="6" pattern="[0-9]{6}" placeholder="6 digits" autocomplete="postal-code" value="${esc(defaultAddress?.postal_code || '')}" aria-describedby="err-pin"><span class="field-error" id="err-pin"></span></div>
-        </div>
-        ${authUser ? '<label class="order-consent"><input type="checkbox" id="order-consent"> I agree to save this delivery information and order request to my account. <a href="#privacy">Privacy details</a>.</label>' : ''}
-        <p class="error" id="form-error" role="alert"></p>
-        <div class="checkout-actions">
-          <button class="btn primary" type="submit" ${!catalogueReady?'disabled':''}>${ship===null?'Save order request':`Save order request · ${money(grand)}`}</button>
-          <span data-checkout-whatsapp>${waLink(orderMessage(total,ship), 'Order on WhatsApp instead', 'btn ghost wa-btn')}</span>
-        </div>
-        ${!catalogueReady?'<p class="error" role="status">Online order saving is temporarily unavailable. You can order on WhatsApp.</p>':''}
-        <p class="sub">${authUser ? 'Order requests are saved as pending and unpaid. The store confirms availability and delivery before payment.' : 'Guest orders are sent to WhatsApp; this form does not save your delivery details.'}</p>
-      </form>
-      <aside class="summary">
-        <h2>In your bag</h2>
-        ${state.cart.map(i => `<div class="sum-line"><span>${esc(i.name)} × ${i.qty}<small>${i.combo ? esc(i.badge) : i.size + 'ml'}</small></span><span>${money(i.price * i.qty)}</span></div>`).join('')}
-        <div class="sum-line"><span>Subtotal</span><span>${money(total)}</span></div>
-        <div class="sum-line"><span>Shipping</span><span data-checkout-shipping>${ship===null?'Enter your city':money(ship)}</span></div>
-        <div class="sum-line total"><span data-checkout-total-label>${ship===null?'Before shipping':'Total'}</span><span data-checkout-total>${money(grand)}</span></div>
-        <p class="delivery-note">Mumbai ₹100 · Outside Mumbai ₹120. Shipping is extra on every order.</p>
-      </aside>
-    </div>
-  </section>`;
-}
 
 function offers() { return comboPage(); }
 
@@ -1064,15 +973,15 @@ function setActiveNav(path) {
   });
 }
 
-const ROUTES = new Set(['landing', 'home', 'shop', 'combos', 'collections', 'finder', 'about', 'offers', 'cart', 'checkout', 'wishlist', 'account', 'privacy']);
+const ROUTES = new Set(['landing', 'home', 'shop', 'combos', 'collections', 'finder', 'about', 'offers', 'cart', 'checkout', 'wishlist', 'account', 'privacy', 'terms', 'shipping', 'returns', 'cancellation', 'contact', 'faq', 'tracking', 'admin']);
 
 function render(route, opts = {}) {
   normalizeCart();
-  const path = route || (location.hash.slice(1) || 'landing');
+  const path = route || (location.hash.slice(1) || location.pathname.slice(1) || 'landing');
 
   /* An in-page anchor (e.g. #the-vault) is not a route. Scroll to it and keep
      the current view instead of rendering a 404. */
-  if (!ROUTES.has(path) && !path.startsWith('product/')) {
+  if (!ROUTES.has(path) && !path.startsWith('product/') && !path.startsWith('orders/')) {
     const anchor = document.getElementById(path);
     if (anchor) {
       anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1097,15 +1006,20 @@ function render(route, opts = {}) {
   else if (path === 'about') view = about();
   else if (path === 'offers') view = offers();
   else if (path === 'cart') view = cart();
-  else if (path === 'checkout') view = checkout();
+  else if (path === 'checkout') view = Commerce.checkout();
   else if (path === 'wishlist') view = wishlist();
   else if (path === 'account') view = account();
-  else if (path === 'privacy') view = privacyNotice();
+  else if (['privacy','terms','shipping','returns','cancellation','contact','faq'].includes(path)) view = Commerce.policy(path);
+  else if(path==='tracking') view=Commerce.trackingPage();
+  else if(path.startsWith('orders/')) view=Commerce.orderPage(path.split('/')[1]);
+  else if(path==='admin') view=Commerce.admin();
   else if (path.startsWith('product/')) view = productView(get(path.split('/')[1]));
   else if (path === '404' || path === '') view = path === '' ? home() : notFound();
   else view = notFound();
 
   app.innerHTML = view;
+  if(routeChanged && path.startsWith('product/')){const p=get(path.split('/')[1]);if(p)Commerce.remember(p.id);}
+  Commerce.seo?.(path);
   currentPath = path;
   updateCounts();
   setActiveNav(path);
@@ -1184,14 +1098,18 @@ document.addEventListener('click', e => {
     } else {
       const detailRoot = add.closest('.detail');
       const sel = detailRoot && detailRoot.querySelector('.variant.selected');
-      size = Number((sel && sel.dataset.size) || state.selectedSize[p.id] || DEFAULT_SIZE);
+      size = Number((sel && sel.dataset.size) || state.selectedSize[p.id] || defaultSize(p));
       price = priceFor(p, size);
     }
+    if(!Commerce.available(p,size)){toast('This item is currently unavailable. Please contact the store.');return;}
     const existing = state.cart.find(i => i.id === p.id && i.size === size);
+    if((existing?.qty||0)+1>Commerce.stock(p,size).quantity){toast('The available quantity is already in your bag');return;}
+    Commerce.analytics('add_to_cart',{product_id:p.id,size_ml:size,quantity:1});
     if (existing && existing.qty >= 20) { toast('You can order up to 20 of each item'); return; }
     if (existing) existing.qty++;
     else state.cart.push({ id: p.id, name: p.name, notes: p.notes, img: p.img, size, price, qty: 1, combo: isCombo(p), badge });
     save();
+    if(add.hasAttribute('data-move-wishlist')){state.wish=state.wish.filter(id=>id!==p.id);save();if(authUser)void supabaseClient.from('wishlist_items').delete().eq('user_id',authUser.id).eq('product_id',p.id).then(({error})=>{if(error){state.wish.push(p.id);save();toast('Added to bag, but wishlist removal could not sync');}});render('wishlist',{keepScroll:true});}
     flashAdded(add);
     toast(`${p.name} added to your bag`);
     return;
@@ -1201,7 +1119,9 @@ document.addEventListener('click', e => {
   if (qty) {
     const i = state.cart[Number(qty.dataset.qty)];
     if (!i) return;
-    i.qty = Math.min(20, i.qty + Number(qty.dataset.delta));
+    const next=i.qty+Number(qty.dataset.delta);
+    if(Number(qty.dataset.delta)>0&&next>Commerce.stock(get(i.id),i.size).quantity){toast('That quantity is unavailable');return;}
+    i.qty = Math.min(20, next);
     if (i.qty < 1) state.cart.splice(Number(qty.dataset.qty), 1);
     save();
     render(null, { keepScroll: true });
@@ -1210,6 +1130,7 @@ document.addEventListener('click', e => {
 
   const rem = e.target.closest('[data-remove]');
   if (rem) {
+    Commerce.analytics('remove_from_cart',{product_id:state.cart[Number(rem.dataset.remove)]?.id});
     state.cart.splice(Number(rem.dataset.remove), 1);
     save();
     render(null, { keepScroll: true });
@@ -1226,7 +1147,7 @@ document.addEventListener('click', e => {
 
   const reset = e.target.closest('[data-reset]');
   if (reset) {
-    state.category = 'All'; state.query = '';
+    state.category = 'All'; state.filters={}; state.query = '';
     const si = document.querySelector('#search-input'); if (si) si.value = '';
     render('shop', { keepScroll: true });
     return;
@@ -1254,6 +1175,7 @@ document.addEventListener('click', e => {
     const addBtn = variant.closest('.detail')?.querySelector('[data-add]');
     const p = get(addBtn ? addBtn.dataset.add : '');
     const size = Number(variant.dataset.size);
+    if(addBtn&&p){addBtn.disabled=!Commerce.available(p,size);const badge=addBtn.previousElementSibling;if(badge?.classList.contains('stock-state'))badge.outerHTML=Commerce.badge(p,size);}
     if (p) {
       state.selectedSize[p.id] = size;
       const priceEl = document.querySelector('#detail-price');
@@ -1281,7 +1203,7 @@ document.addEventListener('change', e => {
 });
 
 document.addEventListener('input', e => {
-  if(e.target.id !== 'city' || !document.querySelector('#checkout-form')) return;
+  if(true) return; // Checkout totals are provided by quote_checkout, never browser city logic.
   const total=state.cart.reduce((n,i)=>n+i.price*i.qty,0);
   const ship=e.target.value.trim() ? shippingFee(e.target.value) : null;
   document.querySelector('[data-checkout-shipping]').textContent=ship===null?'Enter your city':money(ship);
@@ -1378,42 +1300,7 @@ document.addEventListener('submit', async e => {
   if (form.matches('#account-profile-form')) { await saveProfile(form); return; }
   if (form.matches('#account-address-form')) { await saveAddress(form); return; }
   if (!form.matches('#checkout-form')) return;
-  if (!authUser) {
-    const items = state.cart.map(i => `• ${i.name} (${i.combo ? i.badge : `${i.size}ml`}) × ${i.qty}`).join('\n');
-    const message = `Hi Parrfums Vault! I'd like to place a guest order.\n${items}\nPlease confirm current price, availability and delivery.`;
-    window.open(`${BRAND.whatsappDirect}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
-    return;
-  }
-  const fields = ['first', 'last', 'email', 'phone', 'address', 'city', 'state', 'pin'];
-  let ok = true, firstBad = null;
-  fields.forEach(id => {
-    const input = document.getElementById(id);
-    const err = document.getElementById('err-' + id);
-    let msg = '';
-    const v = (input.value || '').trim();
-    if (!v) msg = 'Required';
-    else if (id === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) msg = 'Enter a valid email';
-    else if (id === 'phone' && !/^[6-9]\d{9}$/.test(v)) msg = 'Enter a valid 10-digit mobile number';
-    else if (id === 'pin' && !/^\d{6}$/.test(v)) msg = 'Enter a valid 6-digit PIN code';
-    if (err) err.textContent = msg;
-    input.classList.toggle('invalid', Boolean(msg));
-    input.setAttribute('aria-invalid', String(Boolean(msg)));
-    if (msg) { ok = false; if (!firstBad) firstBad = input; }
-  });
-  const formErr = document.querySelector('#form-error');
-  if (!ok) {
-    formErr.textContent = 'Please complete all fields correctly.';
-    if (firstBad) firstBad.focus();
-    return;
-  }
-  const consent = document.getElementById('order-consent');
-  if (!consent?.checked) {
-    formErr.textContent = 'Please confirm that you agree to save these delivery details and this order request to your account.';
-    consent?.focus();
-    return;
-  }
-  formErr.textContent = '';
-  await createCustomerOrder(form);
+  await Commerce.submitCheckout(form);
 });
 
 /* ---------- init ---------- */

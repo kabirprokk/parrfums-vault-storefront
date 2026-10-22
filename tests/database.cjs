@@ -6,18 +6,21 @@ const fs=require('node:fs');
 const path=require('node:path');
 (async()=>{
   const db=new PGlite();
-  await db.exec(`create role anon; create role authenticated; create schema auth;
+  await db.exec(`create role anon; create role authenticated; create role service_role bypassrls; create schema auth;
     create table auth.users(id uuid primary key);
-    create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
+    create function auth.jwt() returns jsonb language sql stable as $$select jsonb_build_object('aal',coalesce(nullif(current_setting('request.jwt.claim.aal',true),''),'aal1'))$$;create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
     grant usage on schema auth to anon, authenticated; grant execute on function auth.uid() to anon, authenticated;`);
   const dir=path.join(__dirname,'../supabase/migrations');
   for(const file of fs.readdirSync(dir).filter(f=>f.endsWith('.sql')).sort())await db.exec(fs.readFileSync(path.join(dir,file),'utf8'));
   const user='00000000-0000-4000-8000-000000000001', other='00000000-0000-4000-8000-000000000002';
   await db.query('insert into auth.users(id) values ($1),($2)',[user,other]);
+  // Explicit fixture quantities/components are test-only, never production seeds.
+  await db.exec(`update public.product_prices set available_quantity=100;
+    insert into public.offer_components values('festive-four','angel-share',100,2),('festive-four','vanilla-28',30,2),('duo-plus','angel-share',50,2),('duo-plus','guilty-man',30,1);`);
   await db.exec(`set role authenticated; select set_config('request.jwt.claim.sub','${user}',false)`);
-  const delivery={recipient_name:'Test Customer',phone:'9876543210',address_line1:'123 Test Road',city:'Mumbai',state:'Maharashtra',postal_code:'400001'};
+  const delivery={recipient_name:'Test Customer',email:'test@example.invalid',phone:'9876543210',address_line1:'123 Test Road',city:'Mumbai',state:'Maharashtra',postal_code:'400001'};
   async function order(items,city='Mumbai'){
-    return (await db.query('select public.create_customer_order($1::jsonb,$2::jsonb) as id',[JSON.stringify(items),JSON.stringify({...delivery,city})])).rows[0].id;
+    return (await db.query('select public.checkout_order($1::jsonb,$2::jsonb,$3::uuid) as id',[JSON.stringify(items),JSON.stringify({...delivery,city}),crypto.randomUUID()])).rows[0].id;
   }
   for(const [size,price] of [[30,400],[50,750],[100,1250]]){
     const id=await order([{kind:'product',id:'angel-share',size_ml:size,quantity:1,price:1}]);
@@ -42,7 +45,7 @@ const path=require('node:path');
   assert.equal((await db.query('select * from public.customer_orders')).rows.length,0,'Orders must be private to their owner');
   await db.exec("reset role; set role anon; select set_config('request.jwt.claim.sub','',false)");
   assert.equal((await db.query('select * from public.product_prices')).rows.length,18);
-  await assert.rejects(db.exec("select public.create_customer_order('[]','{}')"),/permission denied/i);
+  await assert.rejects(db.exec("select public.checkout_order('[]','{}',gen_random_uuid())"),/permission denied/i);
   await db.close();
   console.log('PASS: all migrations, server pricing, location shipping, combos, validation, catalogue grants and order isolation.');
 })().catch(e=>{console.error(e);process.exitCode=1;});
