@@ -3,9 +3,19 @@
 /* appended polish */
 
 
-/* Custom cursor */
-#custom-cursor{position:fixed;top:0;left:0;width:12px;height:12px;border-radius:50%;background:var(--accent,#bf6b4f);pointer-events:none;z-index:99999;transform:translate(-50%,-50%);transition:width .15s,height .15s,background .15s;mix-blend-mode:difference}
+/* Custom semantic cursor: brand glyphs morph to match each interaction. */
+#custom-cursor{position:fixed;top:0;left:0;z-index:99999;pointer-events:none;width:34px;height:34px;display:grid;place-items:center;opacity:0;transform:translate(-50%,-50%) scale(.7);transition:opacity .15s,transform .18s,width .18s,height .18s;background:var(--ink,#1d2620);color:var(--paper,#fffefa);border:1px solid rgba(191,107,79,.75);border-radius:50%;box-shadow:0 4px 18px rgba(0,0,0,.18)}
+#custom-cursor.is-visible{opacity:1;transform:translate(-50%,-50%) scale(1)}
+#custom-cursor .cursor-glyph{font:20px/1 var(--sans,sans-serif);color:var(--accent,#bf6b4f)}
+#custom-cursor .cursor-label{position:absolute;left:calc(100% + 7px);top:50%;transform:translateY(-50%);background:var(--accent,#bf6b4f);color:#fff;padding:3px 6px;border-radius:3px;font:600 8px/1 var(--sans,sans-serif);letter-spacing:.12em;white-space:nowrap;opacity:0;transition:opacity .12s}
+#custom-cursor[data-state="link"],#custom-cursor[data-state="view"],#custom-cursor[data-state="edit"],#custom-cursor[data-state="grab"],#custom-cursor[data-state="grabbing"],#custom-cursor[data-state="save"],#custom-cursor[data-state="bag"],#custom-cursor[data-state="chat"],#custom-cursor[data-state="theme"],#custom-cursor[data-state="close"],#custom-cursor[data-state="prev"],#custom-cursor[data-state="next"]{width:42px;height:42px}
+#custom-cursor[data-state="text"]{width:20px;height:36px;border-radius:8px;background:transparent;border:2px solid var(--accent,#bf6b4f);box-shadow:none}
+#custom-cursor[data-state="disabled"]{background:#777;border-color:#aaa}
+#custom-cursor[data-state="wait"] .cursor-glyph{animation:pv-cursor-spin .8s linear infinite}
+#custom-cursor[data-state="grabbing"]{background:var(--accent,#bf6b4f)}
+#custom-cursor.is-pressed{transform:translate(-50%,-50%) scale(.88)}
+#custom-cursor[data-state="link"] .cursor-label,#custom-cursor[data-state="view"] .cursor-label,#custom-cursor[data-state="text"] .cursor-label,#custom-cursor[data-state="edit"] .cursor-label,#custom-cursor[data-state="grab"] .cursor-label,#custom-cursor[data-state="grabbing"] .cursor-label,#custom-cursor[data-state="wait"] .cursor-label,#custom-cursor[data-state="save"] .cursor-label,#custom-cursor[data-state="bag"] .cursor-label,#custom-cursor[data-state="chat"] .cursor-label,#custom-cursor[data-state="theme"] .cursor-label,#custom-cursor[data-state="close"] .cursor-label,#custom-cursor[data-state="prev"] .cursor-label,#custom-cursor[data-state="next"] .cursor-label{opacity:1}
 body.custom-cursor-active{cursor:none}
-body.custom-cursor-active a,body.custom-cursor-active button{cursor:none}
-#custom-cursor.is-hover{width:36px;height:36px;background:transparent;border:1.5px solid var(--accent,#bf6b4f)}
-@media (hover:none),(pointer:coarse){#custom-cursor{display:none}body.custom-cursor-active{cursor:auto}}
+body.custom-cursor-active *{cursor:none!important}
+@keyframes pv-cursor-spin{to{transform:rotate(360deg)}}
+@media (hover:none),(pointer:coarse){#custom-cursor{display:none}body.custom-cursor-active,body.custom-cursor-active *{cursor:auto!important}}

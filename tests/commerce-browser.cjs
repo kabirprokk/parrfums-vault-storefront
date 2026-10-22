@@ -42,6 +42,23 @@ const base = process.env.PV_TEST_URL || "http://127.0.0.1:8000";
   assert.equal(await page.locator("#sort").count(), 1);
   await page.goForward();
   assert.equal(await page.locator(".detail h1").count(), 1);
+  // Product detail pages use the same add-to-bag interaction as catalogue cards.
+  const addToBag = page.locator(".detail [data-add]");
+  assert.equal(await addToBag.isDisabled(), false, "available product should be addable");
+  await addToBag.click();
+  assert.match(await page.locator("[role=status]").allInnerTexts().then((xs) => xs.join(" ")), /added to your bag/i);
+  assert.equal(await page.locator(".detail [data-add]").isDisabled(), false, "add button must not remain busy or disabled");
+  await page.evaluate(() => {
+    get("angel-share").variants.find((v) => v.size_ml === 50).available_quantity = null;
+    render("product/angel-share");
+  });
+  assert.equal(await page.locator(".detail [data-add]").isDisabled(), true);
+  assert.match(await page.locator(".detail [data-add]").innerText(), /availability awaiting confirmation/i,
+    "unconfirmed live inventory must explain why adding is unavailable");
+  await page.evaluate(() => {
+    get("angel-share").variants.find((v) => v.size_ml === 50).available_quantity = 100;
+    render("product/angel-share");
+  });
   const a11y = async (label) => {
     const scan = await new AxeBuilder({ page })
       .include("#app")

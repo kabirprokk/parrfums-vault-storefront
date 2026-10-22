@@ -49,6 +49,11 @@ const { chromium } = require("playwright"),
   const headline = page.locator(".intro-copy h1");
   await headline.click();
   assert.equal(await headline.getAttribute("contenteditable"), "true");
+  await page.locator(".intro-art img").click();
+  assert.equal(await headline.getAttribute("contenteditable"), null,
+    "clicking outside the selected text deselects it");
+  await headline.click();
+  assert.equal(await headline.getAttribute("contenteditable"), "true");
   await page.evaluate(() => {
     document.querySelector(".intro-copy h1").textContent = "A headline the owner changed";
   });

@@ -605,6 +605,11 @@ function finder() {
 
 function productView(p) {
   if (!p) return notFound();
+  const addToBagButton = (item, size) => {
+    const availability = Commerce.stock(item, size);
+    const label = availability.available ? 'Add to bag' : availability.label;
+    return `<button class="btn primary full" type="button" data-add="${esc(item.id)}" ${availability.available ? '' : 'disabled'} aria-label="${esc(label)}${availability.available ? '' : ` — ${esc(item.name)} is not available to add right now`}">${esc(label)}</button>`;
+  };
   if (isCombo(p)) {
     return `<section class="page-shell"><div class="detail">
       <div class="detail-image"><div class="gallery-main">${imgTag(p.img, `${p.name} offer`, 'gallery-img')}</div></div>
@@ -612,7 +617,7 @@ function productView(p) {
         <p class="eyebrow">The vault offer</p><h1>${esc(p.name)}</h1><p class="sub">${esc(p.badge)}</p>
         <p class="large-price" id="detail-price">${money(p.price)}</p>
         <p>${esc(p.desc)}</p><p class="offer-notes">${esc(p.notes)}</p>
-        ${Commerce.badge(p,isCombo(p)?0:state.selectedSize[p.id]||DEFAULT_SIZE)}<button class="btn primary full" data-add="${p.id}" ${Commerce.available(p,isCombo(p)?0:state.selectedSize[p.id]||DEFAULT_SIZE)?'':'disabled'}>Add to bag</button>
+        ${Commerce.badge(p,0)}${addToBagButton(p, 0)}
         ${waLink(`Hi Parrfums Vault! I'd like to order the ${p.name} — ${p.badge} for ${money(p.price)}.`, 'Order on WhatsApp', 'btn ghost full wa-btn')}
       </div>
     </div></section>`;
@@ -639,7 +644,7 @@ function productView(p) {
       <p>${esc(p.desc)}</p>
       <p class="variant-label">Choose size</p>
       <div class="variant-row" role="group" aria-label="Choose size">${sizeButtons}</div>
-      ${Commerce.badge(p,isCombo(p)?0:state.selectedSize[p.id]||DEFAULT_SIZE)}<button class="btn primary full" data-add="${p.id}" ${Commerce.available(p,isCombo(p)?0:state.selectedSize[p.id]||DEFAULT_SIZE)?'':'disabled'}>Add to bag</button>
+      ${Commerce.badge(p,selSize)}${addToBagButton(p, selSize)}
       <button class="btn ghost full" data-wish="${p.id}" style="margin-top:10px">${heartSvg(wished)} ${wished ? 'In wishlist' : 'Add to wishlist'}</button>
       ${waLink(`Hi Parrfums Vault! I'd like to order ${p.name} (${selSize}ml — ${money(priceFor(p, selSize))}).`, 'Order on WhatsApp', 'btn ghost full wa-btn')}
       <p class="sub" style="margin-top:18px">Pan-India delivery · ${BRAND.city}</p>
@@ -1188,7 +1193,7 @@ document.addEventListener('click', e => {
     const addBtn = variant.closest('.detail')?.querySelector('[data-add]');
     const p = get(addBtn ? addBtn.dataset.add : '');
     const size = Number(variant.dataset.size);
-    if(addBtn&&p){addBtn.disabled=!Commerce.available(p,size);const badge=addBtn.previousElementSibling;if(badge?.classList.contains('stock-state'))badge.outerHTML=Commerce.badge(p,size);}
+    if(addBtn&&p){const availability=Commerce.stock(p,size);addBtn.disabled=!availability.available;addBtn.textContent=availability.available?'Add to bag':availability.label;addBtn.setAttribute('aria-label',`${availability.available?'Add to bag':availability.label}${availability.available?'':` — ${p.name} is not available to add right now`}`);const badge=addBtn.previousElementSibling;if(badge?.classList.contains('stock-state'))badge.outerHTML=Commerce.badge(p,size);}
     if (p) {
       state.selectedSize[p.id] = size;
       const priceEl = document.querySelector('#detail-price');
@@ -1357,5 +1362,37 @@ loadCatalogue();
 initializeAuth();
 startPresence();
 window.PVEdit?.init();
-// Custom cursor
-(function(){const c=document.getElementById('custom-cursor');if(!c)return;document.body.classList.add('custom-cursor-active');let x=0,y=0,rx=0,ry=0;document.addEventListener('mousemove',e=>{x=e.clientX;y=e.clientY;});function loop(){rx+=(x-rx)*.18;ry+=(y-ry)*.18;c.style.left=rx+'px';c.style.top=ry+'px';requestAnimationFrame(loop);}loop();document.addEventListener('mouseover',e=>{if(e.target.closest('a,button,input,select,textarea,[role="button"]'))c.classList.add('is-hover');else c.classList.remove('is-hover');});})();
+// Semantic brand cursor: each common interaction gets its own shape + label.
+(function(){
+  const cursor=document.getElementById('custom-cursor');if(!cursor)return;
+  const glyph=cursor.querySelector('.cursor-glyph'), label=cursor.querySelector('.cursor-label');
+  document.body.classList.add('custom-cursor-active');
+  let x=0,y=0,rx=0,ry=0,visible=false;
+  const shapes={default:['✦',''],link:['↗','OPEN'],text:['Ⅰ','TYPE'],edit:['✎','EDIT'],grab:['✥','DRAG'],grabbing:['✊','MOVE'],disabled:['⊘',''],wait:['◌','WAIT'],view:['⌕','VIEW'],save:['♡','SAVE'],bag:['＋','ADD'],chat:['▤','CHAT'],theme:['◐','THEME'],close:['×','CLOSE'],prev:['‹','PREV'],next:['›','NEXT']};
+  function update(target){
+    if(!target?.closest)return;
+    let type='default';
+    if(document.querySelector('#app .is-dragging'))type='grabbing';
+    else if(document.body.classList.contains('is-edit-mode')&&target.closest('[data-pv-editable]'))type='edit';
+    else if(document.body.classList.contains('is-edit-mode')&&target.closest('[data-pv-drag]'))type='grab';
+    else if(target.closest('[aria-busy="true"],.is-loading,[data-busy]'))type='wait';
+    else if(target.closest(':disabled,[aria-disabled="true"]'))type='disabled';
+    else if(target.closest('[aria-label*="close" i],[data-close],.close-search'))type='close';
+    else if(target.closest('[aria-label*="previous" i],[aria-label*="prev" i],[data-cursor="prev"]'))type='prev';
+    else if(target.closest('[aria-label*="next" i],[data-cursor="next"]'))type='next';
+    else if(target.closest('input:not([type="button"]),textarea,[contenteditable="true"]'))type='text';
+    else if(target.closest('[data-wish],.heart'))type='save';
+    else if(target.closest('[data-add],.quick-add'))type='bag';
+    else if(target.closest('.theme-toggle,[data-theme-toggle]'))type='theme';
+    else if(target.closest('a[href*="wa.me"],a[href*="whatsapp"],.wa-btn'))type='chat';
+    else if(target.closest('a[href] img,.gallery-main img,.detail-image img'))type='view';
+    else if(target.closest('a[href],button,[role="button"],summary'))type='link';
+    const [icon,text]=shapes[type]||shapes.default;
+    cursor.dataset.state=type;glyph.textContent=icon;label.textContent=text;
+  }
+  document.addEventListener('pointermove',e=>{x=e.clientX;y=e.clientY;if(!visible){visible=true;cursor.classList.add('is-visible');}update(e.target);},{passive:true});
+  document.addEventListener('pointerover',e=>update(e.target),{passive:true});
+  document.addEventListener('pointerdown',()=>cursor.classList.add('is-pressed'),{passive:true});
+  document.addEventListener('pointerup',()=>cursor.classList.remove('is-pressed'),{passive:true});
+  function loop(){rx+=(x-rx)*.24;ry+=(y-ry)*.24;cursor.style.left=rx+'px';cursor.style.top=ry+'px';requestAnimationFrame(loop);}loop();
+})();

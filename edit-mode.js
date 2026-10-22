@@ -240,6 +240,12 @@
   }
 
   function beginEdit(el, event) {
+    document.querySelectorAll("[data-pv-editing]").forEach(current => {
+      if (current !== el) {
+        current.removeAttribute("contenteditable");
+        current.removeAttribute("data-pv-editing");
+      }
+    });
     el.setAttribute("contenteditable", "true");
     el.dataset.pvEditing = "1";
     el.focus();
@@ -262,18 +268,31 @@
     } catch {}
   }
 
+  function endEdit() {
+    document.querySelectorAll("[data-pv-editing]").forEach(el => {
+      el.removeAttribute("contenteditable");
+      el.removeAttribute("data-pv-editing");
+    });
+    if (document.activeElement?.hasAttribute("contenteditable")) document.activeElement.blur();
+  }
+
   function onClick(event) {
     if (!state.on || state.acting) return;
     const target = event.target;
     if (!target || target.closest("#edit-toolbar")) return;
+    const editable = target.closest?.("[data-pv-editable]");
+    const current = document.querySelector("[data-pv-editing]");
+    if (current && current !== editable) endEdit();
     const root = app();
     if (!root || !root.contains(target)) return;
     if (target.matches("input,textarea,select")) return;
 
+    // Keep native caret placement when the owner clicks within the selected text.
+    if (current && current === editable) return;
+
     event.preventDefault();
     event.stopPropagation();
 
-    const editable = target.closest("[data-pv-editable]");
     if (editable) beginEdit(editable, event);
   }
 
