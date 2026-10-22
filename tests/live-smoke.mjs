@@ -1,7 +1,7 @@
 // Read-only production smoke checks. No accounts, orders, stock or reviews are created.
 import assert from "node:assert/strict";
-const url = "https://atxvfmvhnidknnhgwgaq.supabase.co",
-  key = "sb_publishable_fG_F6QyyAtg7hcSp9y2rMw_bJS2ZLYk";
+const url = "https://lshwmudskeeknmcxlffe.supabase.co",
+  key = "sb_publishable_wpkP3QTopRIY1V-yLUgx6Q_JNFC_p3B";
 const headers = { apikey: key, "Content-Type": "application/json" };
 const call = async (path, options = {}) =>
   fetch(url + path, {

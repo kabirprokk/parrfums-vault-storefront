@@ -1,6 +1,6 @@
 # Parrfums Vault production-readiness handoff
 
-This file is the context packet for the next engineer or AI. It records the work, the security evidence, how to verify it, and the items that still require the business owner. Read it with `README.md` and `SECURITY.md`. Never infer unknown stock, provider credentials, legal promises, tracking values or product facts.
+This file is the context packet for the next engineer. It records the work, the security evidence, how to verify it, and the items that still require the business owner. Read it with `README.md` and `SECURITY.md`. Never infer unknown stock, provider credentials, legal promises, tracking values or product facts.
 
 ## User requirements and preserved behavior
 
@@ -80,7 +80,7 @@ There is no real Google OAuth/MFA owner session, credentialed Razorpay payment/r
 
 ## EXTERNAL OWNER ACTIONS REQUIRED
 
-1. **Finish Google auth redirects:** The owner obtained a Google OAuth client and the browser returned an authorization code to the configured local callback, but credentials were not added to this repository. In Supabase Auth, set the final production Site URL and allowlist the actual production origin plus `/admin` (and `http://localhost:3000/admin` only when testing locally). In Google Console, the authorized redirect URI remains `https://atxvfmvhnidknnhgwgaq.supabase.co/auth/v1/callback`. The production domain is not known here.
+1. **Finish Google auth redirects:** The owner obtained a Google OAuth client and the browser returned an authorization code to the configured local callback, but credentials were not added to this repository. In Supabase Auth, set the final production Site URL and allowlist the actual production origin plus `/admin` (and `http://localhost:3000/admin` only when testing locally). In Google Console, the authorized redirect URI remains `https://lshwmudskeeknmcxlffe.supabase.co/auth/v1/callback`. The production domain is not known here.
 2. **Provision admin safely:** Owner signs into the correct project account, enrolls/uses MFA, verifies AAL2, then grants that specific auth user UUID membership in `admin_users` using an owner-controlled database session. Do not make all authenticated customers admins.
 3. **Configure real business inventory:** Count and enter stock for all actual 18 variants. Confirm real combo component recipes before enabling online combo checkout. Until then, unknown inventory and combo config correctly block online order reservation.
 4. **Configure payment provider:** Add the real Razorpay key ID, API secret and webhook signing secret only to Supabase Edge Function secrets; set `PAYMENT_PROVIDER=razorpay` and `ALLOWED_ORIGINS` to the actual site origin. Register `/functions/v1/payment-webhook` in Razorpay and verify with provider sandbox transactions/refund before launch. No credentials are in Git.

@@ -8,13 +8,13 @@ const escape = (s) =>
         c
       ],
   );
-const base = "https://atxvfmvhnidknnhgwgaq.supabase.co";
+const base = "https://lshwmudskeeknmcxlffe.supabase.co";
 async function query(table, filter) {
   const r = await fetch(base + "/rest/v1/" + table + "?select=*&" + filter, {
     headers: {
       apikey:
         process.env.SUPABASE_PUBLISHABLE_KEY ||
-        "sb_publishable_fG_F6QyyAtg7hcSp9y2rMw_bJS2ZLYk",
+        "sb_publishable_wpkP3QTopRIY1V-yLUgx6Q_JNFC_p3B",
     },
     signal: AbortSignal.timeout(5000),
   });

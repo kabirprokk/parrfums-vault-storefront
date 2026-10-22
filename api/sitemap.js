@@ -6,12 +6,12 @@ module.exports = async function (req, res) {
   }
   try {
     const response = await fetch(
-      "https://atxvfmvhnidknnhgwgaq.supabase.co/rest/v1/products?select=id&active=eq.true",
+      "https://lshwmudskeeknmcxlffe.supabase.co/rest/v1/products?select=id&active=eq.true",
       {
         headers: {
           apikey:
             process.env.SUPABASE_PUBLISHABLE_KEY ||
-            "sb_publishable_fG_F6QyyAtg7hcSp9y2rMw_bJS2ZLYk",
+            "sb_publishable_wpkP3QTopRIY1V-yLUgx6Q_JNFC_p3B",
         },
         signal: AbortSignal.timeout(5000),
       },

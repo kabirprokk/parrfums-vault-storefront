@@ -1,4 +1,4 @@
-﻿/* Parrfums Vault — storefront logic
+/* Parrfums Vault — storefront logic
    Catalogue, pricing and contact details verified against @parrfums.vault (Oct 2026).
    See BRAND.md for the full source of truth. Vanilla JS, no dependencies. */
 
@@ -25,9 +25,9 @@ let catalogueLoading=true;
 
 // Publishable key is designed for browser use; RLS and SELECT-only grants are
 // the security boundary. Never replace this with a secret/service-role key.
-const CATALOGUE_API = 'https://atxvfmvhnidknnhgwgaq.supabase.co/rest/v1';
-const CATALOGUE_KEY = 'sb_publishable_fG_F6QyyAtg7hcSp9y2rMw_bJS2ZLYk';
-const SUPABASE_URL = 'https://atxvfmvhnidknnhgwgaq.supabase.co';
+const CATALOGUE_API = 'https://lshwmudskeeknmcxlffe.supabase.co/rest/v1';
+const CATALOGUE_KEY = 'sb_publishable_wpkP3QTopRIY1V-yLUgx6Q_JNFC_p3B';
+const SUPABASE_URL = 'https://lshwmudskeeknmcxlffe.supabase.co';
 const supabaseClient = window.supabase?.createClient(SUPABASE_URL, CATALOGUE_KEY, {
   auth: { flowType: 'pkce', detectSessionInUrl: true, persistSession: true, autoRefreshToken: true, storageKey: 'pv-auth-v1' }
 });
@@ -182,7 +182,7 @@ async function loadCatalogue() {
     if (!response.ok) throw new Error(`Catalogue request failed (${response.status})`);
     return response.json();
   };
-  const safeImage = path => typeof path === 'string' && /^assets\/[a-zA-Z0-9._/-]+$/.test(path) && !path.includes('..') || typeof path === 'string' && path.startsWith('https://atxvfmvhnidknnhgwgaq.supabase.co/storage/v1/object/public/catalogue-media/') && !path.includes('..');
+  const safeImage = path => typeof path === 'string' && /^assets\/[a-zA-Z0-9._/-]+$/.test(path) && !path.includes('..') || typeof path === 'string' && path.startsWith('https://lshwmudskeeknmcxlffe.supabase.co/storage/v1/object/public/catalogue-media/') && !path.includes('..');
 
   try {
     const [rows, prices, offersRows, settings, components, ratings, popularity] = await Promise.all([
@@ -1311,9 +1311,110 @@ document.addEventListener('submit', async e => {
   await Commerce.submitCheckout(form);
 });
 
+/* ---------- Presence (online users) ---------- */
+let presenceChannel = null;
+const presenceTabId = (() => {
+  try {
+    let id = sessionStorage.getItem("pv-tab-id");
+    if (!id) { id = "tab-" + Math.random().toString(36).slice(2); sessionStorage.setItem("pv-tab-id", id); }
+    return id;
+  } catch { return "tab-" + Math.random().toString(36).slice(2); }
+})();
+function startPresence() {
+  if (!supabaseClient || presenceChannel) return;
+  try {
+    presenceChannel = supabaseClient.channel("site-presence", {
+      config: { presence: { key: presenceTabId } },
+    });
+    presenceChannel.on("presence", { event: "sync" }, () => {
+      const state = presenceChannel.presenceState();
+      const count = Object.keys(state).length;
+      const el = document.getElementById("admin-online-count");
+      if (el) el.textContent = String(count);
+      window.dispatchEvent(new CustomEvent("pv:presence", { detail: { count, state } }));
+    });
+    presenceChannel.subscribe(async (status) => {
+      if (status === "SUBSCRIBED") {
+        try { await presenceChannel.track({ path: location.hash || location.pathname, at: new Date().toISOString() }); } catch {}
+      }
+    });
+  } catch (e) { console.warn("presence failed", e); }
+}
+
+/* ---------- Admin edit mode ---------- */
+let editMode = false;
+function editClickHandler(e) {
+  if (!editMode) return;
+  const target = e.target;
+  if (!target || target.closest("input,textarea,button,a")) return;
+  e.preventDefault();
+  e.stopPropagation();
+  target.setAttribute("contenteditable", "true");
+  target.focus();
+}
+const editStorageKey = "pv-edits-v1";
+function loadEdits() {
+  try {
+    const raw = localStorage.getItem(editStorageKey);
+    if (!raw) return;
+    const edits = JSON.parse(raw);
+    if (!edits || typeof edits !== "object") return;
+    for (const [sel, html] of Object.entries(edits)) {
+      const el = document.querySelector(sel);
+      if (el) el.innerHTML = html;
+    }
+  } catch {}
+}
+function toggleEditMode() {
+  if (!Commerce?.cache?.admin) { try { toast("Admin access required"); } catch {} return; }
+  editMode = !editMode;
+  document.body.classList.toggle("is-edit-mode", editMode);
+  if (editMode) {
+    document.addEventListener("click", editClickHandler, true);
+  } else {
+    document.removeEventListener("click", editClickHandler, true);
+    document.querySelectorAll("#app [contenteditable]").forEach((el) => el.removeAttribute("contenteditable"));
+  }
+  if (editMode) {
+    try { toast("Edit mode on — click text to edit. Press E to toggle, Ctrl+S to save."); } catch {}
+    if (!document.getElementById("edit-toolbar")) {
+      const tb = document.createElement("div");
+      tb.id = "edit-toolbar";
+      tb.className = "edit-toolbar";
+      tb.innerHTML = '<button class="btn small primary" id="edit-save">Save</button><button class="btn small" id="edit-discard">Discard</button>';
+      document.body.append(tb);
+      document.getElementById("edit-save").onclick = saveEdits;
+      document.getElementById("edit-discard").onclick = () => { try { localStorage.removeItem(editStorageKey); location.reload(); } catch {} };
+    }
+  } else {
+    document.getElementById("edit-toolbar")?.remove();
+  }
+}
+function saveEdits() {
+  const edits = {};
+  document.querySelectorAll("#app [data-editable]").forEach((el, i) => {
+    if (!el.dataset.editSel) el.dataset.editSel = "pv-edit-" + i;
+    edits[el.dataset.editSel] = el.innerHTML;
+  });
+  // store by selector list (best-effort)
+  try { localStorage.setItem(editStorageKey, JSON.stringify(edits)); toast("Edits saved"); } catch {}
+}
+document.addEventListener("keydown", (e) => {
+  if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.isContentEditable)) return;
+  if ((e.key === "e" || e.key === "E") && Commerce?.cache?.admin) {
+    e.preventDefault();
+    toggleEditMode();
+  }
+  if ((e.key === "s" || e.key === "S") && editMode && (e.ctrlKey || e.metaKey)) {
+    e.preventDefault();
+    saveEdits();
+  }
+});
 /* ---------- init ---------- */
 
 render();
 updateCounts();
 loadCatalogue();
+loadEdits();
 initializeAuth();
+startPresence();

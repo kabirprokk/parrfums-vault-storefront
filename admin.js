@@ -10,6 +10,7 @@ Object.assign(
       editing: null,
       filter: "",
       mfa: null,
+      stats: null,
       page: 0,
       ascending: false,
       status: "",
@@ -48,8 +49,25 @@ Object.assign(
       model.error = "";
       const tab=model.tab, ticket=++generation;
       try {
-        if (model.tab === "overview")
-          {const rows=await Commerce.rpc("admin_sales_summary");if(ticket===generation)model.rows=rows;}
+        if (model.tab === "overview") {
+          const rows = await Commerce.rpc("admin_sales_summary");
+          if (ticket === generation) model.rows = rows;
+          // Extended admin stats: totals + recent orders with customer details.
+          try {
+            const [ordersRes, usersRes, recentRes] = await Promise.all([
+              supabaseClient.from("customer_orders").select("id", { count: "exact", head: true }),
+              supabaseClient.from("customer_profiles").select("user_id", { count: "exact", head: true }),
+              supabaseClient.from("customer_orders").select("id,order_number,recipient_name,phone,total_inr,status,payment_status,created_at,user_id").order("created_at", { ascending: false }).limit(10),
+            ]);
+            if (ticket === generation) {
+              model.stats = {
+                totalOrders: ordersRes.count || 0,
+                totalUsers: usersRes.count || 0,
+                recentOrders: recentRes.data || [],
+              };
+            }
+          } catch (e) {}
+        }
         else {
           let q = supabaseClient
             .from(resources[tab])
@@ -386,7 +404,7 @@ Object.assign(
                   ? ["code", "kind", "value", "active"]
                   : ["product_id", "display_name", "rating", "status"];
       const overview =
-        model.rows && !Array.isArray(model.rows)
+        (model.rows && !Array.isArray(model.rows)
           ? `<div class="stat-grid">${Object.entries(model.rows)
               .filter(
                 ([k, v]) => typeof v === "number" || typeof v === "string",
@@ -396,7 +414,7 @@ Object.assign(
                   `<article class="summary"><h2>${esc(Commerce.statusLabel(k))}</h2><strong>${esc(v)}</strong></article>`,
               )
               .join("")}</div>`
-          : "";
+          : "") + (model.stats ? `<div class="stat-grid" style="margin-top:16px"><article class="summary"><h2>Total orders</h2><strong>${esc(model.stats.totalOrders)}</strong></article><article class="summary"><h2>Total customers</h2><strong>${esc(model.stats.totalUsers)}</strong></article><article class="summary"><h2>Online now</h2><strong id="admin-online-count">—</strong></article></div>` : "");
       return `<section class="page-shell admin-page"><div class="section-head"><div><p class="eyebrow">Parrfums Vault</p><h1 class="page-title">Administration</h1></div><button class="btn" data-admin-refresh>Refresh</button></div><nav class="admin-tabs" aria-label="Administration sections">${tabs.map((t) => `<button class="btn ${model.tab === t ? "primary" : ""}" data-admin-tab="${t}" aria-pressed="${model.tab === t}">${esc(Commerce.statusLabel(t))}</button>`).join("")}</nav>${model.error ? `<p class="error" role="alert">${esc(model.error)}</p>` : ""}${model.loading ? '<p role="status">Loading…</p>' : ""}${editor()}${model.tab === "overview" ? overview : `<div class="admin-toolbar"><label for="admin-search">Search ${esc(model.tab)}</label><input id="admin-search" type="search" maxlength="120" value="${esc(model.filter)}">${model.tab==='orders'?`<label for="admin-order-status">Status</label><select id="admin-order-status" class="select"><option value="">All statuses</option>${['pending','confirmed','packed','shipped','delivered','cancelled','refunded'].map(v=>`<option value="${v}" ${model.status===v?'selected':''}>${Commerce.statusLabel(v)}</option>`).join('')}</select>`:''}<button class="btn" data-admin-search>Search</button><button class="btn" data-admin-sort>Reverse sort</button>${["products", "variants", "offers", "coupons"].includes(model.tab) ? '<button class="btn primary" data-admin-new>Add new</button>' : ""}</div><p class="sub">Page ${model.page+1} · Up to 50 records per page. Search orders across all pages by customer name, phone, email, order ID or reference.</p><div class="table-scroll"><table><thead><tr>${columns.map((c) => `<th scope="col">${esc(Commerce.statusLabel(c))}</th>`).join("")}<th scope="col">Manage</th></tr></thead><tbody>${rows.map((row) => `<tr>${columns.map((c) => `<td>${esc(row[c] ?? (c === "available_quantity" ? "Not configured" : ""))}${c === "available_quantity" && row[c] !== null && row[c] <= row.low_stock_threshold ? " · Low stock" : ""}</td>`).join("")}<td><button class="btn small" data-admin-edit="${esc(row.id || row.product_id)}" data-admin-size="${row.size_ml || ""}">Manage</button></td></tr>`).join("")}</tbody></table><div class="offer-actions"><button class="btn" data-admin-page="-1" ${model.page===0?'disabled':''}>Previous page</button><button class="btn" data-admin-page="1" ${(model.rows?.length||0)<50?'disabled':''}>Next page</button></div>${!rows.length ? '<p role="status">No matching records.</p>' : ""}</div>`}<p class="sub">All administrative writes are authorized in PostgreSQL and recorded in an audit log.</p></section>`;
     }
     async function mfa() {
