@@ -47,6 +47,15 @@ const { chromium } = require("playwright"),
     return r.fulfill({ json: null });
   });
   await page.goto(
+    (process.env.PV_TEST_URL || "http://127.0.0.1:8000") + "/admin",
+    { waitUntil: "networkidle" },
+  );
+  assert.equal(new URL(page.url()).pathname, "/admin", "admin is a direct URL");
+  assert.ok(await page.locator(".admin-console-header").isVisible());
+  assert.equal(await page.locator("body").evaluate((el) => el.classList.contains("is-admin")), true);
+  assert.equal(await page.locator(".site-header").isVisible(), false, "storefront header stays off the admin page");
+  assert.equal(await page.locator('link[rel="canonical"]').getAttribute("href"), new URL("/admin", page.url()).href);
+  await page.goto(
     (process.env.PV_TEST_URL || "http://127.0.0.1:8000") + "/#home",
     { waitUntil: "networkidle" },
   );

@@ -821,10 +821,11 @@ async function refreshAccountData(user) {
 async function startGoogleSignIn() {
   if (!supabaseClient) return;
   authNotice = '';
-  try { sessionStorage.setItem('pv-auth-return', '#account'); } catch {}
+  const adminLogin = location.pathname.replace(/\/+$/, '') === '/admin';
+  try { sessionStorage.setItem('pv-auth-return', adminLogin ? '/admin' : '#account'); } catch {}
   const { error } = await supabaseClient.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: `${location.origin}${location.pathname}`, queryParams: { prompt: 'select_account' } }
+    options: { redirectTo: `${location.origin}${adminLogin ? '/admin' : location.pathname}`, queryParams: { prompt: 'select_account' } }
   });
   if (error) {
     try { sessionStorage.removeItem('pv-auth-return'); } catch {}
@@ -934,6 +935,10 @@ function initializeAuth() {
     if (authUser) {
       let returnTo = '';
       try { returnTo = sessionStorage.getItem('pv-auth-return') || ''; sessionStorage.removeItem('pv-auth-return'); } catch {}
+      if (returnTo === '/admin') {
+        history.replaceState(history.state, '', '/admin');
+        setTimeout(() => render('admin', { keepScroll: true }), 0);
+      }
       if (returnTo === '#account' && location.hash !== returnTo) location.hash = returnTo;
     }
     if (currentPath === 'account') render('account', { keepScroll: true });
@@ -977,7 +982,7 @@ const ROUTES = new Set(['landing', 'home', 'shop', 'combos', 'collections', 'fin
 
 function render(route, opts = {}) {
   normalizeCart();
-  const path = route || (location.hash.slice(1) || location.pathname.slice(1) || 'landing');
+  const path = route || (location.hash.slice(1) || location.pathname.replace(/^\/+|\/+$/g, '') || 'landing');
 
   /* An in-page anchor (e.g. #the-vault) is not a route. Scroll to it and keep
      the current view instead of rendering a 404. */
@@ -995,6 +1000,7 @@ function render(route, opts = {}) {
   const isLanding = path === 'landing';
 
   document.body.classList.toggle('is-landing', isLanding);
+  document.body.classList.toggle('is-admin', path === 'admin');
 
   let view;
   if (isLanding) view = landing();
@@ -1017,7 +1023,9 @@ function render(route, opts = {}) {
   else if (path === '404' || path === '') view = path === '' ? home() : notFound();
   else view = notFound();
 
-  app.innerHTML = view;
+  app.innerHTML = path === 'admin'
+    ? `<div class="admin-console"><header class="admin-console-header"><a class="admin-console-brand" href="/" aria-label="Parrfums Vault storefront"><img src="assets/parrfums-vault-logo.png" width="42" height="42" alt=""><span>Parrfums <i>Vault</i></span></a><p class="admin-console-label">Secure administration</p><div class="admin-console-actions"><button class="icon-btn" type="button" data-theme-toggle aria-label="Switch theme"></button>${authUser ? '<button class="btn small" type="button" data-auth-sign-out>Sign out</button>' : '<a class="btn small" href="/">Storefront</a>'}</div></header>${view}<div class="admin-console-footer">Private administrator workspace · Access is verified by Supabase for protected operations.</div></div>`
+    : view;
   if(routeChanged && path.startsWith('product/')){const p=get(path.split('/')[1]);if(p)Commerce.remember(p.id);}
   Commerce.seo?.(path);
   currentPath = path;

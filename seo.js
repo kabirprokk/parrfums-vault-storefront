@@ -51,7 +51,9 @@ Object.assign(
       meta("og:type", p ? "product" : "website", true);
       const url = p
         ? Commerce.productUrl(p.id)
-        : location.origin +
+        : route === "admin"
+          ? location.origin + "/admin"
+          : location.origin +
           "/" +
           (["landing", "home"].includes(route) ? "" : "#" + route);
       meta("og:url", url, true);

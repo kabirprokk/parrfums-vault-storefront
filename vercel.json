@@ -45,6 +45,10 @@
       "destination": "/api/not-found"
     },
     {
+      "source": "/admin",
+      "destination": "/index.html"
+    },
+    {
       "source": "/product/:id",
       "destination": "/api/page?id=:id"
     },
