@@ -12,6 +12,10 @@ python -m http.server 8000
 
 Then open <http://localhost:8000>. The default route is the landing page; `#home` opens the store.
 
+The original full-screen landing entrance is preserved, with Shop now leading to the upgraded store. The combo slideshow remains below the landing hero and advances every four seconds with a 500ms crossfade. Only Combos appears in navigation; existing `#offers` links remain compatible.
+
+Light/dark controls are available on the landing page and in the store header. The first visit follows the system theme. A visitor's explicit choice is saved locally, synchronized across tabs, and applied by `theme.js` before styles load to avoid a bright flash. Product photographs keep their original colours in both themes. Reduced-motion preferences disable the crossfade and autoplay by default.
+
 ## Deploy to Vercel
 
 Import this GitHub repository in Vercel. Use the repository root as the project root; leave the framework preset as **Other** and the build and output commands empty. Vercel serves `index.html` and the local assets directly. Pushes to the production branch trigger deployments.
@@ -20,6 +24,7 @@ Import this GitHub repository in Vercel. Use the repository root as the project 
 
 - `index.html` — document shell, navigation, footer, metadata, and favicon
 - `app.js` — landing page, catalogue, routes, account flows, cart, checkout, and interactions
+- `theme.js` — early theme initialization, system preferences and persistent theme controls
 - `styles.css`, `polish.css` — base and brand styling
 - `upgrade.css` — current collection layout, responsive navigation and combo presentation
 - `assets/` — self-hosted photography and the supplied Parrfums Vault logo

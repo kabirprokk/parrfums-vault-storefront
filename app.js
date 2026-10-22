@@ -335,9 +335,20 @@ const brandMark = `<span class="brand-mark" aria-hidden="true"><img class="logo-
 
 const arrowSvg = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>`;
 const arrowDownSvg = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>`;
+const themeIcon = () => window.PVTheme?.icon() || '';
 
 /* ---------------------------------------------------------------- landing */
 function landing() {
+  return `<section class="landing">
+    <div class="landing-bg" role="img" aria-label="Parrfums Vault fragrance photography"></div>
+    <div class="landing-scrim" aria-hidden="true"></div>
+    <div class="landing-top"><a class="brand landing-brand" href="#home" aria-label="Parrfums Vault — enter the store">${brandMark}</a><div class="landing-top-actions"><button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to dark mode">${themeIcon()}</button><a class="landing-enter" href="#home">Shop now ${arrowSvg}</a></div></div>
+    <div class="landing-inner"><p class="landing-eyebrow">Luxury in a bottle</p><h1 class="landing-brand-name">Parrfums Vault</h1><p class="landing-sub">Handmade, long-lasting fragrance from ${BRAND.city}. Unique, timeless scents in limited batches, delivered across India.</p><div class="landing-actions"><a class="btn primary lg" href="#home">Shop now ${arrowSvg}</a>${waLink('Hi Parrfums Vault! I would like to place an order.', 'Order on WhatsApp', 'btn ghost lg wa-btn')}<a class="landing-combos" href="#combos">Explore the combos ${arrowSvg}</a></div></div>
+    <div class="landing-foot"><span>Handmade in ${BRAND.city}</span><span>Pan-India delivery</span><span>From ₹400</span><button class="landing-scroll" type="button" data-scroll-to="the-vault" aria-label="Explore fragrance combos below">${arrowDownSvg}</button></div>
+  </section>${storefrontSections()}`;
+}
+
+function home() {
   return `<section class="vault-intro">
     <div class="intro-copy">
       <p class="eyebrow"><span class="live-dot" aria-hidden="true"></span> Handmade in Mumbai · Worn everywhere</p>
@@ -348,8 +359,11 @@ function landing() {
       <p class="delivery-note">${icon('truck')} Delivery across India · Mumbai ₹100 / elsewhere ₹120</p>
     </div>
     <div class="intro-art">${imgTag(IMG.hero, 'Angel Share by Parrfums Vault, an everyday essential', '', true)}<span class="art-caption">Your everyday, a little extraordinary.</span></div>
-  </section>
-  <div class="vault-ribbon" aria-label="Our promise"><span>Small batches. Lasting impressions.</span><span>Handmade with intention</span><span>✨ Find your fragrance identity</span></div>
+  </section>${storefrontSections()}`;
+}
+
+function storefrontSections() {
+  return `<div class="vault-ribbon" aria-label="Our promise"><span>Small batches. Lasting impressions.</span><span>Handmade with intention</span><span>✨ Find your fragrance identity</span></div>
   <section class="section combo-section" id="the-vault">
     <div class="section-head"><div><p class="eyebrow">A little more to love</p><h2>Good things come <em>together.</em></h2></div><a class="text-link" href="#combos">All combos ${arrowSvg}</a></div>
     ${comboSlideshow()}
@@ -392,15 +406,29 @@ function setupCarousel() {
   const dots = [...root.querySelectorAll('[data-slide]')];
   const pause = root.querySelector('[data-carousel-pause]');
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
-  let index = 0, paused = motion.matches, hovered = false, focused = false, visible = true, startX = null;
+  let index = 0, paused = motion.matches, hovered = false, focused = false, visible = true, startX = null, fadeTimer;
   const setPause = () => {
     pause.textContent = paused ? '▶' : 'Ⅱ';
     pause.setAttribute('aria-label', paused ? 'Play slideshow' : 'Pause slideshow');
     pause.setAttribute('aria-pressed', String(paused));
   };
   const show = (next, manual = false) => {
-    index = (next + slides.length) % slides.length;
+    const nextIndex = (next + slides.length) % slides.length;
+    if (nextIndex === index) return;
+    clearTimeout(fadeTimer);
+    root.querySelector('.combo-outgoing')?.remove();
+    slides.forEach(slide => slide.classList.remove('combo-entering'));
+    if (!motion.matches) {
+      const outgoing = slides[index].cloneNode(true);
+      outgoing.classList.add('combo-outgoing');
+      outgoing.setAttribute('aria-hidden', 'true');
+      outgoing.inert = true;
+      root.querySelector('.combo-stage').appendChild(outgoing);
+    }
+    index = nextIndex;
     slides.forEach((s,i)=>{s.hidden=i!==index;});
+    if (!motion.matches) slides[index].classList.add('combo-entering');
+    fadeTimer = setTimeout(() => { root.querySelector('.combo-outgoing')?.remove(); slides[index].classList.remove('combo-entering'); }, 550);
     dots.forEach((d,i)=>d.setAttribute('aria-pressed',String(i===index)));
     if(manual) root.querySelector('[data-slide-status]').textContent=slides[index].getAttribute('aria-label');
   };
@@ -425,9 +453,9 @@ function setupCarousel() {
   observer.observe(root);
   const reduce = () => { if(motion.matches) {paused=true;setPause();} };
   motion.addEventListener('change', reduce);
-  const timer=setInterval(()=>{if(!paused&&!hovered&&!focused&&!document.hidden&&visible)show(index+1);},6500);
+  const timer=setInterval(()=>{if(!paused&&!hovered&&!focused&&!document.hidden&&visible)show(index+1);},4000);
   setPause();
-  carouselCleanup=()=>{clearInterval(timer);observer.disconnect();motion.removeEventListener('change',reduce);};
+  carouselCleanup=()=>{clearInterval(timer);clearTimeout(fadeTimer);observer.disconnect();motion.removeEventListener('change',reduce);};
 }
 
 function uspStrip() {
@@ -477,7 +505,6 @@ function contactBand(eyebrow = 'Ready when you are', heading = 'Two taps from yo
   </section>`;
 }
 
-function home() { return landing(); }
 
 function shop() {
   const q = state.query.trim().toLowerCase();
@@ -1021,7 +1048,7 @@ function about() {
 let currentPath = null;
 
 function setActiveNav(path) {
-  const map = { shop: '#shop', combos: '#combos', collections: '#collections', finder: '#finder', about: '#about', offers: '#offers', account: '#account' };
+  const map = { shop: '#shop', combos: '#combos', collections: '#collections', finder: '#finder', about: '#about', offers: '#combos', account: '#account' };
   const active = path.startsWith('product/') ? '#shop' : (map[path] || (path === 'home' ? '#home' : ''));
   document.querySelectorAll('.main-nav a').forEach(a => {
     const href = a.getAttribute('href');
@@ -1075,6 +1102,7 @@ function render(route, opts = {}) {
   currentPath = path;
   updateCounts();
   setActiveNav(path);
+  window.PVTheme?.sync();
   setupCarousel();
 
   if (keepScroll) {
@@ -1233,9 +1261,10 @@ document.addEventListener('click', e => {
   const closeSearch = e.target.closest('.close-search');
   if (closeSearch) { closeDrawer(); return; }
 
-  if (e.target.closest('.main-nav a')) {
+  if (e.target.closest('.site-header a')) {
     document.querySelector('.main-nav')?.classList.remove('open');
     document.querySelector('.menu-toggle')?.setAttribute('aria-expanded', 'false');
+    document.querySelector('.menu-toggle')?.setAttribute('aria-label', 'Open menu');
   }
 });
 
@@ -1313,6 +1342,8 @@ document.addEventListener('keydown', e => {
     if (nav && nav.classList.contains('open')) {
       nav.classList.remove('open');
       document.querySelector('.menu-toggle')?.setAttribute('aria-expanded', 'false');
+      document.querySelector('.menu-toggle')?.setAttribute('aria-label', 'Open menu');
+      document.querySelector('.menu-toggle')?.focus();
       document.querySelector('.menu-toggle')?.focus();
     }
   }
