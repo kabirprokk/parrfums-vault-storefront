@@ -74,13 +74,15 @@ const { chromium } = require("playwright"),
     render("admin");
   });
   await page.locator("[data-admin-details]").click();
-  await page.waitForSelector(".stat-grid");
+  await page.waitForSelector("[data-admin-tab=inventory]");
   await page.locator("[data-admin-tab=inventory]").click();
+  await page.waitForSelector("[data-admin-edit]");
   await page.locator("[data-admin-edit]").click();
   await page.locator("#admin-quantity").fill("0");
   await page.locator("#admin-note").fill("Test-only counted stock");
   await page.locator("#admin-editor [type=submit]").click();
   await page.waitForFunction(() => !document.querySelector("#admin-editor"));
+  await page.waitForSelector("[data-admin-tab=variants]");
   assert.equal(writes.at(-1).name, "admin_adjust_inventory");
   assert.equal(writes.at(-1).args.p_quantity, 0);
   assert.match(writes.at(-1).args.p_request_key, /^[0-9a-f-]{36}$/i);

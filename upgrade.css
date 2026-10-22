@@ -238,6 +238,37 @@ footer p,footer small{color:var(--muted)}
 [data-theme="dark"] .contact-band .contact-item:hover{background:#2d231b}
 [data-theme="dark"] .contact-item small,[data-theme="dark"] .finder-teaser p:not(.eyebrow){color:#c0ad98}
 [data-theme="dark"] .finder-option:hover{background:#30271f;border-color:var(--accent)}
+
+/* --------------------------------------------------------------------------
+   Image fit: cards now hug their own artwork.
+   The holding element no longer forces a ratio that the photo does not share,
+   so there is no empty cream/white band above or below the image.
+   -------------------------------------------------------------------------- */
+.product-image{aspect-ratio:auto;background:transparent}
+.product-image a{height:auto}
+.product-image img{width:100%;height:auto;aspect-ratio:auto;object-fit:cover;background:transparent}
+.offer-img{background:transparent}
+.offer-img img{width:100%;height:auto;aspect-ratio:auto;object-fit:cover;background:transparent}
+.combo-grid .offer-img img{aspect-ratio:auto;object-fit:cover}
+.combo-poster{background:transparent}
+.combo-poster img{width:100%;height:auto;aspect-ratio:auto;object-fit:cover;background:transparent}
+.gallery-img,.detail-image img{height:auto;aspect-ratio:auto;object-fit:cover;background:transparent}
+.landing-gallery img{width:100%;height:auto;aspect-ratio:auto;object-fit:cover;background:transparent}
+
+/* --------------------------------------------------------------------------
+   Admin edit mode: a fixed bottom-left toolbar plus clear affordances for
+   the text the owner can change, the blocks they can drag and the block that
+   is currently being edited.
+   -------------------------------------------------------------------------- */
+.edit-toolbar{position:fixed;left:16px;bottom:16px;z-index:99999;display:flex;flex-direction:column;gap:8px;align-items:flex-start;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:10px 12px;box-shadow:0 18px 48px rgba(29,38,32,.18);max-width:min(300px,calc(100vw - 32px))}
+.edit-toolbar .edit-toolbar-actions{display:flex;gap:6px;flex-wrap:wrap}
+.edit-toolbar p{margin:0;font-size:11px;line-height:1.45;color:var(--muted)}
+body.is-edit-mode [data-pv-editable]{cursor:text;outline:1px dashed transparent;outline-offset:3px;transition:outline-color .15s ease,background .15s ease}
+body.is-edit-mode [data-pv-editable]:hover{outline-color:rgba(191,107,79,.5)}
+body.is-edit-mode [data-pv-editable][contenteditable]{outline:2px solid var(--accent);outline-offset:3px;background:rgba(191,107,79,.07)}
+body.is-edit-mode .is-dragging{opacity:.55}
+body.is-edit-mode [draggable]{cursor:grab}
+[data-theme="dark"] .edit-toolbar{box-shadow:0 18px 48px rgba(0,0,0,.5)}
 [data-theme="dark"] .mood-chip:hover,[data-theme="dark"] .pill:hover{background:#30271f;color:var(--ink)}
 [data-theme="dark"] .mood-chip.active,[data-theme="dark"] .variant.selected{background:#e8c6a1;border-color:#e8c6a1;color:#211912}
 [data-theme="dark"] .search-drawer{background:#000b}

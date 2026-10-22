@@ -216,7 +216,7 @@ const Commerce = (() => {
   }
   function filters() {
     const f = state.filters || {};
-    return `<div class="commerce-filters"><div class="field"><label for="catalogue-search">Search fragrance</label><input id="catalogue-search" type="search" value="${esc(state.query)}" maxlength="100" placeholder="Name, notes or family"></div><div class="field"><label for="filter-family">Fragrance family</label><select id="filter-family" class="select"><option value="">All families</option>${[
+    return `<details class="commerce-filters-wrap" open><summary>Filters &amp; search</summary><div class="commerce-filters"><div class="field"><label for="catalogue-search">Search fragrance</label><input id="catalogue-search" type="search" value="${esc(state.query)}" maxlength="100" placeholder="Name, notes or family"></div><div class="field"><label for="filter-family">Fragrance family</label><select id="filter-family" class="select"><option value="">All families</option>${[
       ...new Set(products.map((p) => p.fragrance_family).filter(Boolean)),
     ]
       .sort()
@@ -236,7 +236,7 @@ const Commerce = (() => {
       )
       .join(
         "",
-      )}</select></div><div class="field"><label for="filter-price">Maximum price (₹)</label><input id="filter-price" type="number" min="0" max="10000000" value="${esc(f.maxPrice || "")}" placeholder="Any price"></div><div class="field"><label for="filter-availability">Availability</label><select id="filter-availability" class="select"><option value="">Any availability</option><option value="available" ${f.availability === "available" ? "selected" : ""}>Available</option><option value="unavailable" ${f.availability === "unavailable" ? "selected" : ""}>Unavailable / unconfirmed</option></select></div><button class="btn ghost" data-apply-filters>Apply filters</button></div>`;
+      )}</select></div><div class="field"><label for="filter-price">Maximum price (₹)</label><input id="filter-price" type="number" min="0" max="10000000" value="${esc(f.maxPrice || "")}" placeholder="Any price"></div><div class="field"><label for="filter-availability">Availability</label><select id="filter-availability" class="select"><option value="">Any availability</option><option value="available" ${f.availability === "available" ? "selected" : ""}>Available</option><option value="unavailable" ${f.availability === "unavailable" ? "selected" : ""}>Unavailable / unconfirmed</option></select></div><button class="btn ghost" data-apply-filters>Apply filters</button></div></details>`;
   }
   function recentIds() {
     try {

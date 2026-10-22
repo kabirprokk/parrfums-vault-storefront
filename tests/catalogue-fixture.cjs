@@ -27,6 +27,7 @@ module.exports = async function fixture(page) {
     const url = new URL(route.request().url());
     const table = url.pathname.split("/").pop();
     if (table === "storefront_settings") return route.fulfill({ json: [{ revision: "2026-10-22-commerce" }] });
+    if (table === "site_content") return route.fulfill({ json: [] });
     if (["offer_components", "product_review_summary", "product_popularity", "public_reviews"].includes(table)) return route.fulfill({ json: [] });
     if (table === "products") return route.fulfill({ json: PRODUCTS.map((r, i) => ({ ...r, fragrance_family: i < 2 ? "Test family" : null, created_at: `2026-10-${String(i + 1).padStart(2, "0")}T00:00:00Z` })) });
     if (table === "product_prices") return route.fulfill({ json: PRICES });

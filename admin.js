@@ -458,7 +458,7 @@ Object.assign(
         if (e.target.closest("[data-admin-mfa]")) return void mfa();
         if (e.target.closest("[data-admin-menu]")) { model.adminView = "menu"; render("admin"); return; }
         if (e.target.closest("[data-admin-website]")) { location.href = "/?edit=1"; return; }
-        if (e.target.closest("[data-admin-details]")) { model.adminView = "details"; model.tab = "overview"; model.rows = null; render("admin"); return; }
+        if (e.target.closest("[data-admin-details]")) { model.adminView = "details"; generation++; model.loading = false; model.page = 0; model.status = ""; model.tab = "overview"; model.rows = null; model.editing = null; model.filter = ""; render("admin"); return; }
         if (!e.target.closest(".admin-page")) return;
         const tab = e.target.closest("[data-admin-tab]");
         if (tab) {

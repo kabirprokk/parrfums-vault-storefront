@@ -226,11 +226,15 @@ async function loadCatalogue() {
       if (!product.sizes.includes(state.selectedSize[product.id])) state.selectedSize[product.id] = product.sizes.includes(DEFAULT_SIZE) ? DEFAULT_SIZE : product.sizes[0];
     }
     // Do not interrupt an in-progress gesture/scroll if the network responds late.
-    if (!catalogueUserInteracted) render(location.hash.slice(1) || location.pathname.slice(1) || 'landing', { keepScroll: true });
+    // Re-render the route the app is actually showing, never the URL alone, so a
+    // late catalogue response can never replace the admin console with another page.
+    const target = currentPath || (location.hash.slice(1) || location.pathname.replace(/^\/+|\/+$/g, '') || 'landing');
+    if (!catalogueUserInteracted) render(target, { keepScroll: true });
+    else render(currentPath, { keepScroll: true });
   } catch {
     // Keep the bundled catalogue available if the network/API is unavailable.
     catalogueLoading=false;console.warn('Using the built-in catalogue because the live catalogue could not be loaded.');
-    if(currentPath==='shop')render('shop',{keepScroll:true});
+    render(currentPath, { keepScroll: true });
   }
 }
 
@@ -655,7 +659,7 @@ function cartSummary(total) {
     <label class="shipping-label" for="delivery-zone">Delivery location</label><select class="select shipping-select" id="delivery-zone"><option value="" ${!state.deliveryZone?'selected':''}>Choose your location</option><option value="mumbai" ${state.deliveryZone==='mumbai'?'selected':''}>Mumbai · ₹100</option><option value="outside" ${state.deliveryZone==='outside'?'selected':''}>Outside Mumbai · ₹120</option></select>
     <div class="sum-line"><span>Shipping</span><span>${ship === null ? '₹100–₹120' : money(ship)}</span></div>
     <div class="sum-line total"><span>${ship === null ? 'Total before shipping' : 'Total'}</span><span>${money(total + (ship || 0))}</span></div>
-    <a class="btn primary full" href="#checkout">Continue to checkout</a>
+    ${authUser ? '<a class="btn primary full" href="#checkout">Continue to checkout</a>' : '<button class="btn primary full" type="button" data-auth-sign-in>Sign in to checkout</button>'}
     ${waLink(orderMessage(total, ship), 'Send this order on WhatsApp', 'btn ghost full wa-btn')}
   </aside>`;
 }
@@ -1027,6 +1031,7 @@ function render(route, opts = {}) {
     ? `<div class="admin-console"><header class="admin-console-header"><a class="admin-console-brand" href="/" aria-label="Parrfums Vault storefront"><img src="assets/parrfums-vault-logo.png" width="42" height="42" alt=""><span>Parrfums <i>Vault</i></span></a><p class="admin-console-label">Secure administration</p><div class="admin-console-actions"><button class="icon-btn" type="button" data-theme-toggle aria-label="Switch theme"></button>${authUser ? '<button class="btn small" type="button" data-admin-menu>Menu</button><button class="btn small" type="button" data-auth-sign-out>Sign out</button>' : '<a class="btn small" href="/">Storefront</a>'}</div></header>${view}<div class="admin-console-footer">Private administrator workspace · Access is verified by Supabase for protected operations.</div></div>`
     : view;
   if(routeChanged && path.startsWith('product/')){const p=get(path.split('/')[1]);if(p)Commerce.remember(p.id);}
+  window.PVEdit?.afterRender();
   Commerce.seo?.(path);
   currentPath = path;
   updateCounts();
@@ -1341,81 +1346,16 @@ function startPresence() {
   } catch (e) { console.warn("presence failed", e); }
 }
 
-/* ---------- Admin edit mode ---------- */
-let editMode = false;
-function editClickHandler(e) {
-  if (!editMode) return;
-  const target = e.target;
-  if (!target || target.closest("input,textarea,button,a")) return;
-  e.preventDefault();
-  e.stopPropagation();
-  target.setAttribute("contenteditable", "true");
-  target.focus();
-}
-const editStorageKey = "pv-edits-v1";
-function loadEdits() {
-  try {
-    const raw = localStorage.getItem(editStorageKey);
-    if (!raw) return;
-    const edits = JSON.parse(raw);
-    if (!edits || typeof edits !== "object") return;
-    for (const [sel, html] of Object.entries(edits)) {
-      const el = document.querySelector(sel);
-      if (el) el.innerHTML = html;
-    }
-  } catch {}
-}
-function toggleEditMode() {
-  if (!Commerce?.cache?.admin) { try { toast("Admin access required"); } catch {} return; }
-  editMode = !editMode;
-  document.body.classList.toggle("is-edit-mode", editMode);
-  if (editMode) {
-    document.addEventListener("click", editClickHandler, true);
-  } else {
-    document.removeEventListener("click", editClickHandler, true);
-    document.querySelectorAll("#app [contenteditable]").forEach((el) => el.removeAttribute("contenteditable"));
-  }
-  if (editMode) {
-    try { toast("Edit mode on — click text to edit. Press E to toggle, Ctrl+S to save."); } catch {}
-    if (!document.getElementById("edit-toolbar")) {
-      const tb = document.createElement("div");
-      tb.id = "edit-toolbar";
-      tb.className = "edit-toolbar";
-      tb.innerHTML = '<button class="btn small primary" id="edit-save">Save</button><button class="btn small" id="edit-discard">Discard</button>';
-      document.body.append(tb);
-      document.getElementById("edit-save").onclick = saveEdits;
-      document.getElementById("edit-discard").onclick = () => { try { localStorage.removeItem(editStorageKey); location.reload(); } catch {} };
-    }
-  } else {
-    document.getElementById("edit-toolbar")?.remove();
-  }
-}
-function saveEdits() {
-  const edits = {};
-  document.querySelectorAll("#app [data-editable]").forEach((el, i) => {
-    if (!el.dataset.editSel) el.dataset.editSel = "pv-edit-" + i;
-    edits[el.dataset.editSel] = el.innerHTML;
-  });
-  // store by selector list (best-effort)
-  try { localStorage.setItem(editStorageKey, JSON.stringify(edits)); toast("Edits saved"); } catch {}
-}
-document.addEventListener("keydown", (e) => {
-  if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.isContentEditable)) return;
-  if ((e.key === "e" || e.key === "E") && Commerce?.cache?.admin) {
-    e.preventDefault();
-    toggleEditMode();
-  }
-  if ((e.key === "s" || e.key === "S") && editMode && (e.ctrlKey || e.metaKey)) {
-    e.preventDefault();
-    saveEdits();
-  }
-});
+/* ---------- Admin edit mode ----------
+   The edit mode lives in edit-mode.js so the owner can edit text, drag blocks
+   and publish the result to every visitor from a fixed bottom-left toolbar. */
 /* ---------- init ---------- */
 
 render();
 updateCounts();
 loadCatalogue();
-loadEdits();
 initializeAuth();
 startPresence();
-if (new URLSearchParams(location.search).get("edit") === "1" && Commerce?.cache?.admin) setTimeout(toggleEditMode, 800);
+window.PVEdit?.init();
+// Custom cursor
+(function(){const c=document.getElementById('custom-cursor');if(!c)return;document.body.classList.add('custom-cursor-active');let x=0,y=0,rx=0,ry=0;document.addEventListener('mousemove',e=>{x=e.clientX;y=e.clientY;});function loop(){rx+=(x-rx)*.18;ry+=(y-ry)*.18;c.style.left=rx+'px';c.style.top=ry+'px';requestAnimationFrame(loop);}loop();document.addEventListener('mouseover',e=>{if(e.target.closest('a,button,input,select,textarea,[role="button"]'))c.classList.add('is-hover');else c.classList.remove('is-hover');});})();

@@ -43,9 +43,15 @@ const path=require('node:path');
   await assert.rejects(db.exec("insert into public.customer_orders(user_id) values('"+user+"')"),/permission denied/i);
   await db.exec(`select set_config('request.jwt.claim.sub','${other}',false)`);
   assert.equal((await db.query('select * from public.customer_orders')).rows.length,0,'Orders must be private to their owner');
+  // Website copy edits are published only through the guarded admin RPCs.
+  await assert.rejects(db.query("select public.admin_save_site_content('probe','html','{}'::jsonb)"),/ADMIN_REQUIRED/,'Non-admins cannot publish site text');
+  await assert.rejects(db.query("select public.admin_delete_site_content('probe')"),/ADMIN_REQUIRED/,'Non-admins cannot delete site text');
   await db.exec("reset role; set role anon; select set_config('request.jwt.claim.sub','',false)");
   assert.equal((await db.query('select * from public.product_prices')).rows.length,18);
+  assert.equal((await db.query('select * from public.site_content')).rows.length,0,'Published site text is readable by visitors');
+  await assert.rejects(db.exec("insert into public.site_content(key,kind,content) values('probe','html','{}')"),/permission denied/i,'Visitors cannot write site text');
+  await assert.rejects(db.exec("select public.admin_save_site_content('probe','html','{}')"),/permission denied/i);
   await assert.rejects(db.exec("select public.checkout_order('[]','{}',gen_random_uuid())"),/permission denied/i);
   await db.close();
-  console.log('PASS: all migrations, server pricing, location shipping, combos, validation, catalogue grants and order isolation.');
+  console.log('PASS: all migrations, server pricing, location shipping, combos, validation, catalogue grants, order isolation and guarded site text.');
 })().catch(e=>{console.error(e);process.exitCode=1;});
