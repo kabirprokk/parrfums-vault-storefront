@@ -12,7 +12,7 @@ python -m http.server 8000
 
 Then open <http://localhost:8000>. The default route is the landing page; `#home` opens the store.
 
-The original full-screen landing entrance is preserved, with Shop now leading to the upgraded store. The combo slideshow remains below the landing hero and advances every four seconds with a 500ms crossfade. Only Combos appears in navigation; existing `#offers` links remain compatible.
+The full-screen landing page is a brand presentation: story, a non-clickable combo artwork slideshow, six fragrance portraits, and editorial photography. It has no purchase buttons, product links, wishlist controls, checkout, ordering links, or added price labels. A neutral Enter the vault link opens the separate `#home` storefront. The store footer is hidden on the landing page. Supplied posters retain their original printed artwork. The slideshow advances every four seconds with a 500ms crossfade. Only Combos appears in store navigation; existing `#offers` links remain compatible.
 
 Light/dark controls are available on the landing page and in the store header. The first visit follows the system theme. A visitor's explicit choice is saved locally, synchronized across tabs, and applied by `theme.js` before styles load to avoid a bright flash. Later changes use a 450ms page crossfade, with colour interpolation as a fallback. Rapid toggles finish the previous transition safely. Product photographs keep their original colours in both themes. Reduced-motion preferences disable the crossfade and autoplay by default.
 

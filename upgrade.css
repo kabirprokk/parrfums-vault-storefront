@@ -2,7 +2,7 @@
 :root{--paper:#fcfaf6;--cream:#f2eade;--ink:#30251e;--muted:#796a5d;--accent:#8e4b2d;--line:#e5dacc;--sage:#e5e3d6}
 body,body.is-landing{background:var(--paper);color:var(--ink)}
 body.is-landing .announcement,body.is-landing .site-header{display:none}
-body.is-landing footer{display:grid}
+body.is-landing footer{display:none}
 [hidden]{display:none!important}
 button,a,input,select{-webkit-tap-highlight-color:transparent}
 button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:5px}
@@ -183,6 +183,23 @@ footer p,footer small{color:var(--muted)}
 .landing-inner h1.landing-brand-name{font-size:clamp(64px,10.5vw,148px);line-height:.95;max-width:100%;overflow-wrap:normal}
 .landing-foot{align-items:center}
 .landing .landing-enter{min-height:42px}
+.landing-discover{display:inline-flex;align-items:center;gap:14px;background:none;border:0;border-bottom:1px solid #f3d6b677;padding:12px 0;color:#f3d6b6;font-size:11px;text-transform:uppercase;letter-spacing:.13em}
+.landing-discover:hover{color:#fff;border-color:#fff}
+.landing-story{text-align:center;padding-block:clamp(64px,8vw,120px);scroll-margin-top:24px}
+.landing-story h2{font-size:clamp(38px,5vw,70px)}
+.landing-story-copy{max-width:52ch;margin:26px auto 0;font-size:14px;line-height:1.9;color:var(--muted)}
+.landing-gallery{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:36px 25px}
+.landing-gallery figure{margin:0;min-width:0}
+.landing-gallery img{display:block;width:100%;height:auto;aspect-ratio:3/4;object-fit:contain;border-radius:3px}
+.landing-gallery figcaption{padding:17px 0}
+.landing-gallery h3{font:500 27px var(--serif);margin:0 0 6px}
+.landing-gallery figcaption p{font-size:12px;line-height:1.7;margin:0;color:var(--muted)}
+.showcase-caption{font:italic 26px/1.3 var(--serif);color:var(--accent);margin:24px 0 16px}
+.landing-signoff{text-align:center;padding:48px 5vw;background:var(--paper);border-top:1px solid var(--line)}
+.landing-signoff .footer-logo{margin:0 auto 18px}
+.landing-signoff p{font:italic 24px var(--serif);margin:0 0 12px}
+.landing-signoff small{font-size:10px;color:var(--muted)}
+@media(max-width:760px){.landing-gallery{grid-template-columns:repeat(2,minmax(0,1fr));gap:24px 15px}.landing-gallery h3{font-size:23px}.landing-gallery figcaption p{font-size:11px}}
 .header-actions .icon-btn{min-width:34px;min-height:38px;display:inline-flex;align-items:center;justify-content:center}
 .sum-line{gap:16px}
 .summary .btn{min-height:46px}
