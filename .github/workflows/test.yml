@@ -15,7 +15,15 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm test
-      - run: python3 -m http.server 8000 --bind 127.0.0.1 > /tmp/parrfums-http.log 2>&1 &
-      - run: npm run test:browser
+      - name: Start preview server
+        run: |
+          PORT=8000 node scripts/serve.cjs > /tmp/parrfums-http.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl --silent --fail http://127.0.0.1:8000/admin | grep -q 'id="app"'; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/parrfums-http.log
+          exit 1
+      - run: PV_TEST_URL=http://127.0.0.1:8000 npm run test:browser
       - run: npm run test:audit
       - run: npm audit --audit-level=moderate
