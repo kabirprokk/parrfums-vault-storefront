@@ -26,13 +26,13 @@ Previously accepted visual requirements still apply: the landing page is an edit
 
 Primary application: `index.html`, `app.js`, `commerce.js`, `commerce-views.js`, `admin.js`, `seo.js`, `commerce.css`, `vercel.json`, `robots.txt`, `api/`, `.env.example`, `supabase/config.toml`, `supabase/functions/`.
 
-Four database migrations: `supabase/migrations/20261022105858_commerce_foundation.sql`, `20261022105905_checkout_inventory_admin.sql`, `20261022105916_payment_state.sql`, `20261022110040_public_projection_security.sql`.
+Four commerce migrations already applied remotely: `supabase/migrations/20261022105858_commerce_foundation.sql`, `20261022105905_checkout_inventory_admin.sql`, `20261022105916_payment_state.sql`, `20261022110040_public_projection_security.sql`. A fifth migration, `20261022114100_database_query_indexes_and_policy_consolidation.sql`, was added locally during the follow-up audit, passed isolated PostgreSQL tests, but is **not yet applied remotely**.
 
 Verification and CI: `package.json`, `package-lock.json`, `.github/workflows/test.yml`, `tests/database.cjs`, `tests/commerce-database.cjs`, `tests/payments.mjs`, `tests/security.cjs`, `tests/seo.cjs`, `tests/browser.cjs`, `tests/commerce-browser.cjs`, `tests/admin-browser.cjs`, `tests/audit.cjs`, `tests/live-smoke.mjs`, `tests/catalogue-fixture.cjs`, and `scripts/serve.cjs`.
 
 ## Database migrations and connected production state
 
-The four migrations above were applied to the connected Supabase project. They are versioned locally and remotely. The migration records were reconciled with the remote versions. Payment Edge Functions `payments` and `payment-webhook` were deployed and are active, with JWT gateway verification disabled because the handler itself validates the user JWT or raw webhook signature. The `pv-expire-reservations` scheduled job is active every five minutes.
+The first four commerce migrations above were applied to the connected Supabase project. Their local/remote version records matched. Payment Edge Functions `payments` and `payment-webhook` were deployed and are active, with JWT gateway verification disabled because the handler itself validates the user JWT or raw webhook signature. The `pv-expire-reservations` scheduled job is active every five minutes. During the latest follow-up, Supabase advisor found 12 unindexed foreign-key paths and six pairs of overlapping authenticated read policies. The fifth local migration adds those FK indexes and consolidates those policies while preserving active public reads, own-record customer access, and AAL2 admin access. Local PGlite regression tests pass. The MCP bridge returned `tool not found` for `apply_migration`; do not assume migration five is live. Apply it through working Supabase migration tooling and re-run the advisor before claiming those warnings are resolved.
 
 The live production checks observed zero customer accounts, zero admins, zero orders and unknown inventory; no fake rows were inserted. Google authentication was disabled at the last check. Payment functions safely report missing configuration. The anon key is public by design and permission-limited; never place a service-role key in the frontend.
 
@@ -48,7 +48,7 @@ The user's requested vulnerability checks map to these results:
 6. **Data exposure:** Production live smoke checks could read public catalogue projection but anonymous requests to order/payment/admin private tables and admin RPC were rejected. Security Advisor after the view-hardening migration had no ERROR finding. It listed five private RLS tables without client policies (intended) and 12 guarded authenticated SECURITY DEFINER RPCs (expected; maintain each guard). Re-run advisor after future schema changes.
 7. **Headers/secrets:** npm/source checks found no leaked secrets; CSP/security-header definitions are in Vercel config, but only a post-deploy response check proves the hosting edge applied them. Do not claim the browser uses HttpOnly cookies: Supabase PKCE session is in SDK browser storage.
 
-Expanded mappings, verification boundaries and response guidance are in `SECURITY.md`.
+Expanded mappings, verification boundaries and response guidance are in `SECURITY.md`. The latest advisor still reports 12 authenticated-callable SECURITY DEFINER RPCs; their database functions contain the corresponding user-ownership/admin+MFA checks. It also reports 11 currently unused indexes, which were left in place because the production commerce tables have little or no workload yet; do not delete them based on cold-project statistics alone.
 
 ## Tests and actual results
 
@@ -89,4 +89,4 @@ There is no real Google OAuth/MFA owner session, credentialed Razorpay payment/r
 
 ## Continuation instructions
 
-Read `README.md`, `SECURITY.md`, the four migrations, `api/`, and the Edge Function handlers before making architecture changes. Inspect live migrations/advisors before any new DB change. Keep the landing page editorial, keep stock unknown until counted, preserve the owner prices/shipping, never trust client totals/payment success, never expose service-role/payment secrets, and do not invent reviews/product notes/policies. Run `npm run test:all`, `npm audit`, and the read-only live smoke after changes. After deploy, repeat the external checks above; code presence alone does not make sign-in, payment or production headers live.
+Read `README.md`, `SECURITY.md`, the five local migrations, `api/`, and the Edge Function handlers before making architecture changes. First apply the fifth migration with working Supabase migration tooling, confirm its recorded version, and rerun both advisor categories. Inspect live migrations/advisors before any new DB change. Keep the landing page editorial, keep stock unknown until counted, preserve the owner prices/shipping, never trust client totals/payment success, never expose service-role/payment secrets, and do not invent reviews/product notes/policies. Run `npm run test:all`, `npm audit`, and the read-only live smoke after changes. After deploy, repeat the external checks above; code presence alone does not make sign-in, payment or production headers live.

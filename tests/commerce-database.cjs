@@ -9,6 +9,16 @@ const user='00000000-0000-4000-8000-000000000001',other='00000000-0000-4000-8000
  const role=async(uid,service=false)=>db.exec(`reset role;set role ${service?'service_role':'authenticated'};select set_config('request.jwt.claim.sub','${uid||''}',false);select set_config('request.jwt.claim.aal','${uid===admin?'aal2':'aal1'}',false)`);
  const root=async()=>db.exec('reset role');
  const delivery={recipient_name:'Security Test',phone:'9876543210',email:'unit@example.invalid',address_line1:'123 Test Street',city:'Mumbai',state:'Maharashtra',postal_code:'400001'};
+ // The consolidated read policies preserve active public catalogue data,
+ // owner-only customer data, and the additional AAL2 administrator view.
+ await db.exec(`insert into public.customer_profiles(user_id) values('${user}'),('${other}')`);
+ await role(user);assert.equal((await db.query('select user_id from public.customer_profiles')).rows.length,1);
+ await role(other);assert.equal((await db.query('select user_id from public.customer_profiles')).rows[0].user_id,other);
+ await role(admin);assert.equal((await db.query('select user_id from public.customer_profiles')).rows.length,2);
+ await root();await db.exec("update public.products set active=false where id='angel-share';update public.offers set active=false where id='festive-four'");
+ await role(user);assert.equal((await db.query("select id from public.products where id='angel-share'")).rows.length,0);assert.equal((await db.query("select product_id from public.product_prices where product_id='angel-share'")).rows.length,0);assert.equal((await db.query("select id from public.offers where id='festive-four'")).rows.length,0);
+ await role(admin);assert.equal((await db.query("select id from public.products where id='angel-share'")).rows.length,1);assert.equal((await db.query("select product_id from public.product_prices where product_id='angel-share'")).rows.length,3);assert.equal((await db.query("select id from public.offers where id='festive-four'")).rows.length,1);
+ await root();await db.exec("update public.products set active=true where id='angel-share';update public.offers set active=true where id='festive-four'");await role(user);
  const item={kind:'product',id:'angel-share',size_ml:50,quantity:1};
  const checkout=async(items=[item],key=crypto.randomUUID(),address=delivery,coupon=null)=>(await db.query('select public.checkout_order($1,$2,$3,$4) id',[JSON.stringify(items),JSON.stringify(address),key,coupon])).rows[0].id;
  await role(user);

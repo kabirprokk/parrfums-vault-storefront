@@ -19,6 +19,8 @@
 
 On 2026-10-22 the connected project was queried without making production writes. The public product/projection endpoints responded; anonymous requests to private order/ledger/admin-related tables and the admin RPC were denied. Both deployed payment functions returned a safe configuration-required response. Supabase Google authentication was disabled. Security Advisor had no ERROR findings after the projection-view migration. It reported five private tables with RLS enabled and no client policy (expected); it also listed authenticated execution of 12 guarded `SECURITY DEFINER` RPCs (expected for server operations; verify each change preserves its `require_admin` or user-ownership guard).
 
+The latest performance advisor additionally reported 12 uncovered foreign-key lookup paths, six sets of overlapping authenticated SELECT policies, and 11 indexes with no recorded use so far. A fifth, local migration adds the foreign-key indexes and merges the overlapping policies without broadening user access. Its isolated database suite passes, but Supabase's local MCP bridge returned `tool not found` for `apply_migration`, so it has not been applied or checked live. The unused indexes were left in place because these production tables have negligible order traffic; re-evaluate after real workload exists.
+
 This is evidence for the observed configuration at that time, not a guarantee against future code, dependency, dashboard or account changes. Run `npm run test:live` again after deployment/configuration; it is read-only. Recheck Supabase Security Advisor, Vercel headers, browser console and the production domain after each release.
 
 ## Remaining risk boundaries

@@ -23,14 +23,15 @@ The public catalogue is read through the Supabase publishable key and RLS-protec
 
 ## Migrations and database
 
-The following production migrations are present and were applied to the connected Supabase project:
+The commerce migrations below were applied to the connected Supabase project. A follow-up performance migration is prepared locally but still needs to be applied and verified in Supabase:
 
 1. `20261022105858_commerce_foundation.sql`
 2. `20261022105905_checkout_inventory_admin.sql`
 3. `20261022105916_payment_state.sql`
 4. `20261022110040_public_projection_security.sql`
+5. `20261022114100_database_query_indexes_and_policy_consolidation.sql` (pending remote apply)
 
-Use Supabase migration tooling and review SQL before applying changes elsewhere. The checkout RPC takes product and variant identifiers, then reads current prices and inventory inside a transaction. It snapshots item details and totals, reserves stock idempotently, validates coupons, and maintains order/payment state separately. Admin RPCs check database membership and MFA assurance (`aal2`); hiding the admin route is not the security boundary. Private tables have RLS and no anonymous access. Payment webhook events have unique replay protection and signed payload validation.
+Use Supabase migration tooling and review SQL before applying changes elsewhere. The follow-up adds indexes for foreign-key lookup paths and merges overlapping authenticated read policies; it passed isolated PostgreSQL tests but has not been applied remotely. The checkout RPC takes product and variant identifiers, then reads current prices and inventory inside a transaction. It snapshots item details and totals, reserves stock idempotently, validates coupons, and maintains order/payment state separately. Admin RPCs check database membership and MFA assurance (`aal2`); hiding the admin route is not the security boundary. Private tables have RLS and no anonymous access. Payment webhook events have unique replay protection and signed payload validation.
 
 ## Security controls
 
