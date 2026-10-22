@@ -1365,10 +1365,8 @@ window.PVEdit?.init();
 // Semantic brand cursor: each common interaction gets its own shape + label.
 (function(){
   const cursor=document.getElementById('custom-cursor');if(!cursor)return;
-  const glyph=cursor.querySelector('.cursor-glyph'), label=cursor.querySelector('.cursor-label');
   document.body.classList.add('custom-cursor-active');
   let x=0,y=0,rx=0,ry=0,visible=false;
-  const shapes={default:['✦',''],link:['↗','OPEN'],text:['Ⅰ','TYPE'],edit:['✎','EDIT'],grab:['✥','DRAG'],grabbing:['✊','MOVE'],disabled:['⊘',''],wait:['◌','WAIT'],view:['⌕','VIEW'],save:['♡','SAVE'],bag:['＋','ADD'],chat:['▤','CHAT'],theme:['◐','THEME'],close:['×','CLOSE'],prev:['‹','PREV'],next:['›','NEXT']};
   function update(target){
     if(!target?.closest)return;
     let type='default';
@@ -1387,8 +1385,7 @@ window.PVEdit?.init();
     else if(target.closest('a[href*="wa.me"],a[href*="whatsapp"],.wa-btn'))type='chat';
     else if(target.closest('a[href] img,.gallery-main img,.detail-image img'))type='view';
     else if(target.closest('a[href],button,[role="button"],summary'))type='link';
-    const [icon,text]=shapes[type]||shapes.default;
-    cursor.dataset.state=type;glyph.textContent=icon;label.textContent=text;
+    cursor.dataset.state=type;
   }
   document.addEventListener('pointermove',e=>{x=e.clientX;y=e.clientY;if(!visible){visible=true;cursor.classList.add('is-visible');}update(e.target);},{passive:true});
   document.addEventListener('pointerover',e=>update(e.target),{passive:true});
