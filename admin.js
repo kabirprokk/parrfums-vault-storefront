@@ -4,6 +4,7 @@ Object.assign(
   (() => {
     const model = {
       tab: "overview",
+      adminView: "menu",
       rows: null,
       error: "",
       loading: false,
@@ -365,6 +366,8 @@ Object.assign(
         return '<section class="page-shell"><h1>Administration</h1><p role="status">Checking authorization…</p></section>';
       if (!Commerce.cache.admin)
         return `<section class="page-shell"><h1>Protected administration</h1><p>This area requires owner-granted database membership and an authenticated MFA session.</p><button class="btn" data-admin-mfa>Verify with authenticator</button><div data-mfa-panel></div><p class="error" data-admin-error role="alert"></p><a href="#account">Return to account</a></section>`;
+      if (model.adminView === "menu")
+        return `<section class="page-shell admin-page"><div class="section-head"><div><p class="eyebrow">Parrfums Vault</p><h1 class="page-title">Administration</h1></div></div><div class="stat-grid"><button class="btn primary" data-admin-website>Update website</button><button class="btn" data-admin-details>Update details</button></div><p class="sub">Update website opens the live site in edit mode. Update details opens the catalogue, orders, coupons and reviews console.</p></section>`;
       if (model.rows === null && !model.loading) queueMicrotask(load);
       const rows = Array.isArray(model.rows)
         ? model.rows.filter((r) =>
@@ -453,6 +456,9 @@ Object.assign(
     document.addEventListener("click", async (e) => {
       try {
         if (e.target.closest("[data-admin-mfa]")) return void mfa();
+        if (e.target.closest("[data-admin-menu]")) { model.adminView = "menu"; render("admin"); return; }
+        if (e.target.closest("[data-admin-website]")) { location.href = "/?edit=1"; return; }
+        if (e.target.closest("[data-admin-details]")) { model.adminView = "details"; model.tab = "overview"; model.rows = null; render("admin"); return; }
         if (!e.target.closest(".admin-page")) return;
         const tab = e.target.closest("[data-admin-tab]");
         if (tab) {

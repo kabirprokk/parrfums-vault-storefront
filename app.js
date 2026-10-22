@@ -348,8 +348,8 @@ function landing() {
   return `<section class="landing">
     <div class="landing-bg" role="img" aria-label="Parrfums Vault fragrance photography"></div>
     <div class="landing-scrim" aria-hidden="true"></div>
-    <div class="landing-top"><span class="brand landing-brand" role="img" aria-label="Parrfums Vault">${brandMark}</span><div class="landing-top-actions"><button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to dark mode">${themeIcon()}</button><a class="landing-enter" href="#home">Enter the vault ${arrowSvg}</a></div></div>
-    <div class="landing-inner"><p class="landing-eyebrow">Luxury in a bottle</p><h1 class="landing-brand-name">Parrfums Vault</h1><p class="landing-sub">Handmade fragrance from ${BRAND.city}. A collection of scents, stories, and the moments that stay with you.</p><div class="landing-actions"><button class="landing-discover" type="button" data-scroll-to="landing-story">Discover our world ${arrowDownSvg}</button></div></div>
+    <div class="landing-top"><span class="brand landing-brand" role="img" aria-label="Parrfums Vault">${brandMark}</span><div class="landing-top-actions"><button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to dark mode">${themeIcon()}</button></div></div>
+    <div class="landing-inner"><p class="landing-eyebrow">Luxury in a bottle</p><h1 class="landing-brand-name">Parrfums Vault</h1><p class="landing-sub">Handmade fragrance from ${BRAND.city}. A collection of scents, stories, and the moments that stay with you.</p><div class="landing-actions"><a class="landing-enter" href="#home">Enter the vault ${arrowSvg}</a></div></div>
     <div class="landing-foot"><span>Handmade in ${BRAND.city}</span><span>Unique · Timeless</span><span>Six signature scents</span><button class="landing-scroll" type="button" data-scroll-to="landing-story" aria-label="Discover the Parrfums Vault story below">${arrowDownSvg}</button></div>
   </section>${landingShowcase()}`;
 }
@@ -357,7 +357,7 @@ function landing() {
 function landingShowcase() {
   return `<section class="section landing-story" id="landing-story"><p class="eyebrow">A little bottle. A lasting impression.</p><h2>Fragrance is a way<br>of being <em>remembered.</em></h2><p class="landing-story-copy">The everyday rituals. The celebrations. The people who make them special. Parrfums Vault brings a little intention to each one, with handmade fragrance from Mumbai.</p></section>
   <section class="section combo-section" id="the-vault"><div class="section-head"><div><p class="eyebrow">The gifting edit</p><h2>Some things are better <em>together.</em></h2></div></div>${comboSlideshow({ showcase: true })}</section>
-  <section class="section landing-collection"><div class="section-head"><div><p class="eyebrow">Meet the collection</p><h2>Six scents. A world of <em>feeling.</em></h2></div></div><div class="landing-gallery">${products.map(p=>`<figure>${imgTag(p.img,`${p.name} by Parrfums Vault`)}<figcaption><h3>${esc(p.name)}</h3><p>${esc(p.notes)}</p></figcaption></figure>`).join('')}</div></section>
+  <section class="section landing-collection"><div class="section-head"><div><p class="eyebrow">Meet the collection</p><h2>Six scents. A world of <em>feeling.</em></h2></div></div><div class="landing-gallery">${products.map(p=>`<figure><a href="#product/${encodeURIComponent(p.id)}" aria-label="${esc(p.name)}">${imgTag(p.img,`${p.name} by Parrfums Vault`)}</a><figcaption><h3>${esc(p.name)}</h3><p>${esc(p.notes)}</p></figcaption></figure>`).join('')}</div></section>
   <section class="ritual-section"><div class="ritual-art">${imgTag(media('editorial-gifting'),'A fragrance, thoughtfully wrapped')}${imgTag(media('editorial-evening'),'Parrfums Vault, an evening ritual')}</div><div class="ritual-copy"><p class="eyebrow">Made for the moments</p><h2>Let the memory<br><em>linger.</em></h2><p>A familiar note. A favourite person. A moment that becomes a memory. This is our world of fragrance — personal, expressive, and made to stay with you.</p></div></section>
   <div class="landing-signoff"><img class="footer-logo" src="assets/parrfums-vault-logo.png" alt="Parrfums Vault" width="76" height="76"><p>Handmade in Mumbai. Worn everywhere.</p><small>© ${new Date().getFullYear()} Parrfums Vault</small></div>`;
 }
@@ -1024,7 +1024,7 @@ function render(route, opts = {}) {
   else view = notFound();
 
   app.innerHTML = path === 'admin'
-    ? `<div class="admin-console"><header class="admin-console-header"><a class="admin-console-brand" href="/" aria-label="Parrfums Vault storefront"><img src="assets/parrfums-vault-logo.png" width="42" height="42" alt=""><span>Parrfums <i>Vault</i></span></a><p class="admin-console-label">Secure administration</p><div class="admin-console-actions"><button class="icon-btn" type="button" data-theme-toggle aria-label="Switch theme"></button>${authUser ? '<button class="btn small" type="button" data-auth-sign-out>Sign out</button>' : '<a class="btn small" href="/">Storefront</a>'}</div></header>${view}<div class="admin-console-footer">Private administrator workspace · Access is verified by Supabase for protected operations.</div></div>`
+    ? `<div class="admin-console"><header class="admin-console-header"><a class="admin-console-brand" href="/" aria-label="Parrfums Vault storefront"><img src="assets/parrfums-vault-logo.png" width="42" height="42" alt=""><span>Parrfums <i>Vault</i></span></a><p class="admin-console-label">Secure administration</p><div class="admin-console-actions"><button class="icon-btn" type="button" data-theme-toggle aria-label="Switch theme"></button>${authUser ? '<button class="btn small" type="button" data-admin-menu>Menu</button><button class="btn small" type="button" data-auth-sign-out>Sign out</button>' : '<a class="btn small" href="/">Storefront</a>'}</div></header>${view}<div class="admin-console-footer">Private administrator workspace · Access is verified by Supabase for protected operations.</div></div>`
     : view;
   if(routeChanged && path.startsWith('product/')){const p=get(path.split('/')[1]);if(p)Commerce.remember(p.id);}
   Commerce.seo?.(path);
@@ -1418,3 +1418,4 @@ loadCatalogue();
 loadEdits();
 initializeAuth();
 startPresence();
+if (new URLSearchParams(location.search).get("edit") === "1" && Commerce?.cache?.admin) setTimeout(toggleEditMode, 800);

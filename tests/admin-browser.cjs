@@ -73,6 +73,7 @@ const { chromium } = require("playwright"),
     Commerce.cache.adminChecked = true;
     render("admin");
   });
+  await page.locator("[data-admin-details]").click();
   await page.waitForSelector(".stat-grid");
   await page.locator("[data-admin-tab=inventory]").click();
   await page.locator("[data-admin-edit]").click();
