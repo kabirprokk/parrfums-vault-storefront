@@ -305,6 +305,7 @@ const icon = name => {
     truck: '<path d="M3 6h11v9H3zM14 9h3.6l2.4 3v3h-2"/><circle cx="7" cy="18" r="1.8"/><circle cx="17" cy="18" r="1.8"/>',
     box: '<path d="M21 8v8l-9 5-9-5V8l9-5 9 5Z"/><path d="m3 8 9 5 9-5M12 21v-8"/>',
     sparkle: '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8"/>',
+    check: '<path d="m5 12 4.2 4.2L19 6.5"/>',
     mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/>'
   };
   return `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[name] || ''}</svg>`;
@@ -1082,7 +1083,7 @@ function render(route, opts = {}) {
     : view;
   document.body.classList.toggle('is-product', path.startsWith('product/'));
   if (routeChanged && currentPath && !matchMedia('(prefers-reduced-motion: reduce)').matches && typeof app.animate === 'function') {
-    app.animate([{ transform: 'translateY(5px)' }, { transform: 'translateY(0)' }], {
+    app.animate([{ opacity: 0.94, transform: 'translateY(4px)' }, { opacity: 1, transform: 'translateY(0)' }], {
       duration: matchMedia('(max-width: 760px)').matches ? 170 : 200,
       easing: 'cubic-bezier(.2,.7,.2,1)',
     });
@@ -1115,7 +1116,7 @@ function flashAdded(btn) {
   btn.classList.add('added');
   const label = btn.querySelector('span');
   const original = label ? label.textContent : null;
-  if (label) label.textContent = '✓';
+  if (label) label.innerHTML = icon('check');
   setTimeout(() => {
     btn.classList.remove('added');
     if (label && original !== null) label.textContent = original;

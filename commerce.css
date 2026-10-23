@@ -31,6 +31,15 @@
 .stock-state.available {
   color: var(--ink);
 }
+.review-stars {
+  display: flex;
+  gap: 2px;
+  color: var(--accent);
+}
+.review-stars svg {
+  display: block;
+  flex: 0 0 auto;
+}
 button:disabled {
   opacity: 0.5;
   cursor: not-allowed;

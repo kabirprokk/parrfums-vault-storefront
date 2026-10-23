@@ -49,7 +49,7 @@ h1 em,h2 em{font-weight:400;color:var(--accent)}
 .intro-art:hover img{transform:scale(1.025)}
 .art-caption{position:absolute;bottom:18px;left:18px;right:18px;padding:14px;background:rgba(252,250,246,.94);font:italic 21px var(--serif);text-align:center;color:var(--ink)}
 .vault-ribbon{display:flex;align-items:center;justify-content:space-around;gap:18px;padding:18px 5vw;border-block:1px solid var(--line);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);background:#f5eee4}
-.vault-ribbon span+span::before{content:'✦';color:var(--accent);margin-right:6vw}
+.vault-ribbon span+span::before{content:'';display:inline-block;width:5px;height:5px;border:1px solid var(--accent);transform:rotate(45deg);margin-right:6vw;vertical-align:2px}
 .section,.page-shell{padding:76px 5vw;max-width:1600px;margin:0 auto}
 .section-head{gap:26px;margin-bottom:32px}
 .section h2,.page-title{font:500 clamp(36px,4.2vw,60px)/1.08 var(--serif);letter-spacing:-.035em}

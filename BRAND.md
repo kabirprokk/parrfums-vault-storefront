@@ -44,8 +44,8 @@ The website must offer a direct "Order on WhatsApp" path — never promise DM wi
 
 ## Voice
 
-Punchy, confident, emoji-led, short lines. Affordable-luxury positioning — never hushed or
-self-conscious. Real lines from the feed:
+Punchy, confident, short lines. Affordable-luxury positioning — never hushed or
+self-conscious. Do not use emojis in website copy or UI; use the site's custom inline SVG icons. Real lines from the feed:
 
 - "Smell expensive. Spend less."
 - "Who says smelling expensive has to be expensive?"
@@ -117,4 +117,4 @@ Type: **Cormorant Garamond** (display) + **DM Sans** (body) — already loaded i
 2. Never invent a price. Use the ladder above.
 3. Every page must make ordering possible: WhatsApp button, phone number, or Instagram DM link.
 4. Keep imagery self-hosted under `assets/`; never use photos copied from the Instagram profile.
-5. No emoji-free clinical tone — the brand uses emoji. Keep them tasteful and sparse.
+5. Keep the visual voice warm and expressive without emojis. Use custom inline SVG icons for UI symbols.
