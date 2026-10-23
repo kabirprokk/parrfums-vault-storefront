@@ -1417,6 +1417,7 @@ function startLiveStorefrontUpdates() {
         .on("postgres_changes", { event: "*", schema: "public", table: "product_prices" }, scheduleRefresh)
         .on("postgres_changes", { event: "*", schema: "public", table: "products" }, scheduleRefresh)
         .on("postgres_changes", { event: "*", schema: "public", table: "offers" }, scheduleRefresh)
+        .on("postgres_changes", { event: "*", schema: "public", table: "offer_components" }, scheduleRefresh)
         .on("postgres_changes", { event: "*", schema: "public", table: "site_content" }, scheduleRefresh)
         .subscribe();
     }

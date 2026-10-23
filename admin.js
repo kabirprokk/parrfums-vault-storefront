@@ -237,7 +237,7 @@ Object.assign(
           ) +
           field("sort_order", "Display position", e.sort_order || 0, "number") +
           check("active", "Active", e.active !== false) +
-          `<fieldset class="full-field"><legend>Actual bottles included</legend><p class="sub">Each line reserves its listed stock. Configure the actual recipe; variable-choice offers need separate explicit combinations.</p><div data-component-rows>${(e.components || []).map(componentRow).join("")}</div><button class="btn small" type="button" data-component-add>Add bottle</button></fieldset>`;
+          `<fieldset class="full-field"><legend>What goes in every combo?</legend><p class="sub">Every row below is required. Two rows means customers get both bottles. This editor cannot set “A or B” choices. If customers choose the free scent, keep orders on WhatsApp for now. Add to Bag turns on only when every required size has a real stock count.</p><div data-component-rows>${(e.components || []).map(componentRow).join("")}</div><button class="btn small" type="button" data-component-add>Add required bottle</button></fieldset>`;
       if (t === "coupons")
         fields =
           field("id", "Coupon ID", e.id, "text", "readonly") +
@@ -362,7 +362,7 @@ Object.assign(
       return rowKey === editKey && (!e.size_ml || Number(row.size_ml) === Number(e.size_ml));
     }
     function componentRow(c = {}) {
-      return `<div class="component-row"><label>Product <select name="component_product">${products.map((p) => `<option value="${p.id}" ${p.id === c.product_id ? "selected" : ""}>${esc(p.name)}</option>`).join("")}</select></label><label>Size (ml)<input name="component_size" type="number" min="1" max="1000" value="${c.size_ml || ""}" required></label><label>Quantity<input name="component_quantity" type="number" min="1" max="20" value="${c.quantity || 1}" required></label><button class="btn small" type="button" data-component-remove>Remove</button></div>`;
+      return `<div class="component-row"><label>Required product <select name="component_product">${products.map((p) => `<option value="${p.id}" ${p.id === c.product_id ? "selected" : ""}>${esc(p.name)}</option>`).join("")}</select></label><label>Bottle size (ml)<input name="component_size" type="number" min="1" max="1000" value="${c.size_ml || ""}" required></label><label>Bottles in each combo<input name="component_quantity" type="number" min="1" max="20" value="${c.quantity || 1}" required></label><button class="btn small" type="button" data-component-remove>Remove</button></div>`;
     }
     function admin() {
       if (!authReady)
@@ -651,9 +651,11 @@ Object.assign(
           });
         model.editing = null;
         model.rows = null;
-        toast("Saved");
         await load();
-        void loadCatalogue();
+        await loadCatalogue();
+        toast(model.tab === "offers"
+          ? "Offer saved. Storefront pages are refreshing. Add to Bag still needs a fixed recipe and counted stock for every required bottle."
+          : "Saved. Storefront pages are refreshing for visitors.");
       } catch (error) {
         form.querySelector("[data-admin-error]").textContent =
           Commerce.safeError(error);
