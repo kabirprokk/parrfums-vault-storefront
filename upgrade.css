@@ -95,6 +95,8 @@ h1 em,h2 em{font-weight:400;color:var(--accent)}
 .price-ladder{font-size:11px;color:var(--muted);display:flex;gap:8px;margin-top:4px;flex-wrap:wrap}
 .quick-add{opacity:1;font-size:11px;letter-spacing:.04em;display:block;padding:10px 0 7px;margin-top:8px;border-color:var(--line)}
 .quick-add:hover{border-color:var(--accent)}
+.quick-add.availability-inquiry{display:flex;align-items:center;gap:6px;width:max-content;max-width:100%;border-bottom:1px solid var(--wa,#128c4a);color:var(--wa,#128c4a);font-weight:600;opacity:1}
+.quick-add.availability-inquiry .wa-icon{width:14px;height:14px}
 .heart{width:34px;height:34px;background:rgba(252,250,246,.92);right:12px;top:12px;display:grid;place-items:center;box-shadow:none}
 .ritual-section{background:#eee6da;padding:64px 5vw;display:grid;grid-template-columns:1.1fr 1fr;gap:7vw;align-items:center}
 .ritual-art{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}

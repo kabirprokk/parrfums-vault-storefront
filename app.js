@@ -167,8 +167,11 @@ const waLink = (message, label, cls = 'btn wa-btn') => {
   const url = `${BRAND.whatsappDirect}?text=${encodeURIComponent(message)}`;
   return `<a class="${cls}" href="${esc(url)}" target="_blank" rel="noreferrer">${waSvg}<span>${esc(label)}</span></a>`;
 };
-const comboAvailabilityLink = (item, cls = 'btn primary full') =>
-  waLink(`Hi Parrfums Vault! Please confirm current availability for ${item.name} (${item.badge}) and help me place an order if available.`, 'Confirm combo availability with the store', cls);
+const availabilityInquiryLink = (item, size, cls = 'btn wa-btn') => {
+  const itemLabel = isCombo(item) ? `${item.name} (${item.badge})` : `${item.name}${size ? `, ${size}ml` : ''}`;
+  return waLink(`Hi Parrfums Vault! Please check current availability for ${itemLabel} and help me order if available.`, isCombo(item) ? 'Check combo on WhatsApp' : 'Ask about availability', cls);
+};
+const comboAvailabilityLink = (item, cls = 'btn wa-btn full') => availabilityInquiryLink(item, 0, cls);
 
 const phoneLink = (label = 'Call us') =>
   `<a class="contact-link phone-link" href="${BRAND.phoneHref}">${esc(BRAND.phoneDisplay)}</a>`;
@@ -327,7 +330,7 @@ function card(p) {
     <div class="product-image"><a href="#product/${p.id}" aria-label="View ${esc(p.name)}">${imgTag(p.img, `${p.name} — Parrfums Vault fragrance`)}</a>
       <button class="heart ${wished ? 'active' : ''}" data-wish="${p.id}" aria-label="${wished ? 'Remove' : 'Add'} ${esc(p.name)} ${wished ? 'from' : 'to'} wishlist" aria-pressed="${wished}">${heartSvg(wished)}</button></div>
     <div class="product-meta"><a href="#product/${p.id}"><h3>${esc(p.name)}</h3><p>${esc(formatAccords(p.notes))}</p>${priceBlock(p)}</a>
-      <button class="quick-add" data-add="${p.id}" data-size="${size}" ${inStock?'':'disabled'}>${p.sizes.length?esc(addLabel):'Product unavailable'} ${inStock?'<span aria-hidden="true">+</span>':''}</button></div>
+      ${inStock?`<button class="quick-add" data-add="${p.id}" data-size="${size}">${esc(addLabel)} <span aria-hidden="true">+</span></button>`:availabilityInquiryLink(p,size,'quick-add availability-inquiry')}</div>
   </article>`;
 }
 
@@ -342,8 +345,7 @@ function offerCard(c) {
       <p class="offer-notes">${esc(c.notes)}</p>
       <p class="offer-price">${money(c.price)}</p>
       <div class="offer-actions">
-        <button class="btn primary" data-add="${c.id}" ${availability.available?'':'disabled'}>${availability.available?'Add to bag':esc(availability.label)}</button>
-        ${waLink(`Hi Parrfums Vault! I'd like to order the ${c.name} (${c.badge}) for ${money(c.price)}.`, 'Order on WhatsApp', 'btn ghost wa-btn')}
+        ${availability.available?`<button class="btn primary" data-add="${c.id}">Add to bag</button>${waLink(`Hi Parrfums Vault! I'd like to order the ${c.name} (${c.badge}) for ${money(c.price)}.`, 'Order on WhatsApp', 'btn ghost wa-btn')}`:availabilityInquiryLink(c,0,'btn wa-btn')}
       </div>
     </div>
   </article>`;
@@ -529,8 +531,7 @@ function offerHero(c) {
       <p class="offer-price">${money(c.price)}</p>
       <p class="offer-save">Four full fragrances for less than the price of one premium bottle. Made to be gifted.</p>
       <div class="offer-actions">
-        <button class="btn primary" data-add="${c.id}">Add to bag</button>
-        ${waLink(`Hi Parrfums Vault! I'd like to order the ${c.name} (${c.badge}) for ${money(c.price)}.`, 'Order on WhatsApp', 'btn ghost wa-btn')}
+        ${Commerce.available(c,0)?`<button class="btn primary" data-add="${c.id}">Add to bag</button>${waLink(`Hi Parrfums Vault! I'd like to order the ${c.name} (${c.badge}) for ${money(c.price)}.`, 'Order on WhatsApp', 'btn ghost wa-btn')}`:availabilityInquiryLink(c,0,'btn wa-btn')}
       </div>
     </div>
   </article>`;
@@ -638,26 +639,28 @@ function productView(p) {
   if (!p) return notFound();
   const addToBagButton = (item, size) => {
     const availability = Commerce.stock(item, size);
-    const label = availability.available ? 'Add to bag' : availability.label;
-    return `<button class="btn primary full" type="button" data-add="${esc(item.id)}" ${availability.available ? '' : 'disabled'} aria-label="${esc(label)}${availability.available ? '' : ` — ${esc(item.name)} is not available to add right now`}">${esc(label)}</button>`;
+    return availability.available
+      ? `<button class="btn primary full" type="button" data-add="${esc(item.id)}">Add to bag</button>`
+      : availabilityInquiryLink(item,size,'btn wa-btn full');
   };
   const mobileBuyBar = (item, size) => {
     const availability=Commerce.stock(item,size), label=availability.available?'Add to bag':availability.label;
     const value=isCombo(item)?item.price:priceFor(item,size);
-    if(isCombo(item)&&!availability.available&&/confirm|awaiting confirmation/i.test(availability.label))return `<aside class="mobile-buybar" aria-label="Quick purchase"><span class="mobile-buybar-price"><strong data-mobile-price>${money(value)}</strong></span>${comboAvailabilityLink(item,'btn primary')}</aside>`;
-    return `<aside class="mobile-buybar" aria-label="Quick purchase"><span class="mobile-buybar-price"><strong data-mobile-price>${money(value)}</strong>${size?`<small>${size}ml</small>`:''}</span><button class="btn primary" type="button" data-add="${esc(item.id)}" data-size="${size}" ${availability.available?'':'disabled'} aria-label="${esc(label)}${availability.available?'':` — ${esc(item.name)} is unavailable`}">${icon('bag')}<span>${esc(label)}</span></button></aside>`;
+    const action=availability.available
+      ? `<button class="btn primary" type="button" data-add="${esc(item.id)}" data-size="${size}">${icon('bag')}<span>${label}</span></button>`
+      : availabilityInquiryLink(item,size,'btn wa-btn');
+    return `<aside class="mobile-buybar" aria-label="Quick purchase"><span class="mobile-buybar-price"><strong data-mobile-price>${money(value)}</strong>${size?`<small>${size}ml</small>`:''}</span>${action}</aside>`;
   };
   if (isCombo(p)) {
     const availability=Commerce.stock(p,0);
-    const needsConfirmation=!availability.available&&/confirm|awaiting confirmation/i.test(availability.label);
     return `<section class="page-shell"><div class="detail">
       <div class="detail-image"><div class="gallery-main">${imgTag(p.img, `${p.name} offer`, 'gallery-img')}</div></div>
       <div class="detail-copy">
         <p class="eyebrow">The vault offer</p><h1>${esc(p.name)}</h1><p class="sub">${esc(p.badge)}</p>
         <p class="large-price" id="detail-price">${money(p.price)}</p>
         <p>${esc(p.desc)}</p><p class="offer-notes">${esc(p.notes)}</p>
-        ${Commerce.badge(p,0)}${needsConfirmation?comboAvailabilityLink(p):addToBagButton(p, 0)}
-        ${needsConfirmation?'':waLink(`Hi Parrfums Vault! I'd like to order the ${p.name} — ${p.badge} for ${money(p.price)}.`, 'Order on WhatsApp', 'btn ghost full wa-btn')}
+        ${Commerce.badge(p,0)}${availability.available?addToBagButton(p,0):comboAvailabilityLink(p,'btn wa-btn full')}
+        ${availability.available?waLink(`Hi Parrfums Vault! I'd like to order the ${p.name} — ${p.badge} for ${money(p.price)}.`, 'Order on WhatsApp', 'btn ghost full wa-btn'):''}
       </div>
     </div></section>${mobileBuyBar(p,0)}`;
   }
@@ -667,7 +670,7 @@ function productView(p) {
   if (!p.sizes.includes(selSize) || !Commerce.available(p, selSize)) {
     selSize = Commerce.available(p, DEFAULT_SIZE) ? DEFAULT_SIZE : (p.sizes.find(size => Commerce.available(p, size)) || (p.sizes.includes(DEFAULT_SIZE) ? DEFAULT_SIZE : p.sizes[0]));
   }
-  const sizeButtons = p.sizes.map(s => `<button class="variant ${s === selSize ? 'selected' : ''}" data-size="${s}" aria-pressed="${s === selSize}">${s}ml · ${money(priceFor(p, s))}</button>`).join('');
+  const sizeButtons = p.sizes.map(s => `<button class="variant ${s === selSize ? 'selected' : ''}" data-size="${s}" data-product-variant="${esc(p.id)}" aria-pressed="${s === selSize}">${s}ml · ${money(priceFor(p, s))}</button>`).join('');
   const wished = state.wish.includes(p.id);
   const related = products.filter(x => x.id !== p.id && x.category === p.category).slice(0, 3);
   const relatedFill = related.length ? related : products.filter(x => x.id !== p.id).slice(0, 3);
@@ -686,7 +689,7 @@ function productView(p) {
       <p>${esc(p.desc)}</p>
       <p class="variant-label">Choose size</p>
       <div class="variant-row" role="group" aria-label="Choose size">${sizeButtons}</div>
-      ${Commerce.badge(p,selSize)}${addToBagButton(p, selSize)}
+        ${Commerce.badge(p,selSize)}${addToBagButton(p, selSize)}
       <button class="btn ghost full" data-wish="${p.id}" style="margin-top:10px">${heartSvg(wished)} ${wished ? 'In wishlist' : 'Add to wishlist'}</button>
       ${waLink(`Hi Parrfums Vault! I'd like to order ${p.name} (${selSize}ml — ${money(priceFor(p, selSize))}).`, 'Order on WhatsApp', 'btn ghost full wa-btn')}
       <p class="sub" style="margin-top:18px">Pan-India delivery · ${BRAND.city}</p>
@@ -756,7 +759,7 @@ function wishlist() {
       <div class="product-image"><a href="#product/${p.id}" aria-label="View ${esc(p.name)}">${imgTag(p.img, `${esc(p.name)} fragrance`)}</a>
         <button class="heart active" data-wish="${p.id}" aria-label="Remove ${esc(p.name)} from wishlist" aria-pressed="true">${heartSvg(true)}</button></div>
       <div class="product-meta"><a href="#product/${p.id}"><h3>${esc(p.name)}</h3><p>${esc(p.notes)}</p>${priceBlock(p)}</a>
-        ${Commerce.badge(p,DEFAULT_SIZE)}<button class="btn small" data-add="${p.id}" data-move-wishlist ${Commerce.available(p,defaultSize(p))?'':'disabled'} style="margin-top:10px">Move to bag</button></div>
+        ${Commerce.badge(p,defaultSize(p))}${Commerce.available(p,defaultSize(p))?`<button class="btn small" data-add="${p.id}" data-move-wishlist style="margin-top:10px">Move to bag</button>`:availabilityInquiryLink(p,defaultSize(p),'btn wa-btn small')}</div>
     </article>`).join('')}</div></section>`;
 }
 
@@ -1236,18 +1239,9 @@ document.addEventListener('click', e => {
 
   const variant = e.target.closest('.variant');
   if (variant) {
-    document.querySelectorAll('.variant').forEach(x => { x.classList.remove('selected'); x.setAttribute('aria-pressed', 'false'); });
-    variant.classList.add('selected');
-    variant.setAttribute('aria-pressed', 'true');
-    const addBtn = variant.closest('.detail')?.querySelector('[data-add]');
-    const p = get(addBtn ? addBtn.dataset.add : '');
+    const p=get(variant.dataset.productVariant);
     const size = Number(variant.dataset.size);
-    if(addBtn&&p){const availability=Commerce.stock(p,size);addBtn.disabled=!availability.available;addBtn.textContent=availability.available?'Add to bag':availability.label;addBtn.setAttribute('aria-label',`${availability.available?'Add to bag':availability.label}${availability.available?'':` — ${p.name} is not available to add right now`}`);const badge=addBtn.previousElementSibling;if(badge?.classList.contains('stock-state'))badge.outerHTML=Commerce.badge(p,size);const mobileBtn=document.querySelector('.mobile-buybar [data-add]');if(mobileBtn){mobileBtn.dataset.size=String(size);mobileBtn.disabled=!availability.available;mobileBtn.setAttribute('aria-label',`${availability.available?'Add to bag':availability.label}${availability.available?'':` — ${p.name} is unavailable`}`);mobileBtn.querySelector('span').textContent=availability.available?'Add to bag':availability.label;const amount=document.querySelector('[data-mobile-price]');if(amount)amount.textContent=money(priceFor(p,size));const sizeLabel=amount?.nextElementSibling;if(sizeLabel)sizeLabel.textContent=`${size}ml`;}}
-    if (p) {
-      state.selectedSize[p.id] = size;
-      const priceEl = document.querySelector('#detail-price');
-      if (priceEl) priceEl.innerHTML = `${money(priceFor(p, size))} <span class="price-size">${size}ml</span>`;
-    }
+    if(p){state.selectedSize[p.id]=size;render(`product/${p.id}`,{keepScroll:true});}
     return;
   }
 

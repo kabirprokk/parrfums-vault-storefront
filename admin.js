@@ -179,23 +179,17 @@ Object.assign(
           check("active", "Available for sale", e.active !== false);
       if (t === "inventory")
         fields =
-          field(
-            "product_id",
-            "Product identifier",
-            e.product_id,
-            "text",
-            "required readonly",
-          ) +
+          `<div class="field"><label>Product</label><p><strong>${esc(products.find((p) => p.id === e.product_id)?.name || e.product_id)}</strong><small class="sub">${esc(e.product_id)}</small></p><input type="hidden" name="product_id" value="${esc(e.product_id)}"></div>` +
           field(
             "size_ml",
-            "Size (ml)",
+            "Bottle size (ml)",
             e.size_ml,
             "number",
             "required readonly",
           ) +
           field(
             "quantity",
-            "Actual available quantity",
+            "Bottles counted and ready to sell",
             e.available_quantity,
             "number",
             'required min="0" max="1000000"',
@@ -207,7 +201,7 @@ Object.assign(
             "text",
             'maxlength="500"',
           ) +
-          '<p class="sub">Enter the actual counted quantity; increases and zero are supported. If Save is rejected, complete “Verify with authenticator” in Admin and retry. Unknown stock is never assumed.</p>';
+          '<p class="sub">Count the bottles you can sell in this size. Enter 0 if none are available. Save updates the storefront; do not estimate. If Save is rejected, choose “Verify with authenticator” in Admin and retry.</p>';
       if (t === "offers")
         fields =
           field(
@@ -364,6 +358,21 @@ Object.assign(
     function componentRow(c = {}) {
       return `<div class="component-row"><label>Required product <select name="component_product">${products.map((p) => `<option value="${p.id}" ${p.id === c.product_id ? "selected" : ""}>${esc(p.name)}</option>`).join("")}</select></label><label>Bottle size (ml)<input name="component_size" type="number" min="1" max="1000" value="${c.size_ml || ""}" required></label><label>Bottles in each combo<input name="component_quantity" type="number" min="1" max="20" value="${c.quantity || 1}" required></label><button class="btn small" type="button" data-component-remove>Remove</button></div>`;
     }
+    function cellValue(row, column) {
+      if (model.tab === "inventory" && column === "product_id")
+        return products.find((p) => p.id === row.product_id)?.name || row.product_id;
+      if (column === "available_quantity" && row[column] == null) return "Not counted yet";
+      return row[column] ?? "";
+    }
+    function columnLabel(column) {
+      if (model.tab === "inventory") {
+        if (column === "product_id") return "Product";
+        if (column === "size_ml") return "Bottle size";
+        if (column === "available_quantity") return "Bottles counted";
+        if (column === "active") return "For sale";
+      }
+      return Commerce.statusLabel(column);
+    }
     function admin() {
       if (!authReady)
         return '<section class="page-shell"><h1>Administration</h1><p role="status">Checking your session…</p></section>';
@@ -378,6 +387,7 @@ Object.assign(
       if (model.rows === null && !model.loading) queueMicrotask(load);
       const rows = Array.isArray(model.rows)
         ? model.rows.filter((r) =>
+            (model.tab === "inventory" && (products.find((p) => p.id === r.product_id)?.name || "").toLowerCase().includes(model.filter.toLowerCase())) ||
             Object.values(r).some(
               (v) =>
                 typeof v === "string" &&
@@ -398,7 +408,9 @@ Object.assign(
             ]
           : model.tab === "products"
             ? ["id", "name", "category", "active"]
-            : ["variants", "inventory"].includes(model.tab)
+            : model.tab === "inventory"
+              ? ["product_id", "size_ml", "available_quantity", "active"]
+              : model.tab === "variants"
               ? [
                   "product_id",
                   "size_ml",
@@ -426,7 +438,7 @@ Object.assign(
               .join("")}</div>`
           : "") + (model.stats ? `<div class="stat-grid" style="margin-top:16px"><article class="summary"><h2>Total orders</h2><strong>${esc(model.stats.totalOrders)}</strong></article><article class="summary"><h2>Total customers</h2><strong>${esc(model.stats.totalUsers)}</strong></article><article class="summary"><h2>Online now</h2><strong id="admin-online-count">—</strong></article></div>` : "");
       const addEditor = model.editing && !(model.editing.id || model.editing.product_id) ? editor() : "";
-      return `<section class="page-shell admin-page"><div class="section-head"><div><p class="eyebrow">Parrfums Vault</p><h1 class="page-title">Administration</h1></div><button class="btn" data-admin-refresh>Refresh</button></div><nav class="admin-tabs" aria-label="Administration sections">${tabs.map((t) => `<button class="btn ${model.tab === t ? "primary" : ""}" data-admin-tab="${t}" aria-pressed="${model.tab === t}">${esc(Commerce.statusLabel(t))}</button>`).join("")}</nav>${model.error ? `<p class="error" role="alert">${esc(model.error)}</p>` : ""}${model.loading ? '<p role="status">Loading…</p>' : ""}${addEditor}${model.tab === "overview" ? overview : `<div class="admin-toolbar"><label for="admin-search">Search ${esc(model.tab)}</label><input id="admin-search" type="search" maxlength="120" value="${esc(model.filter)}">${model.tab==='orders'?`<label for="admin-order-status">Status</label><select id="admin-order-status" class="select"><option value="">All statuses</option>${['pending','confirmed','packed','shipped','delivered','cancelled','refunded'].map(v=>`<option value="${v}" ${model.status===v?'selected':''}>${Commerce.statusLabel(v)}</option>`).join('')}</select>`:''}<button class="btn" data-admin-search>Search</button><button class="btn" data-admin-sort>Reverse sort</button>${["products", "variants", "offers", "coupons"].includes(model.tab) ? '<button class="btn primary" data-admin-new>Add new</button>' : ""}</div><p class="sub">Page ${model.page+1} · Up to 50 records per page. Search orders across all pages by customer name, phone, email, order ID or reference.</p><div class="table-scroll"><table><thead><tr>${columns.map((c) => `<th scope="col">${esc(Commerce.statusLabel(c))}</th>`).join("")}<th scope="col">Manage</th></tr></thead><tbody>${rows.map((row) => `<tr>${columns.map((c) => `<td>${esc(row[c] ?? (c === "available_quantity" ? "Not configured" : ""))}${c === "available_quantity" && row[c] !== null && row[c] <= row.low_stock_threshold ? " · Low stock" : ""}</td>`).join("")}<td><button class="btn small" data-admin-edit="${esc(row.id || row.product_id)}" data-admin-size="${row.size_ml || ""}">Manage</button></td></tr>${editorMatches(row) ? `<tr class="admin-inline-editor-row"><td colspan="${columns.length + 1}">${editor()}</td></tr>` : ""}`).join("")}</tbody></table><div class="offer-actions"><button class="btn" data-admin-page="-1" ${model.page===0?'disabled':''}>Previous page</button><button class="btn" data-admin-page="1" ${(model.rows?.length||0)<50?'disabled':''}>Next page</button></div>${!rows.length ? '<p role="status">No matching records.</p>' : ""}</div>`}<p class="sub">All administrative writes are authorized in PostgreSQL and recorded in an audit log.</p></section>`;
+      return `<section class="page-shell admin-page"><div class="section-head"><div><p class="eyebrow">Parrfums Vault</p><h1 class="page-title">Administration</h1></div><button class="btn" data-admin-refresh>Refresh</button></div><nav class="admin-tabs" aria-label="Administration sections">${tabs.map((t) => `<button class="btn ${model.tab === t ? "primary" : ""}" data-admin-tab="${t}" aria-pressed="${model.tab === t}">${esc(Commerce.statusLabel(t))}</button>`).join("")}</nav>${model.error ? `<p class="error" role="alert">${esc(model.error)}</p>` : ""}${model.loading ? '<p role="status">Loading…</p>' : ""}${model.tab === "inventory" ? '<p class="sub inventory-help">Choose a size row, select Set count, and enter the number of bottles physically ready to sell. Enter 0 if none are available; never guess. Saved counts update the storefront.</p>' : ""}${addEditor}${model.tab === "overview" ? overview : `<div class="admin-toolbar"><label for="admin-search">Search ${esc(model.tab)}</label><input id="admin-search" type="search" maxlength="120" value="${esc(model.filter)}">${model.tab==='orders'?`<label for="admin-order-status">Status</label><select id="admin-order-status" class="select"><option value="">All statuses</option>${['pending','confirmed','packed','shipped','delivered','cancelled','refunded'].map(v=>`<option value="${v}" ${model.status===v?'selected':''}>${Commerce.statusLabel(v)}</option>`).join('')}</select>`:''}<button class="btn" data-admin-search>Search</button><button class="btn" data-admin-sort>Reverse sort</button>${["products", "variants", "offers", "coupons"].includes(model.tab) ? '<button class="btn primary" data-admin-new>Add new</button>' : ""}</div><p class="sub">Page ${model.page+1} · Up to 50 records per page. Search orders across all pages by customer name, phone, email, order ID or reference.</p><div class="table-scroll"><table><thead><tr>${columns.map((c) => `<th scope="col">${esc(columnLabel(c))}</th>`).join("")}<th scope="col">Manage</th></tr></thead><tbody>${rows.map((row) => `<tr>${columns.map((c) => `<td>${esc(cellValue(row,c))}${c === "available_quantity" && row[c] !== null && row[c] <= row.low_stock_threshold ? " · Low stock" : ""}</td>`).join("")}<td><button class="btn small" data-admin-edit="${esc(row.id || row.product_id)}" data-admin-size="${row.size_ml || ""}">${model.tab === "inventory" ? "Set count" : "Manage"}</button></td></tr>${editorMatches(row) ? `<tr class="admin-inline-editor-row"><td colspan="${columns.length + 1}">${editor()}</td></tr>` : ""}`).join("")}</tbody></table><div class="offer-actions"><button class="btn" data-admin-page="-1" ${model.page===0?'disabled':''}>Previous page</button><button class="btn" data-admin-page="1" ${(model.rows?.length||0)<50?'disabled':''}>Next page</button></div>${!rows.length ? '<p role="status">No matching records.</p>' : ""}</div>`}<p class="sub">All administrative writes are authorized in PostgreSQL and recorded in an audit log.</p></section>`;
     }
     async function mfa() {
       try {

@@ -389,8 +389,12 @@
     if (!root) return changes;
     root.querySelectorAll("[data-pv-path]").forEach(el => {
       const original = state.originals.get(el);
-      if (original === undefined || original === ownText(el)) return;
-      changes.push({ key: el.dataset.pvPath, kind: "html", content: { html: cleanHTML(el) } });
+      const key = el.dataset.pvPath;
+      const html = cleanHTML(el);
+      const saved = state.pending.get(key) || state.server.get(key);
+      if (saved?.kind === "html" && saved.content?.html === html) return;
+      if ((original === undefined || original === ownText(el)) && !saved) return;
+      changes.push({ key, kind: "html", content: { html } });
     });
     root.querySelectorAll("[data-pv-order-dirty]").forEach(container => {
       const items = Array.from(container.children).map(signature);
