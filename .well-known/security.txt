@@ -1,0 +1,4 @@
+Contact: mailto:quillsandcologne@gmail.com
+Expires: 2027-10-23T00:00:00.000Z
+Canonical: https://parrfums-vault.vercel.app/.well-known/security.txt
+Preferred-Languages: en

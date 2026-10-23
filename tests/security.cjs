@@ -25,6 +25,8 @@ assert.ok(
     !scripts.includes("unsafe-eval") &&
     !scripts.includes("*"),
 );
+const styles = csp.split(";").find((s) => s.includes("style-src"));
+assert.ok(styles && !styles.includes("unsafe-inline"), "CSP blocks inline styles");
 assert.ok(csp.includes("wss://lshwmudskeeknmcxlffe.supabase.co"), "CSP allows the Supabase realtime WebSocket used for global storefront updates");
 assert.equal(headers["X-Content-Type-Options"], "nosniff");
 assert.equal(headers["X-Frame-Options"], "DENY");
@@ -42,6 +44,7 @@ for (const file of [
   "commerce-views.js",
   "admin.js",
   "seo.js",
+  "edit-mode.js",
   "index.html",
 ]) {
   const source = read(file);
@@ -56,6 +59,12 @@ for (const file of [
     file + " dynamic execution",
   );
 }
+assert.doesNotMatch(read("app.js"), /\sstyle\s*=/i, "Storefront markup avoids inline style attributes");
+assert.doesNotMatch(read("admin.js"), /\sstyle\s*=/i, "Admin markup avoids inline style attributes");
+const securityTxt = read(".well-known/security.txt");
+assert.match(securityTxt, /^Contact: mailto:quillsandcologne@gmail\.com$/m);
+assert.match(securityTxt, /^Expires: 2027-10-23T00:00:00\.000Z$/m);
+assert.match(securityTxt, /^Canonical: https:\/\/parrfums-vault\.vercel\.app\/.well-known\/security\.txt$/m);
 assert.ok(read(".gitignore").includes(".env.*"));
 assert.ok(!read("app.js").includes("rpc('create_customer_order'"));
 const foundation = read(
@@ -71,5 +80,5 @@ for (const match of [
 ])
   assert.ok(match.index >= 0);
 console.log(
-  "PASS: CSP and security headers, vendored SDK integrity, frontend secret/dynamic-code checks, ignored secrets, removal of legacy checkout and database MFA boundary.",
+  "PASS: restrictive CSP and security.txt, vendored SDK integrity, frontend secret/dynamic-code checks, ignored secrets, removal of legacy checkout and database MFA boundary.",
 );

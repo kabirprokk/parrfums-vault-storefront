@@ -450,7 +450,7 @@ Object.assign(
                   `<article class="summary"><h2>${esc(Commerce.statusLabel(k))}</h2><strong>${esc(v)}</strong></article>`,
               )
               .join("")}</div>`
-          : "") + (model.stats ? `<div class="stat-grid" style="margin-top:16px"><article class="summary"><h2>Total orders</h2><strong>${esc(model.stats.totalOrders)}</strong></article><article class="summary"><h2>Total customers</h2><strong>${esc(model.stats.totalUsers)}</strong></article><article class="summary"><h2>Online now</h2><strong id="admin-online-count">—</strong></article></div>` : "");
+          : "") + (model.stats ? `<div class="stat-grid stat-grid-spaced"><article class="summary"><h2>Total orders</h2><strong>${esc(model.stats.totalOrders)}</strong></article><article class="summary"><h2>Total customers</h2><strong>${esc(model.stats.totalUsers)}</strong></article><article class="summary"><h2>Online now</h2><strong id="admin-online-count">—</strong></article></div>` : "");
       const addEditor = model.editing && !(model.editing.id || model.editing.product_id) ? editor() : "";
       const inventoryHelp = model.tab === "inventory"
         ? !model.inventoryModeLoaded

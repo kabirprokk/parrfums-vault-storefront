@@ -22,6 +22,14 @@
     "VIDEO", "CANVAS", "IFRAME", "PATH",
   ]);
   const ANCHOR_ATTRS = ["data-pv-anchor", "data-product", "data-id", "data-gallery", "data-wish", "data-add", "href"];
+  const SAFE_HTML_TAGS = new Set([
+    "A", "ABBR", "B", "BLOCKQUOTE", "BR", "CITE", "CODE", "DEL", "DIV",
+    "EM", "I", "INS", "LI", "MARK", "OL", "P", "Q", "S", "SMALL",
+    "SPAN", "STRONG", "SUB", "SUP", "U", "UL",
+  ]);
+  const SAFE_SVG_TAGS = new Set(["svg", "g", "path", "circle", "rect", "line", "polyline", "polygon"]);
+  const DROP_CONTENT_TAGS = new Set(["SCRIPT", "STYLE", "IFRAME", "OBJECT", "EMBED", "TEMPLATE", "NOSCRIPT"]);
+  const SVG_NS = "http://www.w3.org/2000/svg";
 
   const state = {
     on: false,
@@ -156,7 +164,7 @@
       const el = document.querySelector(row.key);
       if (!el) return;
       if (row.kind === "html" && typeof row.content?.html === "string") {
-        el.innerHTML = row.content.html;
+        el.replaceChildren(sanitizeHTML(row.content.html));
         stripMarkers(el);
       } else if (row.kind === "order" && Array.isArray(row.content?.items)) restoreOrder(el, row.content.items);
     } catch {}
@@ -233,10 +241,88 @@
     });
   }
 
+  function safeHref(value) {
+    const href = String(value || "").trim();
+    if (!href || href.length > 2048 || /[\u0000-\u001f\u007f]/.test(href)) return null;
+    try {
+      const parsed = new URL(href, location.origin);
+      return ["http:", "https:", "mailto:", "tel:"].includes(parsed.protocol) ? href : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function safeSvgAttribute(name, value) {
+    const text = String(value || "");
+    if (name === "class") return /^[A-Za-z0-9 _-]{0,160}$/.test(text) ? text : null;
+    if (name === "aria-hidden" || name === "focusable") return /^(true|false)$/.test(text) ? text : null;
+    if (name === "viewBox" || name === "points") return /^[0-9eE.,+\-\s]+$/.test(text) ? text : null;
+    if (name === "d") return /^[MmLlHhVvCcSsQqTtAaZz0-9eE.,+\-\s]+$/.test(text) ? text : null;
+    if (name === "fill" || name === "stroke") return /^(none|currentColor|#[0-9a-fA-F]{3,8})$/.test(text) ? text : null;
+    if (["width", "height", "stroke-width", "x", "y", "x1", "y1", "x2", "y2", "cx", "cy", "r"].includes(name))
+      return /^(?:[0-9]+(?:\.[0-9]+)?|\.[0-9]+)$/.test(text) ? text : null;
+    if (name === "stroke-linecap") return /^(butt|round|square)$/.test(text) ? text : null;
+    if (name === "stroke-linejoin") return /^(miter|round|bevel)$/.test(text) ? text : null;
+    return null;
+  }
+
+  function sanitizeNode(node) {
+    if (node.nodeType === Node.TEXT_NODE) return document.createTextNode(node.textContent || "");
+    if (node.nodeType !== Node.ELEMENT_NODE) return null;
+    const tag = node.tagName.toUpperCase();
+    if (DROP_CONTENT_TAGS.has(tag)) return null;
+
+    const isSvg = node.namespaceURI === SVG_NS;
+    const name = isSvg ? node.tagName.toLowerCase() : tag;
+    if (isSvg && !SAFE_SVG_TAGS.has(name)) return null;
+    if (!isSvg && !SAFE_HTML_TAGS.has(tag)) {
+      const fragment = document.createDocumentFragment();
+      for (const child of node.childNodes) {
+        const safeChild = sanitizeNode(child);
+        if (safeChild) fragment.append(safeChild);
+      }
+      return fragment;
+    }
+
+    const clean = isSvg ? document.createElementNS(SVG_NS, name) : document.createElement(name.toLowerCase());
+    for (const attribute of Array.from(node.attributes)) {
+      const attr = attribute.name;
+      let value = null;
+      if (isSvg) {
+        if (["class", "aria-hidden", "focusable", "viewBox", "points", "d", "fill", "stroke", "width", "height", "stroke-width", "stroke-linecap", "stroke-linejoin", "x", "y", "x1", "y1", "x2", "y2", "cx", "cy", "r"].includes(attr))
+          value = safeSvgAttribute(attr, attribute.value);
+      } else if (attr === "class" && /^[A-Za-z0-9 _-]{0,160}$/.test(attribute.value)) value = attribute.value;
+      else if (attr === "aria-hidden" && /^(true|false)$/.test(attribute.value)) value = attribute.value;
+      else if (["aria-label", "title", "role"].includes(attr) && attribute.value.length <= 200 && !/[\u0000-\u001f\u007f]/.test(attribute.value)) value = attribute.value;
+      else if (tag === "A" && attr === "href") value = safeHref(attribute.value);
+      else if (tag === "A" && attr === "target" && ["_blank", "_self"].includes(attribute.value)) value = attribute.value;
+      else if (tag === "A" && attr === "rel") value = "noopener noreferrer";
+      if (value !== null) clean.setAttribute(attr, value);
+    }
+    if (!isSvg && tag === "A" && clean.getAttribute("target") === "_blank") clean.setAttribute("rel", "noopener noreferrer");
+    for (const child of node.childNodes) {
+      const safeChild = sanitizeNode(child);
+      if (safeChild) clean.append(safeChild);
+    }
+    return clean;
+  }
+
+  function sanitizeHTML(html) {
+    const parsed = new DOMParser().parseFromString(String(html), "text/html");
+    const fragment = document.createDocumentFragment();
+    for (const node of parsed.body.childNodes) {
+      const safeNode = sanitizeNode(node);
+      if (safeNode) fragment.append(safeNode);
+    }
+    return fragment;
+  }
+
   function cleanHTML(el) {
     const clone = el.cloneNode(true);
     stripMarkers(clone);
-    return clone.innerHTML;
+    const container = document.createElement("div");
+    container.append(sanitizeHTML(clone.innerHTML));
+    return container.innerHTML;
   }
 
   function beginEdit(el, event) {
@@ -476,6 +562,7 @@
       '<div class="edit-toolbar-actions">' +
       '<button class="btn small primary" type="button" id="edit-save">Done / Save</button>' +
       '<button class="btn small" type="button" id="edit-discard">Discard</button>' +
+      '<button class="btn small" type="button" data-auth-sign-out>Sign out</button>' +
       '<button class="btn small ghost" type="button" id="edit-reset">Reset all</button>' +
       "</div>" +
       "<p>Click text to edit · Double-click to open · Drag to reorder</p>";

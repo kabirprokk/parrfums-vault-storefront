@@ -712,9 +712,9 @@ function productView(p) {
       <p class="variant-label">Choose size</p>
       <div class="variant-row" role="group" aria-label="Choose size">${sizeButtons}</div>
         ${Commerce.badge(p,selSize)}${addToBagButton(p, selSize)}
-      <button class="btn ghost full" data-wish="${p.id}" style="margin-top:10px">${heartSvg(wished)} ${wished ? 'In wishlist' : 'Add to wishlist'}</button>
+      <button class="btn ghost full spaced-top-small" data-wish="${p.id}">${heartSvg(wished)} ${wished ? 'In wishlist' : 'Add to wishlist'}</button>
       ${waLink(`Hi Parrfums Vault! I'd like to order ${p.name} (${selSize}ml — ${money(priceFor(p, selSize))}).`, 'Order on WhatsApp', 'btn ghost full wa-btn')}
-      <p class="sub" style="margin-top:18px">Pan-India delivery · ${BRAND.city}</p>
+      <p class="sub spaced-top-medium">Pan-India delivery · ${BRAND.city}</p>
     </div></div>
     ${Commerce.facts(p)}${Commerce.share(p)}${Commerce.reviews(p)}${Commerce.recommendations(p)}
   </section>${mobileBuyBar(p,selSize)}`;
@@ -781,7 +781,7 @@ function wishlist() {
       <div class="product-image"><a href="#product/${p.id}" aria-label="View ${esc(p.name)}">${imgTag(p.img, `${esc(p.name)} fragrance`)}</a>
         <button class="heart active" data-wish="${p.id}" aria-label="Remove ${esc(p.name)} from wishlist" aria-pressed="true">${heartSvg(true)}</button></div>
       <div class="product-meta"><a href="#product/${p.id}"><h3>${esc(p.name)}</h3><p>${esc(p.notes)}</p>${priceBlock(p)}</a>
-        ${Commerce.badge(p,defaultSize(p))}${Commerce.available(p,defaultSize(p))?`<button class="btn small" data-add="${p.id}" data-move-wishlist style="margin-top:10px">Move to bag</button>`:availabilityInquiryLink(p,defaultSize(p),'btn wa-btn small')}</div>
+    ${Commerce.badge(p,defaultSize(p))}${Commerce.available(p,defaultSize(p))?`<button class="btn small spaced-top-small" data-add="${p.id}" data-move-wishlist>Move to bag</button>`:availabilityInquiryLink(p,defaultSize(p),'btn wa-btn small')}</div>
     </article>`).join('')}</div></section>`;
 }
 
@@ -792,12 +792,12 @@ function account() {
     <p class="sub">Sign in to sync your wishlist, save delivery addresses, and track orders you place while signed in.</p>
     ${authNotice ? `<p class="error" role="alert">${esc(authNotice)}</p>` : ''}
     <button class="btn primary" type="button" data-auth-sign-in>Continue with Google</button>
-    <p class="sub" style="margin-top:18px">We store account details and order requests securely. Payments are marked paid only after secure provider verification. Online payment availability depends on the store configuration. <a href="#privacy">Read account data information</a>.</p>
+    <p class="sub spaced-top-medium">We store account details and order requests securely. Payments are marked paid only after secure provider verification. Online payment availability depends on the store configuration. <a href="#privacy">Read account data information</a>.</p>
   </section>`;
 
   const profileName = accountProfile?.full_name || authUser.user_metadata?.full_name || authUser.user_metadata?.name || '';
   const profilePhone = accountProfile?.phone || '';
-  const addressCards = savedAddresses.length ? savedAddresses.map(a => `<article class="offer-card" style="padding:18px;margin-bottom:12px">
+  const addressCards = savedAddresses.length ? savedAddresses.map(a => `<article class="offer-card account-address-card">
     <strong>${esc(a.label)}${a.is_default ? ' · Default' : ''}</strong><p>${esc(a.recipient_name)} · ${esc(a.phone)}</p>
     <p>${esc(a.address_line1)}${a.address_line2 ? `, ${esc(a.address_line2)}` : ''}, ${esc(a.city)}, ${esc(a.state)} ${esc(a.postal_code)}</p>
     <div class="offer-actions">${a.is_default ? '' : `<button class="btn small" type="button" data-address-default="${esc(a.id)}">Make default</button>`}
@@ -993,7 +993,10 @@ function initializeAuth() {
   supabaseClient.auth.onAuthStateChange((event, session) => {
     const previousId = authUser?.id || null;
     authUser = session?.user || null;
-    setTimeout(() => { void Commerce.onAuth(authUser); }, 0);
+    setTimeout(async () => {
+      await Commerce.onAuth(authUser);
+      if (!Commerce.cache.admin && window.PVEdit?.isOn()) window.PVEdit.toggle(false);
+    }, 0);
     authReady = true;
     if (previousId !== (authUser?.id || null)) {
       accountProfile = null; savedAddresses = []; accountOrders = []; authNotice = '';
@@ -1146,7 +1149,12 @@ function flashAdded(btn) {
 
 document.addEventListener('click', e => {
   if (e.target.closest('[data-auth-sign-in]')) { void startGoogleSignIn(); return; }
-  if (e.target.closest('[data-auth-sign-out]')) { void signOutAccount(); return; }
+  if (e.target.closest('[data-auth-sign-out]')) {
+    if (e.target.closest('#edit-toolbar') && window.PVEdit?.collect().length &&
+      !window.confirm('You have unpublished website edits. Sign out without publishing them?')) return;
+    void signOutAccount();
+    return;
+  }
   const addressDefault = e.target.closest('[data-address-default]');
   if (addressDefault) { void setDefaultAddress(addressDefault.dataset.addressDefault); return; }
   const addressDelete = e.target.closest('[data-address-delete]');

@@ -363,3 +363,7 @@ button.text-link {
 .admin-page .inventory-help p{margin:0 0 10px}
 .admin-page .inventory-help p:last-of-type{margin-bottom:14px}
 @media(max-width:560px){.admin-page .inventory-help{padding:15px;margin:14px 0 20px}.admin-page .inventory-help .btn{width:100%;min-height:46px}}
+.spaced-top-small { margin-top: 10px; }
+.spaced-top-medium { margin-top: 18px; }
+.account-address-card { padding: 18px; margin-bottom: 12px; }
+.stat-grid-spaced { margin-top: 16px; }

@@ -92,7 +92,8 @@ const response = () => ({
   delete process.env.SITE_URL;
   r = response();
   await sitemap({}, r);
-  assert.equal(r.code, 503, "Never invent a canonical domain");
+  assert.equal(r.code, 200, "The confirmed production domain provides a sitemap fallback");
+  assert.ok(r.body.includes("https://parrfums-vault.vercel.app/"));
   global.fetch = async () => {
     throw Error("offline");
   };

@@ -40,6 +40,8 @@ const { chromium } = require("playwright"),
   await page.evaluate(() => window.PVEdit.toggle(true));
   const toolbar = page.locator("#edit-toolbar");
   await toolbar.waitFor({ state: "visible" });
+  assert.match(await toolbar.locator("[data-auth-sign-out]").innerText(), /sign out/i,
+    "site editors can sign out directly from the editing toolbar");
   const box = await toolbar.boundingBox();
   assert.ok(box.y > 500, "toolbar sits at the bottom of the screen");
   assert.ok(box.x < 60, "toolbar sits on the left of the screen");
@@ -74,6 +76,28 @@ const { chromium } = require("playwright"),
     "A headline the owner changed",
     "the owner edit is live for every visitor",
   );
+  server.push({
+    key: ".intro-copy h1",
+    kind: "html",
+    content: { html: '<strong>Safe formatting</strong><img src="x" onerror="window.__pvInjected=1"><script>window.__pvInjected=2</script><a href="javascript:window.__pvInjected=3" onclick="window.__pvInjected=4">Unsafe link</a><svg viewBox="0 0 24 24" onload="window.__pvInjected=5"><path d="M0 0" onload="window.__pvInjected=6"></path></svg>' },
+  });
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForFunction(() => catalogueReady);
+  await page.waitForTimeout(150);
+  const sanitizedHeadline = page.locator(".intro-copy h1");
+  assert.equal(await sanitizedHeadline.locator("script, img").count(), 0,
+    "active HTML elements are removed from published edits");
+  assert.equal(await sanitizedHeadline.locator("a").getAttribute("href"), null,
+    "javascript links lose their destination");
+  assert.equal(await sanitizedHeadline.locator("a").getAttribute("onclick"), null,
+    "event handlers are never restored from published HTML");
+  assert.equal(await sanitizedHeadline.locator("svg").getAttribute("onload"), null,
+    "SVG event handlers are stripped while safe icon markup remains");
+  assert.equal(await sanitizedHeadline.locator("strong").innerText(), "Safe formatting",
+    "safe text formatting is preserved");
+  assert.equal(await page.evaluate(() => window.__pvInjected), undefined,
+    "stored HTML cannot execute script or event handlers");
+  server.pop();
   await page.evaluate(() => localStorage.removeItem("pv-site-content-v1"));
   await page.reload({ waitUntil: "networkidle" });
   await page.waitForFunction(() => catalogueReady);
