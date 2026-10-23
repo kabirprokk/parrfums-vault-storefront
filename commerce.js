@@ -15,6 +15,7 @@ const Commerce = (() => {
   const messages = {
     AUTH_REQUIRED: "Please sign in again to continue.",
     ADMIN_REQUIRED: "Admin access or MFA verification is missing. In Admin, choose Verify with authenticator, complete the code, then retry.",
+    AUTH_MFA_REQUIRED: "Verify your authenticator to complete this protected action, then try again.",
     INVALID_ADDRESS:
       "Check your name, email, mobile number and complete Indian delivery address.",
     INVALID_QUANTITY: "Choose a valid quantity, up to 20 per item.",
@@ -41,6 +42,17 @@ const Commerce = (() => {
     INVALID_STATUS_TRANSITION: "That order status change is not allowed.",
     ORDER_EXPIRED:
       "This order reservation has expired. Review availability before ordering again.",
+    ORDER_NOT_FOUND: "We could not find that order. Refresh your order history and try again.",
+    ALREADY_PAID: "This order is already paid. Refresh your order status before taking another action.",
+    PAYMENT_NOT_FOUND: "We could not find the payment attempt. Refresh the order and try again.",
+    PAYMENT_AMOUNT_MISMATCH: "The payment total no longer matches this order. Refresh the order before retrying.",
+    ORDER_LIMIT_EXCEEDED: "This order is above the online order limit. Contact the store for help.",
+    INVALID_IMAGE: "That image could not be saved. Choose a supported image from the media library.",
+    INVALID_PRODUCT: "Some product details are missing or invalid. Review the form and try again.",
+    INVALID_OFFER: "Some combo details are missing or invalid. Review the form and try again.",
+    INVALID_STATUS: "Choose a valid status and try again.",
+    INVALID_STATUS_TRANSITION: "That order status change is not available. Refresh the order and try again.",
+    NOT_FOUND: "That item could not be found. Refresh the page and try again.",
   };
   const safeError = (error) => {
     const text = String(error?.message || error || "");
@@ -52,6 +64,8 @@ const Commerce = (() => {
       text.includes("session")
     )
       return messages.AUTH_REQUIRED;
+    if (error?.status === 429 || text.includes("429")) return "Too many attempts in a short time. Please wait a moment and try again.";
+    if (text.includes("Failed to fetch") || text.includes("NetworkError") || text.includes("Load failed")) return "We couldn’t reach the store securely. Check your connection and try again.";
     if (!navigator.onLine)
       return "You are offline. Reconnect and try again; your bag is still saved.";
     if (text.includes("Abort") || text.includes("timeout"))

@@ -30,12 +30,14 @@ The owner's direct instructions and supplied media supersede the earlier Instagr
 ### Bio (verbatim, 5 lines)
 
 ```
-🌸 Luxury in a Bottle
-🚚 Pan-India delivery
-🛒 Limited stock – DM now
-💫 Handmade | Unique | Timeless
-✨ Find Your Fragrance Identity
+Luxury in a Bottle
+Pan-India delivery
+Limited stock – DM now
+Handmade | Unique | Timeless
+Find Your Fragrance Identity
 ```
+
+Decorative emoji from the source profile are intentionally omitted from the website; use the site's custom line icons instead.
 
 The bio links out to a WhatsApp community. **Ordering happens on WhatsApp or Instagram DM.**
 The website must offer a direct "Order on WhatsApp" path — never promise DM without a way to DM.

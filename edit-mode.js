@@ -558,5 +558,5 @@
     }
   }
 
-  window.PVEdit = { init, toggle, apply, afterRender, save, collect: collectChanges, isOn: () => state.on };
+  window.PVEdit = { init, toggle, apply, afterRender, refresh: loadSiteContent, save, collect: collectChanges, isOn: () => state.on };
 })();

@@ -9,6 +9,7 @@ const BRAND = {
   whatsappDirect: 'https://wa.me/918591935352',
   instagram: 'https://www.instagram.com/parrfums.vault/',
   instagramDm: 'https://ig.me/m/parrfums.vault',
+  email: 'quillsandcologne@gmail.com',
   city: 'Mumbai'
 };
 
@@ -22,6 +23,8 @@ const shippingZone = city => /^(mumbai|bombay)$/i.test(String(city || '').trim()
 const shippingFee = city => SHIPPING[shippingZone(city)];
 let catalogueReady = false;
 let catalogueLoading=true;
+let catalogueRefreshInFlight = false;
+let catalogueSignature = "";
 
 // Publishable key is designed for browser use; RLS and SELECT-only grants are
 // the security boundary. Never replace this with a secret/service-role key.
@@ -170,12 +173,19 @@ const phoneLink = (label = 'Call us') =>
 
 const igLink = (label = 'Instagram') =>
   `<a class="text-link ig-link" href="${BRAND.instagram}" target="_blank" rel="noreferrer">${igSvg}<span>${esc(label)}</span></a>`;
+const formatAccords = value => String(value || '').split(/[·,]/).map(part => part.trim()).filter(Boolean).map(part => part.replace(/\b([a-z])/g, letter => letter.toUpperCase())).join(' · ');
 
-const defaultSize=p=>p.sizes?.includes(DEFAULT_SIZE)?DEFAULT_SIZE:(p.sizes?.[0]||0);
+const defaultSize=p=>{
+  const sizes=p?.sizes||[];
+  if(sizes.includes(DEFAULT_SIZE)&&Commerce.available(p,DEFAULT_SIZE))return DEFAULT_SIZE;
+  return sizes.find(size=>Commerce.available(p,size))||(sizes.includes(DEFAULT_SIZE)?DEFAULT_SIZE:(sizes[0]||0));
+};
 const priceFor = (p, size) => isCombo(p) ? p.price : (p.prices?.[size] || SIZE_PRICES[size] || SIZE_PRICES[DEFAULT_SIZE]);
 const priceLabel = (p, size) => isCombo(p) ? 'Combo' : `${size}ml`;
 
 async function loadCatalogue() {
+  if(catalogueRefreshInFlight)return;
+  catalogueRefreshInFlight=true;
   const read = async (resource, select) => {
     const url = `${CATALOGUE_API}/${resource}?select=${select}`;
     const response = await fetch(url, { headers: { apikey: CATALOGUE_KEY }, cache: 'no-store', signal: AbortSignal.timeout(15000) });
@@ -214,6 +224,10 @@ async function loadCatalogue() {
       return { ...row, variants: prices.filter(v=>v.product_id===row.id), id: row.id, name: row.name, kind: 'combo', price: row.price_inr, badge: row.badge, notes: row.notes, desc: row.description, img: row.image_path };
     });
 
+    const nextSignature=JSON.stringify({nextProducts,nextOffers,components,ratings,popularity,revision:settings?.[0]?.revision});
+    const catalogueChanged=nextSignature!==catalogueSignature;
+    catalogueSignature=nextSignature;
+
     Commerce.cache.components=components; Commerce.cache.summary=ratings; Commerce.cache.popularity=popularity;
     products.splice(0, products.length, ...nextProducts);
     combos.splice(0, combos.length, ...nextOffers);
@@ -229,12 +243,16 @@ async function loadCatalogue() {
     // Re-render the route the app is actually showing, never the URL alone, so a
     // late catalogue response can never replace the admin console with another page.
     const target = currentPath || (location.hash.slice(1) || location.pathname.replace(/^\/+|\/+$/g, '') || 'landing');
-    if (!catalogueUserInteracted) render(target, { keepScroll: true });
-    else render(currentPath, { keepScroll: true });
+    if (catalogueChanged && currentPath !== 'admin') {
+      if (!catalogueUserInteracted) render(target, { keepScroll: true });
+      else render(currentPath, { keepScroll: true });
+    }
   } catch {
     // Keep the bundled catalogue available if the network/API is unavailable.
     catalogueLoading=false;console.warn('Using the built-in catalogue because the live catalogue could not be loaded.');
     render(currentPath, { keepScroll: true });
+  } finally {
+    catalogueRefreshInFlight=false;
   }
 }
 
@@ -276,11 +294,13 @@ document.addEventListener('error', event => {
 
 const icon = name => {
   const P = {
+    bag: '<path d="M4 8h16l1.5 13h-19L4 8Z"/><path d="M8 8V6.5a4 4 0 0 1 8 0V8"/><path d="M10 12v5h4v-5M11 12v-2h2v2"/>',
     pin: '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/>',
     truck: '<path d="M3 6h11v9H3zM14 9h3.6l2.4 3v3h-2"/><circle cx="7" cy="18" r="1.8"/><circle cx="17" cy="18" r="1.8"/>',
     box: '<path d="M21 8v8l-9 5-9-5V8l9-5 9 5Z"/><path d="m3 8 9 5 9-5M12 21v-8"/>',
-    sparkle: '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8"/>'
+    sparkle: '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8"/>',
+    mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/>'
   };
   return `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[name] || ''}</svg>`;
 };
@@ -299,15 +319,18 @@ const priceBlock = p => {
 
 function card(p) {
   const wished = state.wish.includes(p.id);
+  const size = defaultSize(p), inStock = Commerce.available(p, size);
+  const addLabel = inStock ? `Add ${size}ml · ${money(priceFor(p, size))}` : Commerce.stock(p, size).label;
   return `<article class="product-card">
     <div class="product-image"><a href="#product/${p.id}" aria-label="View ${esc(p.name)}">${imgTag(p.img, `${p.name} — Parrfums Vault fragrance`)}</a>
       <button class="heart ${wished ? 'active' : ''}" data-wish="${p.id}" aria-label="${wished ? 'Remove' : 'Add'} ${esc(p.name)} ${wished ? 'from' : 'to'} wishlist" aria-pressed="${wished}">${heartSvg(wished)}</button></div>
-    <div class="product-meta"><a href="#product/${p.id}"><h3>${esc(p.name)}</h3><p>${esc(p.notes)}</p>${priceBlock(p)}</a>
-      <button class="quick-add" data-add="${p.id}" ${Commerce.available(p,defaultSize(p))?'':'disabled'}>${p.sizes.length?`Add ${defaultSize(p)}ml · ${money(priceFor(p, defaultSize(p)))}`:'Product unavailable'} <span aria-hidden="true">+</span></button></div>
+    <div class="product-meta"><a href="#product/${p.id}"><h3>${esc(p.name)}</h3><p>${esc(formatAccords(p.notes))}</p>${priceBlock(p)}</a>
+      <button class="quick-add" data-add="${p.id}" data-size="${size}" ${inStock?'':'disabled'}>${p.sizes.length?esc(addLabel):'Product unavailable'} ${inStock?'<span aria-hidden="true">+</span>':''}</button></div>
   </article>`;
 }
 
 function offerCard(c) {
+  const availability = Commerce.stock(c, 0);
   return `<article class="offer-card">
     <div class="offer-img">${imgTag(c.img, `${c.name} — ${c.badge}`)}<span class="offer-badge">Combo</span></div>
     <div class="offer-body">
@@ -317,7 +340,7 @@ function offerCard(c) {
       <p class="offer-notes">${esc(c.notes)}</p>
       <p class="offer-price">${money(c.price)}</p>
       <div class="offer-actions">
-        <button class="btn primary" data-add="${c.id}">Add to bag</button>
+        <button class="btn primary" data-add="${c.id}" ${availability.available?'':'disabled'}>${availability.available?'Add to bag':esc(availability.label)}</button>
         ${waLink(`Hi Parrfums Vault! I'd like to order the ${c.name} (${c.badge}) for ${money(c.price)}.`, 'Order on WhatsApp', 'btn ghost wa-btn')}
       </div>
     </div>
@@ -329,6 +352,7 @@ function contactStrip() {
     <a class="contact-item" href="${BRAND.whatsapp}" target="_blank" rel="noreferrer">${waSvg}<span><strong>Order on WhatsApp</strong><small>Fastest way to order</small></span></a>
     <a class="contact-item" href="${BRAND.phoneHref}">${phoneSvg}<span><strong>${BRAND.phoneDisplay}</strong><small>Call to order</small></span></a>
     <a class="contact-item" href="${BRAND.instagramDm}" target="_blank" rel="noreferrer">${igSvg}<span><strong>DM @parrfums.vault</strong><small>Limited stock — DM now</small></span></a>
+    <a class="contact-item" href="mailto:${encodeURIComponent(BRAND.email)}">${icon('mail')}<span><strong>Email us</strong><small>${esc(BRAND.email)}</small></span></a>
   </div>`;
 }
 
@@ -344,6 +368,10 @@ const promiseBar = () => `<section class="promise-bar" aria-label="Parrfums Vaul
 const brandMark = `<span class="brand-mark" aria-hidden="true"><img class="logo-image" src="assets/parrfums-vault-logo.png" alt="" width="44" height="44"></span>`;
 
 const arrowSvg = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>`;
+const prevSvg = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14.5 5-7 7 7 7"/></svg>`;
+const nextSvg = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9.5 5 7 7-7 7"/></svg>`;
+const pauseSvg = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M8 5v14M16 5v14"/></svg>`;
+const playSvg = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 5 11 7-11 7z"/></svg>`;
 const arrowDownSvg = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>`;
 const themeIcon = () => window.PVTheme?.icon() || '';
 
@@ -353,7 +381,7 @@ function landing() {
     <div class="landing-bg" role="img" aria-label="Parrfums Vault fragrance photography"></div>
     <div class="landing-scrim" aria-hidden="true"></div>
     <div class="landing-top"><span class="brand landing-brand" role="img" aria-label="Parrfums Vault">${brandMark}</span><div class="landing-top-actions"><button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to dark mode">${themeIcon()}</button></div></div>
-    <div class="landing-inner"><p class="landing-eyebrow">Luxury in a bottle</p><h1 class="landing-brand-name">Parrfums Vault</h1><p class="landing-sub">Handmade fragrance from ${BRAND.city}. A collection of scents, stories, and the moments that stay with you.</p><div class="landing-actions"><a class="landing-enter" href="#home">Enter the vault ${arrowSvg}</a></div></div>
+    <div class="landing-inner"><p class="landing-eyebrow">Parrfums Vault · Handmade in ${BRAND.city}</p><h1 class="landing-brand-name">A fragrance.<br>A signature.<br><em>An impression.</em></h1><p class="landing-sub">Discover distinctive fragrances, thoughtfully crafted in Mumbai.</p><div class="landing-actions"><a class="landing-enter landing-primary" href="#shop">Fragrances ${arrowSvg}</a><a class="landing-enter landing-secondary" href="#finder">Find Your Scent ${arrowSvg}</a></div></div>
     <div class="landing-foot"><span>Handmade in ${BRAND.city}</span><span>Unique · Timeless</span><span>Six signature scents</span><button class="landing-scroll" type="button" data-scroll-to="landing-story" aria-label="Discover the Parrfums Vault story below">${arrowDownSvg}</button></div>
   </section>${landingShowcase()}`;
 }
@@ -370,9 +398,9 @@ function home() {
   return `<section class="vault-intro">
     <div class="intro-copy">
       <p class="eyebrow"><span class="live-dot" aria-hidden="true"></span> Handmade in Mumbai · Worn everywhere</p>
-      <h1>Luxury in<br> a <em>bottle.</em></h1>
-      <p class="intro-description">A scent for your everyday. A gift they’ll remember.<br>Meet your next signature, from ₹400.</p>
-      <div class="intro-actions"><a class="btn primary" href="#shop">Find your fragrance ${arrowSvg}</a><a class="text-link" href="#combos">Explore combos ${arrowSvg}</a></div>
+      <h1>A fragrance.<br>A signature.<br><em>An impression.</em></h1>
+      <p class="intro-description">Discover distinctive fragrances, thoughtfully crafted in Mumbai.</p>
+      <div class="intro-actions"><a class="btn primary" href="#shop">Fragrances ${arrowSvg}</a><a class="text-link" href="#finder">Find Your Scent ${arrowSvg}</a></div>
       <div class="intro-prices" aria-label="Fragrance prices"><span><strong>30<small>ml</small></strong>₹400</span><span><strong>50<small>ml</small></strong>₹750</span><span><strong>100<small>ml</small></strong>₹1,250</span></div>
       <p class="delivery-note">${icon('truck')} Delivery across India · Mumbai ₹100 / elsewhere ₹120</p>
     </div>
@@ -381,7 +409,7 @@ function home() {
 }
 
 function storefrontSections() {
-  return `<div class="vault-ribbon" aria-label="Our promise"><span>Small batches. Lasting impressions.</span><span>Handmade with intention</span><span>✨ Find your fragrance identity</span></div>
+  return `<div class="vault-ribbon" aria-label="Our promise"><span>Small batches. Lasting impressions.</span><span>Handmade with intention</span><span>${icon('sparkle')} Find your fragrance identity</span></div>
   <section class="section combo-section" id="the-vault">
     <div class="section-head"><div><p class="eyebrow">A little more to love</p><h2>Good things come <em>together.</em></h2></div><a class="text-link" href="#combos">All combos ${arrowSvg}</a></div>
     ${comboSlideshow()}
@@ -406,12 +434,12 @@ function comboSlideshow({ showcase = false } = {}) {
         ${showcase ? `<a class="combo-poster" href="#product/${c.id}" aria-label="Explore ${esc(c.name)}">${imgTag(slide.image,slide.label,'',index===0)}</a><div class="combo-copy"><p class="eyebrow">The gifting edit · ${String(index+1).padStart(2,'0')}</p><h3>${esc(c.name)}</h3><p class="showcase-caption">${esc(slide.label)}</p><p class="combo-choice">A little for you. A little for someone special. A collection of fragrances, gathered for the moments worth remembering.</p></div>` : `<a class="combo-poster" href="#product/${c.id}" aria-label="Explore ${esc(c.name)}">${imgTag(slide.image, `${slide.label}: ${c.badge} for ${money(c.price)}. Shipping extra.`, '', index === 0)}</a><div class="combo-copy"><p class="eyebrow">The gifting edit · ${String(index + 1).padStart(2, '0')}</p><h3>${esc(c.name)}</h3><p class="combo-inclusion">${esc(c.badge)}</p><p class="combo-choice">${esc(c.notes)}</p><p class="combo-price">${money(c.price)} <small>+ shipping</small></p><div class="offer-actions"><a class="btn primary" href="#product/${c.id}">Explore this combo ${arrowSvg}</a>${waLink(`Hi Parrfums Vault! I'd like the ${c.name} for ${money(c.price)} plus shipping. Please help me choose my fragrances.`, 'Ask on WhatsApp', 'text-link wa-btn')}</div><p class="delivery-note">Mumbai ₹100 · Outside Mumbai ₹120</p></div>`}
       </article>`;
     }).join('')}</div>
-    <div class="carousel-controls"><span class="carousel-label">The combo collection</span><div class="carousel-dots" role="group" aria-label="Choose combo slide">${COMBO_SLIDES.map((s,i)=>`<button type="button" data-slide="${i}" aria-label="Show ${esc(s.label)}" aria-pressed="${i===0}"><span></span></button>`).join('')}</div><div class="carousel-buttons"><button type="button" data-carousel-prev aria-label="Previous combo">←</button><button type="button" data-carousel-pause aria-label="Pause slideshow" aria-pressed="false">Ⅱ</button><button type="button" data-carousel-next aria-label="Next combo">→</button></div><span class="sr-only" data-slide-status role="status" aria-live="polite"></span></div>
+    <div class="carousel-controls"><span class="carousel-label">The combo collection</span><div class="carousel-dots" role="group" aria-label="Choose combo slide">${COMBO_SLIDES.map((s,i)=>`<button type="button" data-slide="${i}" aria-label="Show ${esc(s.label)}" aria-pressed="${i===0}"><span></span></button>`).join('')}</div><div class="carousel-buttons"><button type="button" data-carousel-prev aria-label="Previous combo">${prevSvg}</button><button type="button" data-carousel-pause aria-label="Pause slideshow" aria-pressed="false">${pauseSvg}</button><button type="button" data-carousel-next aria-label="Next combo">${nextSvg}</button></div><span class="sr-only" data-slide-status role="status" aria-live="polite"></span></div>
   </div>`;
 }
 
 function comboPage() {
-  return `<section class="page-shell combos-page"><div class="section-head"><div><p class="eyebrow">More to gift. More to keep.</p><h1 class="page-title">The combo <em>collection.</em></h1></div><span class="collection-stamp">Made to be shared ✨</span></div><p class="page-intro">Two ways to build your fragrance wardrobe. Choose your scents with us on WhatsApp; your free fragrance can be Guilty Man or Vanilla 28.</p><div class="combo-grid">${combos.map(offerCard).join('')}</div><div class="shipping-notice">${icon('truck')} Shipping is extra on every order: Mumbai ₹100 · Outside Mumbai ₹120.</div><div class="section-head campaign-heading"><div><p class="eyebrow">From the gifting edit</p><h2>A little festive inspiration.</h2></div></div><div class="campaign-grid">${COMBO_SLIDES.filter(s=>s.image!==IMG.offerFestive&&s.image!==IMG.offerDuo).map(s=>`<a href="#product/${s.offer}">${imgTag(s.image,s.label)}<span>${esc(s.label)} ${arrowSvg}</span></a>`).join('')}</div>${contactStrip()}</section>`;
+  return `<section class="page-shell combos-page"><div class="section-head"><div><p class="eyebrow">More to gift. More to keep.</p><h1 class="page-title">The combo <em>collection.</em></h1></div><span class="collection-stamp">Made to be shared ${icon('sparkle')}</span></div><p class="page-intro">Two ways to build your fragrance wardrobe. Choose your scents with us on WhatsApp; your free fragrance can be Guilty Man or Vanilla 28.</p><div class="combo-grid">${combos.map(offerCard).join('')}</div><div class="shipping-notice">${icon('truck')} Shipping is extra on every order: Mumbai ₹100 · Outside Mumbai ₹120.</div><div class="section-head campaign-heading"><div><p class="eyebrow">From the gifting edit</p><h2>A little festive inspiration.</h2></div></div><div class="campaign-grid">${COMBO_SLIDES.filter(s=>s.image!==IMG.offerFestive&&s.image!==IMG.offerDuo).map(s=>`<a href="#product/${s.offer}">${imgTag(s.image,s.label)}<span>${esc(s.label)} ${arrowSvg}</span></a>`).join('')}</div>${contactStrip()}</section>`;
 }
 
 let carouselCleanup = () => {};
@@ -423,9 +451,10 @@ function setupCarousel() {
   const dots = [...root.querySelectorAll('[data-slide]')];
   const pause = root.querySelector('[data-carousel-pause]');
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
-  let index = 0, paused = motion.matches, hovered = false, focused = false, visible = true, startX = null, fadeTimer;
+  const lowMotion = motion.matches || navigator.connection?.saveData || (navigator.deviceMemory && navigator.deviceMemory <= 2);
+  let index = 0, paused = lowMotion, hovered = false, focused = false, visible = true, startX = null, fadeTimer;
   const setPause = () => {
-    pause.textContent = paused ? '▶' : 'Ⅱ';
+    pause.innerHTML = paused ? playSvg : pauseSvg;
     pause.setAttribute('aria-label', paused ? 'Play slideshow' : 'Pause slideshow');
     pause.setAttribute('aria-pressed', String(paused));
   };
@@ -435,7 +464,7 @@ function setupCarousel() {
     clearTimeout(fadeTimer);
     root.querySelector('.combo-outgoing')?.remove();
     slides.forEach(slide => slide.classList.remove('combo-entering'));
-    if (!motion.matches) {
+    if (!lowMotion) {
       const outgoing = slides[index].cloneNode(true);
       outgoing.classList.add('combo-outgoing');
       outgoing.setAttribute('aria-hidden', 'true');
@@ -444,7 +473,7 @@ function setupCarousel() {
     }
     index = nextIndex;
     slides.forEach((s,i)=>{s.hidden=i!==index;});
-    if (!motion.matches) slides[index].classList.add('combo-entering');
+    if (!lowMotion) slides[index].classList.add('combo-entering');
     fadeTimer = setTimeout(() => { root.querySelector('.combo-outgoing')?.remove(); slides[index].classList.remove('combo-entering'); }, 550);
     dots.forEach((d,i)=>d.setAttribute('aria-pressed',String(i===index)));
     if(manual) root.querySelector('[data-slide-status]').textContent=slides[index].getAttribute('aria-label');
@@ -610,6 +639,11 @@ function productView(p) {
     const label = availability.available ? 'Add to bag' : availability.label;
     return `<button class="btn primary full" type="button" data-add="${esc(item.id)}" ${availability.available ? '' : 'disabled'} aria-label="${esc(label)}${availability.available ? '' : ` — ${esc(item.name)} is not available to add right now`}">${esc(label)}</button>`;
   };
+  const mobileBuyBar = (item, size) => {
+    const availability=Commerce.stock(item,size), label=availability.available?'Add to bag':availability.label;
+    const value=isCombo(item)?item.price:priceFor(item,size);
+    return `<aside class="mobile-buybar" aria-label="Quick purchase"><span class="mobile-buybar-price"><strong data-mobile-price>${money(value)}</strong>${size?`<small>${size}ml</small>`:''}</span><button class="btn primary" type="button" data-add="${esc(item.id)}" data-size="${size}" ${availability.available?'':'disabled'} aria-label="${esc(label)}${availability.available?'':` — ${esc(item.name)} is unavailable`}">${icon('bag')}<span>${esc(label)}</span></button></aside>`;
+  };
   if (isCombo(p)) {
     return `<section class="page-shell"><div class="detail">
       <div class="detail-image"><div class="gallery-main">${imgTag(p.img, `${p.name} offer`, 'gallery-img')}</div></div>
@@ -620,11 +654,14 @@ function productView(p) {
         ${Commerce.badge(p,0)}${addToBagButton(p, 0)}
         ${waLink(`Hi Parrfums Vault! I'd like to order the ${p.name} — ${p.badge} for ${money(p.price)}.`, 'Order on WhatsApp', 'btn ghost full wa-btn')}
       </div>
-    </div></section>`;
+    </div></section>${mobileBuyBar(p,0)}`;
   }
   if(!p.sizes.length)return `<section class="page-shell"><h1 class="page-title">${esc(p.name)}</h1><p>${esc(p.desc)}</p><p role="status">This product has no available sizes yet.</p>${Commerce.share(p)}</section>`;
   const gi = state.galleryIndex[p.id] || 0;
-  const selSize = p.sizes.includes(state.selectedSize[p.id]) ? state.selectedSize[p.id] : (p.sizes.includes(DEFAULT_SIZE) ? DEFAULT_SIZE : p.sizes[0]);
+  let selSize = state.selectedSize[p.id];
+  if (!p.sizes.includes(selSize) || !Commerce.available(p, selSize)) {
+    selSize = Commerce.available(p, DEFAULT_SIZE) ? DEFAULT_SIZE : (p.sizes.find(size => Commerce.available(p, size)) || (p.sizes.includes(DEFAULT_SIZE) ? DEFAULT_SIZE : p.sizes[0]));
+  }
   const sizeButtons = p.sizes.map(s => `<button class="variant ${s === selSize ? 'selected' : ''}" data-size="${s}" aria-pressed="${s === selSize}">${s}ml · ${money(priceFor(p, s))}</button>`).join('');
   const wished = state.wish.includes(p.id);
   const related = products.filter(x => x.id !== p.id && x.category === p.category).slice(0, 3);
@@ -638,8 +675,8 @@ function productView(p) {
       <p class="gallery-note">More shots from @parrfums.vault</p>
     </div>
     <div class="detail-copy">
-      <p class="eyebrow">${esc(p.category)} fragrance · ${esc(p.gender)}</p>
-      <h1>${esc(p.name)}</h1><p class="sub">${esc(p.notes)}</p>
+        <p class="eyebrow">${esc(p.category)} fragrance · ${esc(p.gender)}</p>
+        <h1>${esc(p.name)}</h1><p class="concentration-note">Concentration: Eau de Parfum</p><p class="product-accords"><span>Accords</span>${esc(formatAccords(p.notes))}</p>
       <p class="large-price" id="detail-price">${money(priceFor(p, selSize))} <span class="price-size">${selSize}ml</span></p>
       <p>${esc(p.desc)}</p>
       <p class="variant-label">Choose size</p>
@@ -650,11 +687,11 @@ function productView(p) {
       <p class="sub" style="margin-top:18px">Pan-India delivery · ${BRAND.city}</p>
     </div></div>
     ${Commerce.facts(p)}${Commerce.share(p)}${Commerce.reviews(p)}${Commerce.recommendations(p)}
-  </section>`;
+  </section>${mobileBuyBar(p,selSize)}`;
 }
 
 function notFound() {
-  return `<section class="page-shell"><div class="empty" role="status"><h2>Page not found</h2><p>The scent you’re looking for has moved.</p><a class="btn" href="#home">Back home</a></div></section>`;
+  return `<section class="page-shell not-found-page"><div class="not-found-card"><span class="not-found-mark" aria-hidden="true">${icon('sparkle')}</span><p class="eyebrow">A little off the scent trail</p><h1 class="page-title">This page isn’t here.</h1><p class="page-intro">The link may be old, or the page may have moved. Let’s get you back to the collection.</p><div class="not-found-actions"><a class="btn primary" href="#shop">Explore the collection ${arrowSvg}</a><a class="text-link" href="#home">Return home</a></div></div></section>`;
 }
 
 function cartSummary(total) {
@@ -970,7 +1007,7 @@ function about() {
     ['editorial-story', 'Tell a better story.'],
     ['editorial-ritual', 'Make it your ritual.']
   ];
-  return `<section class="page-shell"><div class="section-head"><div><p class="eyebrow">Handmade in Mumbai</p><h1 class="page-title">A little bottle.<br>A lasting <em>impression.</em></h1></div></div><p class="page-intro">Parrfums Vault brings together handmade fragrances, personal gifting and a scent for every mood. Six fragrances. Three sizes. A little luxury, every day.</p><div class="campaign-grid story-grid">${edit.map(([slug,label])=>`<a href="#shop">${imgTag(media(slug),label)}<span>${esc(label)} ${arrowSvg}</span></a>`).join('')}</div>${contactStrip()}</section>`;
+  return `<section class="page-shell"><div class="section-head"><div><p class="eyebrow">Handmade in Mumbai</p><h1 class="page-title">A little bottle.<br>A lasting <em>impression.</em></h1></div></div><div class="story-copy"><p class="page-intro">Parrfums Vault is a fragrance house, handmade in Mumbai. We believe a scent can be personal, expressive and part of the everyday—not something saved only for a special occasion.</p><p>Our collection brings together six distinct fragrances, each with its own character and accords. We make in small batches and keep the experience simple: choose a scent that feels like you, find your size, and make it part of your daily ritual.</p><p>Fragrance is also one of the most personal gifts we can give. Whether you are choosing something for yourself or someone you love, we are here to help you find a scent worth remembering.</p><p>Thoughtfully crafted in Mumbai. Worn wherever your story takes you.</p></div><div class="campaign-grid story-grid">${edit.map(([slug,label])=>`<a href="#shop">${imgTag(media(slug),label)}<span>${esc(label)} ${arrowSvg}</span></a>`).join('')}</div>${contactStrip()}</section>`;
 }
 
 /* ---------- router ---------- */
@@ -1035,6 +1072,13 @@ function render(route, opts = {}) {
   app.innerHTML = path === 'admin'
     ? `<div class="admin-console"><header class="admin-console-header"><a class="admin-console-brand" href="/" aria-label="Parrfums Vault storefront"><img src="assets/parrfums-vault-logo.png" width="42" height="42" alt=""><span>Parrfums <i>Vault</i></span></a><p class="admin-console-label">Secure administration</p><div class="admin-console-actions"><button class="icon-btn" type="button" data-theme-toggle aria-label="Switch theme"></button>${authUser ? '<button class="btn small" type="button" data-admin-menu>Menu</button><button class="btn small" type="button" data-auth-sign-out>Sign out</button>' : '<a class="btn small" href="/">Storefront</a>'}</div></header>${view}<div class="admin-console-footer">Private administrator workspace · Access is verified by Supabase for protected operations.</div></div>`
     : view;
+  document.body.classList.toggle('is-product', path.startsWith('product/'));
+  if (routeChanged && currentPath && !matchMedia('(prefers-reduced-motion: reduce)').matches && typeof app.animate === 'function') {
+    app.animate([{ transform: 'translateY(5px)' }, { transform: 'translateY(0)' }], {
+      duration: matchMedia('(max-width: 760px)').matches ? 170 : 200,
+      easing: 'cubic-bezier(.2,.7,.2,1)',
+    });
+  }
   if(routeChanged && path.startsWith('product/')){const p=get(path.split('/')[1]);if(p)Commerce.remember(p.id);}
   window.PVEdit?.afterRender();
   Commerce.seo?.(path);
@@ -1116,7 +1160,7 @@ document.addEventListener('click', e => {
     } else {
       const detailRoot = add.closest('.detail');
       const sel = detailRoot && detailRoot.querySelector('.variant.selected');
-      size = Number((sel && sel.dataset.size) || state.selectedSize[p.id] || defaultSize(p));
+      size = Number((sel && sel.dataset.size) || add.dataset.size || state.selectedSize[p.id] || defaultSize(p));
       price = priceFor(p, size);
     }
     if(!Commerce.available(p,size)){toast('This item is currently unavailable. Please contact the store.');return;}
@@ -1193,7 +1237,7 @@ document.addEventListener('click', e => {
     const addBtn = variant.closest('.detail')?.querySelector('[data-add]');
     const p = get(addBtn ? addBtn.dataset.add : '');
     const size = Number(variant.dataset.size);
-    if(addBtn&&p){const availability=Commerce.stock(p,size);addBtn.disabled=!availability.available;addBtn.textContent=availability.available?'Add to bag':availability.label;addBtn.setAttribute('aria-label',`${availability.available?'Add to bag':availability.label}${availability.available?'':` — ${p.name} is not available to add right now`}`);const badge=addBtn.previousElementSibling;if(badge?.classList.contains('stock-state'))badge.outerHTML=Commerce.badge(p,size);}
+    if(addBtn&&p){const availability=Commerce.stock(p,size);addBtn.disabled=!availability.available;addBtn.textContent=availability.available?'Add to bag':availability.label;addBtn.setAttribute('aria-label',`${availability.available?'Add to bag':availability.label}${availability.available?'':` — ${p.name} is not available to add right now`}`);const badge=addBtn.previousElementSibling;if(badge?.classList.contains('stock-state'))badge.outerHTML=Commerce.badge(p,size);const mobileBtn=document.querySelector('.mobile-buybar [data-add]');if(mobileBtn){mobileBtn.dataset.size=String(size);mobileBtn.disabled=!availability.available;mobileBtn.setAttribute('aria-label',`${availability.available?'Add to bag':availability.label}${availability.available?'':` — ${p.name} is unavailable`}`);mobileBtn.querySelector('span').textContent=availability.available?'Add to bag':availability.label;const amount=document.querySelector('[data-mobile-price]');if(amount)amount.textContent=money(priceFor(p,size));const sizeLabel=amount?.nextElementSibling;if(sizeLabel)sizeLabel.textContent=`${size}ml`;}}
     if (p) {
       state.selectedSize[p.id] = size;
       const priceEl = document.querySelector('#detail-price');
@@ -1351,6 +1395,31 @@ function startPresence() {
   } catch (e) { console.warn("presence failed", e); }
 }
 
+function startLiveStorefrontUpdates() {
+  let debounce;
+  const refresh = () => {
+    if (document.visibilityState !== "visible") return;
+    void loadCatalogue();
+    void window.PVEdit?.refresh?.();
+  };
+  const scheduleRefresh = () => {
+    clearTimeout(debounce);
+    debounce = setTimeout(refresh, 250);
+  };
+  try {
+    if (supabaseClient) {
+      supabaseClient.channel("storefront-live-updates")
+        .on("postgres_changes", { event: "*", schema: "public", table: "product_prices" }, scheduleRefresh)
+        .on("postgres_changes", { event: "*", schema: "public", table: "products" }, scheduleRefresh)
+        .on("postgres_changes", { event: "*", schema: "public", table: "offers" }, scheduleRefresh)
+        .on("postgres_changes", { event: "*", schema: "public", table: "site_content" }, scheduleRefresh)
+        .subscribe();
+    }
+  } catch (error) { console.warn("Live updates unavailable; periodic refresh remains active.", error); }
+  window.setInterval(refresh, 30000);
+  document.addEventListener("visibilitychange", refresh);
+}
+
 /* ---------- Admin edit mode ----------
    The edit mode lives in edit-mode.js so the owner can edit text, drag blocks
    and publish the result to every visitor from a fixed bottom-left toolbar. */
@@ -1362,11 +1431,13 @@ loadCatalogue();
 initializeAuth();
 startPresence();
 window.PVEdit?.init();
+startLiveStorefrontUpdates();
 // Semantic brand cursor: each common interaction gets its own shape + label.
 (function(){
   const cursor=document.getElementById('custom-cursor');if(!cursor)return;
+  if(!matchMedia('(hover: hover) and (pointer: fine)').matches)return;
   document.body.classList.add('custom-cursor-active');
-  let x=0,y=0,rx=0,ry=0,visible=false;
+  let visible=false;
   function update(target){
     if(!target?.closest)return;
     let type='default';
@@ -1387,9 +1458,8 @@ window.PVEdit?.init();
     else if(target.closest('a[href],button,[role="button"],summary'))type='link';
     cursor.dataset.state=type;
   }
-  document.addEventListener('pointermove',e=>{x=e.clientX;y=e.clientY;if(!visible){visible=true;cursor.classList.add('is-visible');}update(e.target);},{passive:true});
+  document.addEventListener('pointermove',e=>{cursor.style.left=e.clientX+'px';cursor.style.top=e.clientY+'px';if(!visible){visible=true;cursor.classList.add('is-visible');}update(e.target);},{passive:true});
   document.addEventListener('pointerover',e=>update(e.target),{passive:true});
   document.addEventListener('pointerdown',()=>cursor.classList.add('is-pressed'),{passive:true});
   document.addEventListener('pointerup',()=>cursor.classList.remove('is-pressed'),{passive:true});
-  function loop(){rx+=(x-rx)*.24;ry+=(y-ry)*.24;cursor.style.left=rx+'px';cursor.style.top=ry+'px';requestAnimationFrame(loop);}loop();
 })();

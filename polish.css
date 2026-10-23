@@ -334,7 +334,7 @@ body.drawer-open{overflow:hidden}
 
 /* ------------------------------------------------------------ contact strip */
 .contact-strip{
-  display:grid;grid-template-columns:repeat(3,1fr);gap:2px;
+  display:grid;grid-template-columns:repeat(4,1fr);gap:2px;
   margin-top:clamp(40px,6vw,72px);
   border:1px solid var(--line);border-radius:4px;overflow:hidden;background:var(--line);
 }
@@ -350,6 +350,7 @@ body.drawer-open{overflow:hidden}
   background:rgba(168,109,67,.10);color:var(--accent);font-size:15px;
 }
 .contact-item .wa-icon{background:var(--wa-tint);color:var(--wa);padding:9px;width:34px;height:34px}
+.contact-item>svg:not(.wa-icon){width:34px;height:34px;flex:0 0 34px;padding:9px;border-radius:50%;background:rgba(168,109,67,.10);color:var(--accent)}
 .contact-item strong{display:block;font-size:14px;font-weight:600;color:var(--ink)}
 .contact-item small{display:block;font-size:12px;color:var(--muted);margin-top:2px}
 @media (max-width:760px){
@@ -644,6 +645,10 @@ body.is-landing footer{display:none}
 .landing-enter:hover{background:#fdf9f4;color:#241d1a;border-color:#fdf9f4}
 .landing-enter svg{transition:transform .25s ease}
 .landing-enter:hover svg{transform:translateX(4px)}
+.landing-primary{background:#e0b083;color:#241d1a;border-color:#e0b083}
+.landing-primary:hover{background:#f3d7b6;color:#241d1a;border-color:#f3d7b6}
+.landing-secondary{background:rgba(253,249,244,.08)}
+.landing-secondary:hover{background:rgba(253,249,244,.18);border-color:rgba(253,249,244,.65)}
 
 /* ---------------------------------------------------------------- centre */
 .landing-inner{

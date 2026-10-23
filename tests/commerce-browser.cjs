@@ -8,7 +8,7 @@ const base = process.env.PV_TEST_URL || "http://127.0.0.1:8000";
       viewport: { width: 1280, height: 900 },
     }),
     page = await context.newPage();
-  await require("./catalogue-fixture.cjs")(page);
+  const catalogueFixture = await require("./catalogue-fixture.cjs")(page);
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto(base + "/#shop", { waitUntil: "networkidle" });
@@ -49,16 +49,39 @@ const base = process.env.PV_TEST_URL || "http://127.0.0.1:8000";
   assert.match(await page.locator("[role=status]").allInnerTexts().then((xs) => xs.join(" ")), /added to your bag/i);
   assert.equal(await page.locator(".detail [data-add]").isDisabled(), false, "add button must not remain busy or disabled");
   await page.evaluate(() => {
-    get("angel-share").variants.find((v) => v.size_ml === 50).available_quantity = null;
+    get("angel-share").variants.forEach((v) => { v.available_quantity = null; });
     render("product/angel-share");
   });
   assert.equal(await page.locator(".detail [data-add]").isDisabled(), true);
   assert.match(await page.locator(".detail [data-add]").innerText(), /availability awaiting confirmation/i,
     "unconfirmed live inventory must explain why adding is unavailable");
   await page.evaluate(() => {
-    get("angel-share").variants.find((v) => v.size_ml === 50).available_quantity = 100;
+    get("angel-share").variants.forEach((v) => { v.available_quantity = 100; });
     render("product/angel-share");
   });
+  // A server catalogue refresh updates price/stock in-place and chooses a buyable size.
+  await page.goto(base + "/#product/angel-share", { waitUntil: "networkidle" });
+  const angel30 = catalogueFixture.prices.find((v) => v.product_id === "angel-share" && v.size_ml === 30);
+  const angel50 = catalogueFixture.prices.find((v) => v.product_id === "angel-share" && v.size_ml === 50);
+  const original30Price = angel30.price_inr;
+  angel30.available_quantity = 25;
+  angel30.price_inr = 510;
+  angel50.available_quantity = 0;
+  await page.evaluate(() => loadCatalogue());
+  assert.equal(await page.locator(".detail .variant.selected").getAttribute("data-size"), "30",
+    "detail page selects the available size when the default size is out of stock");
+  assert.equal(await page.locator(".detail [data-add]").isDisabled(), false);
+  assert.match(await page.locator(".detail [data-add]").innerText(), /add to bag/i);
+  assert.match(await page.locator("#detail-price").innerText(), /510/,
+    "a backend price update reaches the open product page");
+  angel30.price_inr = original30Price;
+  angel30.available_quantity = 100;
+  angel50.available_quantity = 100;
+  await page.evaluate(() => loadCatalogue());
+  await page.goto(base + "/#missing-product-route", { waitUntil: "networkidle" });
+  assert.equal(await page.locator(".not-found-page h1").innerText(), "This page isn’t here.");
+  assert.equal(await page.locator(".not-found-actions a").count(), 2);
+  await page.goto(base + "/#product/angel-share", { waitUntil: "networkidle" });
   const a11y = async (label) => {
     const scan = await new AxeBuilder({ page })
       .include("#app")
@@ -234,7 +257,8 @@ const base = process.env.PV_TEST_URL || "http://127.0.0.1:8000";
     await a11y(route + " accessibility");
   }
   await page.evaluate(() => render("unknown-route"));
-  assert.match(await page.locator("#app").textContent(), /Page not found/);
+  assert.match(await page.locator("#app").textContent(), /This page isn’t here/);
+  assert.equal(await page.locator(".not-found-actions a").count(), 2);
   assert.deepEqual(errors, []);
   await browser.close();
   console.log(

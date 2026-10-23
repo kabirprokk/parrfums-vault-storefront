@@ -25,6 +25,7 @@ assert.ok(
     !scripts.includes("unsafe-eval") &&
     !scripts.includes("*"),
 );
+assert.ok(csp.includes("wss://lshwmudskeeknmcxlffe.supabase.co"), "CSP allows the Supabase realtime WebSocket used for global storefront updates");
 assert.equal(headers["X-Content-Type-Options"], "nosniff");
 assert.equal(headers["X-Frame-Options"], "DENY");
 assert.ok(headers["Strict-Transport-Security"].includes("max-age="));

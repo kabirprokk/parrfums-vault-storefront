@@ -78,6 +78,9 @@ const { chromium } = require("playwright"),
   await page.locator("[data-admin-tab=inventory]").click();
   await page.waitForSelector("[data-admin-edit]");
   await page.locator("[data-admin-edit]").click();
+  await page.waitForSelector(".admin-inline-editor-row");
+  assert.match(await page.locator(".admin-inline-editor-row").evaluate((el) => el.previousElementSibling.innerText), /angel-share/i,
+    "the inventory editor is placed immediately under the selected product row");
   await page.locator("#admin-quantity").fill("25");
   await page.locator("#admin-note").fill("Test-only inventory increase");
   await page.locator("#admin-editor [type=submit]").click();

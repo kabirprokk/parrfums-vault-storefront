@@ -57,6 +57,9 @@ button:disabled {
   border: 1px solid var(--line);
   margin: 24px 0;
 }
+.admin-inline-editor-row>td{padding:12px;background:var(--cream);border-bottom:1px solid var(--line)}
+.admin-inline-editor-row .admin-editor{margin:0;padding:20px;border-left:3px solid var(--accent);background:var(--paper)}
+.announcement-gift-icon{vertical-align:-3px;margin-right:5px;color:var(--accent)}
 .admin-check {
   display: flex;
   align-items: center;

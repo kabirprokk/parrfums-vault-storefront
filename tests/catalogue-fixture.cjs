@@ -18,6 +18,7 @@ const PRICES = PRODUCTS.flatMap((p) =>
     sku: `UNIT-${p.id}-${s}`,
   })),
 );
+const priceRows = PRICES.map((row) => ({ ...row }));
 const OFFERS = [
   { id: "festive-four", name: "The Festive Four", price_inr: 2600, badge: "Buy 2 x 100ml, get 2 x 30ml FREE", notes: "Choose your free fragrances: Guilty Man or Vanilla 28", description: "Four full fragrances.", image_path: "assets/media/combo-festive-1080.webp", sort_order: 10, active: true },
   { id: "duo-plus", name: "The Duo Plus", price_inr: 1600, badge: "Buy 2 x 50ml, get 1 x 30ml FREE", notes: "Choose your free fragrance: Guilty Man or Vanilla 28", description: "The everyday trio.", image_path: "assets/media/combo-duo-1080.webp", sort_order: 20, active: true },
@@ -30,8 +31,9 @@ module.exports = async function fixture(page) {
     if (table === "site_content") return route.fulfill({ json: [] });
     if (["offer_components", "product_review_summary", "product_popularity", "public_reviews"].includes(table)) return route.fulfill({ json: [] });
     if (table === "products") return route.fulfill({ json: PRODUCTS.map((r, i) => ({ ...r, fragrance_family: i < 2 ? "Test family" : null, created_at: `2026-10-${String(i + 1).padStart(2, "0")}T00:00:00Z` })) });
-    if (table === "product_prices") return route.fulfill({ json: PRICES });
+    if (table === "product_prices") return route.fulfill({ json: priceRows });
     if (table === "offers") return route.fulfill({ json: OFFERS });
     return route.continue();
   });
+  return { products: PRODUCTS, prices: priceRows, offers: OFFERS };
 };
