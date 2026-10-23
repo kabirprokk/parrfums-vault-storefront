@@ -1203,7 +1203,8 @@ document.addEventListener('click', e => {
     }
     if(!Commerce.available(p,size)){toast('This item is currently unavailable. Please contact the store.');return;}
     const existing = state.cart.find(i => i.id === p.id && i.size === size);
-    if((existing?.qty||0)+1>Commerce.stock(p,size).quantity){toast('The available quantity is already in your bag');return;}
+    const availability=Commerce.stock(p,size);
+    if(!availability.unlimited&&(existing?.qty||0)+1>availability.quantity){toast('The available quantity is already in your bag');return;}
     Commerce.analytics('add_to_cart',{product_id:p.id,size_ml:size,quantity:1});
     if (existing && existing.qty >= 20) { toast('You can order up to 20 of each item'); return; }
     if (existing) existing.qty++;
@@ -1220,7 +1221,8 @@ document.addEventListener('click', e => {
     const i = state.cart[Number(qty.dataset.qty)];
     if (!i) return;
     const next=i.qty+Number(qty.dataset.delta);
-    if(Number(qty.dataset.delta)>0&&next>Commerce.stock(get(i.id),i.size).quantity){toast('That quantity is unavailable');return;}
+    const availability=Commerce.stock(get(i.id),i.size);
+    if(Number(qty.dataset.delta)>0&&!availability.unlimited&&next>availability.quantity){toast('That quantity is unavailable');return;}
     i.qty = Math.min(20, next);
     if (i.qty < 1) state.cart.splice(Number(qty.dataset.qty), 1);
     save();

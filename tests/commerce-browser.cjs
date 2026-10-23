@@ -49,6 +49,20 @@ const base = process.env.PV_TEST_URL || "http://127.0.0.1:8000";
   assert.match(await page.locator("[role=status]").allInnerTexts().then((xs) => xs.join(" ")), /added to your bag/i);
   assert.equal(await page.locator(".detail [data-add]").isDisabled(), false, "add button must not remain busy or disabled");
   await page.evaluate(() => {
+    Commerce.cache.inventoryUnlimited = true;
+    get("angel-share").variants.forEach((v) => { v.available_quantity = null; });
+    render("product/angel-share");
+  });
+  await page.locator(".detail [data-add]").click();
+  assert.equal(await page.evaluate(() => state.cart[0].qty), 2,
+    "unlimited inventory allows adding another item when backend quantities are null");
+  await page.evaluate(() => {
+    state.cart[0].qty = 1;
+    Commerce.cache.inventoryUnlimited = false;
+    get("angel-share").variants.forEach((v) => { v.available_quantity = 100; });
+    render("product/angel-share");
+  });
+  await page.evaluate(() => {
     get("angel-share").variants.forEach((v) => { v.available_quantity = null; });
     render("product/angel-share");
   });
