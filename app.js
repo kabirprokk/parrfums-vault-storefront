@@ -452,12 +452,13 @@ function setupCarousel() {
   carouselCleanup();
   const root = document.querySelector('.combo-carousel');
   if (!root) return;
+  const stage = root.querySelector('.combo-stage');
   const slides = [...root.querySelectorAll('.combo-slide')];
   const dots = [...root.querySelectorAll('[data-slide]')];
   const pause = root.querySelector('[data-carousel-pause]');
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   const lowMotion = motion.matches || navigator.connection?.saveData || (navigator.deviceMemory && navigator.deviceMemory <= 2);
-  let index = 0, paused = lowMotion, hovered = false, focused = false, visible = true, startX = null, fadeTimer;
+  let index = 0, paused = lowMotion, hovered = false, focused = false, visible = true, startX = null, fadeTimer, heightFrame;
   const setPause = () => {
     pause.innerHTML = paused ? playSvg : pauseSvg;
     pause.setAttribute('aria-label', paused ? 'Play slideshow' : 'Pause slideshow');
@@ -467,19 +468,36 @@ function setupCarousel() {
     const nextIndex = (next + slides.length) % slides.length;
     if (nextIndex === index) return;
     clearTimeout(fadeTimer);
+    cancelAnimationFrame(heightFrame);
     root.querySelector('.combo-outgoing')?.remove();
     slides.forEach(slide => slide.classList.remove('combo-entering'));
     if (!lowMotion) {
+      const currentHeight = stage.getBoundingClientRect().height;
+      stage.style.transition = 'height .48s cubic-bezier(.2,.7,.2,1)';
+      stage.style.height = `${currentHeight}px`;
       const outgoing = slides[index].cloneNode(true);
       outgoing.classList.add('combo-outgoing');
       outgoing.setAttribute('aria-hidden', 'true');
       outgoing.inert = true;
-      root.querySelector('.combo-stage').appendChild(outgoing);
+      stage.appendChild(outgoing);
     }
     index = nextIndex;
     slides.forEach((s,i)=>{s.hidden=i!==index;});
-    if (!lowMotion) slides[index].classList.add('combo-entering');
-    fadeTimer = setTimeout(() => { root.querySelector('.combo-outgoing')?.remove(); slides[index].classList.remove('combo-entering'); }, 550);
+    if (!lowMotion) {
+      slides[index].classList.add('combo-entering');
+      const lockedHeight = stage.style.height;
+      stage.style.height = 'auto';
+      const nextHeight = stage.getBoundingClientRect().height;
+      stage.style.height = lockedHeight;
+      stage.getBoundingClientRect();
+      heightFrame = requestAnimationFrame(() => { stage.style.height = `${nextHeight}px`; });
+      fadeTimer = setTimeout(() => {
+        stage.querySelector('.combo-outgoing')?.remove();
+        slides[index].classList.remove('combo-entering');
+        stage.style.height = '';
+        stage.style.transition = '';
+      }, 550);
+    }
     dots.forEach((d,i)=>d.setAttribute('aria-pressed',String(i===index)));
     if(manual) root.querySelector('[data-slide-status]').textContent=slides[index].getAttribute('aria-label');
   };
@@ -506,7 +524,7 @@ function setupCarousel() {
   motion.addEventListener('change', reduce);
   const timer=setInterval(()=>{if(!paused&&!hovered&&!focused&&!document.hidden&&visible)show(index+1);},4000);
   setPause();
-  carouselCleanup=()=>{clearInterval(timer);clearTimeout(fadeTimer);observer.disconnect();motion.removeEventListener('change',reduce);};
+  carouselCleanup=()=>{clearInterval(timer);clearTimeout(fadeTimer);cancelAnimationFrame(heightFrame);observer.disconnect();motion.removeEventListener('change',reduce);stage.style.height='';stage.style.transition='';};
 }
 
 function uspStrip() {

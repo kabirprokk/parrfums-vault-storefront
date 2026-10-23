@@ -60,7 +60,7 @@ h1 em,h2 em{font-weight:400;color:var(--accent)}
 .combo-carousel{border:1px solid var(--line);background:#f1e8dc;border-radius:5px;overflow:hidden}
 .combo-slide{display:grid;grid-template-columns:1fr 1fr;align-items:center}
 .combo-stage{position:relative;isolation:isolate;overflow:hidden}
-.combo-outgoing{position:absolute;inset:0;z-index:1;pointer-events:none;animation:combo-fade-out .5s ease both}
+.combo-outgoing{position:absolute;top:0;left:0;right:0;bottom:auto;height:auto;z-index:1;pointer-events:none;animation:combo-fade-out .5s ease both}
 .combo-entering{position:relative;z-index:2;animation:combo-fade-in .5s ease both}
 @keyframes combo-fade-in{from{opacity:0}to{opacity:1}}
 @keyframes combo-fade-out{from{opacity:1}to{opacity:0}}
