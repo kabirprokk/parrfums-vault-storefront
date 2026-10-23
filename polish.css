@@ -72,7 +72,7 @@ input.invalid,select.invalid{border-color:#b4432a}
 .product-card:hover{transform:translateY(-4px)}
 .quick-add{border:0;border-bottom:1px solid var(--ink);background:none;padding:6px 0 3px;margin-top:10px;font-size:12px;letter-spacing:.04em;color:var(--ink);opacity:.72;transition:opacity .2s,color .2s}
 .product-card:hover .quick-add,.product-card:focus-within .quick-add{opacity:1}
-.quick-add span{color:var(--accent);font-size:17px;line-height:0;vertical-align:-1px;margin-left:4px}
+.quick-add:not(.availability-inquiry) span{color:var(--accent);font-size:17px;line-height:0;vertical-align:-1px;margin-left:4px}
 .quick-add:hover{color:var(--accent)}
 .shipping-progress{max-width:720px;margin:0 0 30px;padding:16px 18px;background:#f3f1e9;border-radius:10px}
 .shipping-progress-head{display:flex;justify-content:space-between;gap:16px;font-size:12px;color:var(--muted);margin-bottom:9px}
