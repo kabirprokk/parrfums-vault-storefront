@@ -362,3 +362,16 @@ html::-webkit-scrollbar-corner{background:var(--paper)}
   .mobile-buybar .btn{padding:9px 8px;font-size:10px}
 }
 @media(prefers-reduced-motion:reduce){.product-card:active,.offer-card:active,.collection-card a:active,.btn:active,.icon-btn:active{transform:none!important}}
+/* Keep the slideshow controls aligned and easy to tap at every phone width. */
+.carousel-buttons{align-items:center;gap:8px}
+.carousel-buttons button{box-sizing:border-box;display:grid;place-items:center;flex:0 0 40px;width:40px;height:40px;min-width:40px;padding:0;line-height:0}
+.carousel-buttons button svg{display:block;width:18px;height:18px}
+.carousel-buttons button[data-carousel-pause] svg{width:16px;height:16px}
+@media(max-width:560px){
+  .carousel-controls{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;padding:10px 12px}
+  .carousel-dots{min-width:0;justify-content:center;gap:0}
+  .carousel-dots button{width:20px;height:44px;min-width:20px;min-height:44px;padding:4px}
+  .carousel-buttons{gap:6px}
+  .carousel-buttons button{flex-basis:44px;width:44px;height:44px;min-width:44px}
+}
+@media(max-width:360px){.carousel-controls{padding-left:10px;padding-right:10px}.carousel-dots button{width:18px;min-width:18px}}
