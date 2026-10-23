@@ -332,3 +332,31 @@ html::-webkit-scrollbar-track{background:var(--paper);border-left:1px solid var(
 html::-webkit-scrollbar-thumb{background:var(--accent);border:2px solid var(--paper);border-radius:10px}
 html::-webkit-scrollbar-thumb:hover{background:var(--ink)}
 html::-webkit-scrollbar-corner{background:var(--paper)}
+
+/* Phone-first controls: roomier taps, a usable menu, and a flexible purchase bar. */
+@media(max-width:760px){
+  .site-header{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .site-header .icon-btn,.site-header .menu-toggle{width:44px;height:44px;min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;padding:8px;touch-action:manipulation}
+  .site-header .header-actions{gap:2px}
+  .main-nav{max-height:calc(100dvh - var(--header-h,70px));overflow-y:auto;padding:12px max(20px,env(safe-area-inset-left,0px)) max(18px,env(safe-area-inset-bottom,0px));gap:2px}
+  .main-nav a{width:100%;min-height:48px;display:flex;align-items:center;padding:10px 4px;border-bottom:1px solid var(--line);font-size:15px}
+  .main-nav a:last-child{border-bottom:0}
+  .section-head .text-link{font-size:10px;max-width:none}
+  .detail-copy .variant-row{display:flex;flex-wrap:wrap;gap:10px}
+  .detail-copy .variant{min-width:54px;min-height:46px;padding:10px 13px;font-size:13px}
+  .mobile-buybar{gap:10px;padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px))}
+  .mobile-buybar-price{min-width:0;flex:0 1 auto}
+  .mobile-buybar-price strong{font-size:clamp(17px,5vw,21px)}
+  .mobile-buybar .btn{min-width:0;min-height:48px;flex:1 1 auto;padding:10px 12px;font-size:11px;white-space:normal;line-height:1.2;text-align:center}
+  .mobile-buybar .btn span{overflow-wrap:anywhere}
+  .product-card,.offer-card,.collection-card a,.btn,.variant,.quick-add{touch-action:manipulation}
+}
+@media(max-width:380px){
+  .site-header{gap:6px;padding-left:max(10px,env(safe-area-inset-left,0px));padding-right:max(10px,env(safe-area-inset-right,0px))}
+  .site-header .brand .wordmark{font-size:17px}
+  .site-header .header-actions{gap:0}
+  .site-header .icon-btn,.site-header .menu-toggle{width:40px;height:44px;min-width:40px}
+  .mobile-buybar{gap:8px}
+  .mobile-buybar .btn{padding:9px 8px;font-size:10px}
+}
+@media(prefers-reduced-motion:reduce){.product-card:active,.offer-card:active,.collection-card a:active,.btn:active,.icon-btn:active{transform:none!important}}

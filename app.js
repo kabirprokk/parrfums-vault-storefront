@@ -1335,7 +1335,6 @@ document.addEventListener('keydown', e => {
       document.querySelector('.menu-toggle')?.setAttribute('aria-expanded', 'false');
       document.querySelector('.menu-toggle')?.setAttribute('aria-label', 'Open menu');
       document.querySelector('.menu-toggle')?.focus();
-      document.querySelector('.menu-toggle')?.focus();
     }
   }
 });
