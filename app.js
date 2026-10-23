@@ -167,6 +167,8 @@ const waLink = (message, label, cls = 'btn wa-btn') => {
   const url = `${BRAND.whatsappDirect}?text=${encodeURIComponent(message)}`;
   return `<a class="${cls}" href="${esc(url)}" target="_blank" rel="noreferrer">${waSvg}<span>${esc(label)}</span></a>`;
 };
+const comboAvailabilityLink = (item, cls = 'btn primary full') =>
+  waLink(`Hi Parrfums Vault! Please confirm current availability for ${item.name} (${item.badge}) and help me place an order if available.`, 'Confirm combo availability with the store', cls);
 
 const phoneLink = (label = 'Call us') =>
   `<a class="contact-link phone-link" href="${BRAND.phoneHref}">${esc(BRAND.phoneDisplay)}</a>`;
@@ -642,17 +644,20 @@ function productView(p) {
   const mobileBuyBar = (item, size) => {
     const availability=Commerce.stock(item,size), label=availability.available?'Add to bag':availability.label;
     const value=isCombo(item)?item.price:priceFor(item,size);
+    if(isCombo(item)&&!availability.available&&/confirm|awaiting confirmation/i.test(availability.label))return `<aside class="mobile-buybar" aria-label="Quick purchase"><span class="mobile-buybar-price"><strong data-mobile-price>${money(value)}</strong></span>${comboAvailabilityLink(item,'btn primary')}</aside>`;
     return `<aside class="mobile-buybar" aria-label="Quick purchase"><span class="mobile-buybar-price"><strong data-mobile-price>${money(value)}</strong>${size?`<small>${size}ml</small>`:''}</span><button class="btn primary" type="button" data-add="${esc(item.id)}" data-size="${size}" ${availability.available?'':'disabled'} aria-label="${esc(label)}${availability.available?'':` — ${esc(item.name)} is unavailable`}">${icon('bag')}<span>${esc(label)}</span></button></aside>`;
   };
   if (isCombo(p)) {
+    const availability=Commerce.stock(p,0);
+    const needsConfirmation=!availability.available&&/confirm|awaiting confirmation/i.test(availability.label);
     return `<section class="page-shell"><div class="detail">
       <div class="detail-image"><div class="gallery-main">${imgTag(p.img, `${p.name} offer`, 'gallery-img')}</div></div>
       <div class="detail-copy">
         <p class="eyebrow">The vault offer</p><h1>${esc(p.name)}</h1><p class="sub">${esc(p.badge)}</p>
         <p class="large-price" id="detail-price">${money(p.price)}</p>
         <p>${esc(p.desc)}</p><p class="offer-notes">${esc(p.notes)}</p>
-        ${Commerce.badge(p,0)}${addToBagButton(p, 0)}
-        ${waLink(`Hi Parrfums Vault! I'd like to order the ${p.name} — ${p.badge} for ${money(p.price)}.`, 'Order on WhatsApp', 'btn ghost full wa-btn')}
+        ${Commerce.badge(p,0)}${needsConfirmation?comboAvailabilityLink(p):addToBagButton(p, 0)}
+        ${needsConfirmation?'':waLink(`Hi Parrfums Vault! I'd like to order the ${p.name} — ${p.badge} for ${money(p.price)}.`, 'Order on WhatsApp', 'btn ghost full wa-btn')}
       </div>
     </div></section>${mobileBuyBar(p,0)}`;
   }
