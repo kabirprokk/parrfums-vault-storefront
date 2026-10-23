@@ -10,6 +10,8 @@ Object.assign(
       loading: false,
       editing: null,
       filter: "",
+      inventoryUnlimited: false,
+      inventoryModeLoaded: false,
       mfa: null,
       stats: null,
       page: 0,
@@ -84,6 +86,17 @@ Object.assign(
           const { data, error } = await q;
           if (error) throw error;
           if(ticket===generation)model.rows = data;
+          if (tab === "inventory") {
+            const { data: settings, error: settingsError } = await supabaseClient
+              .from("storefront_settings")
+              .select("inventory_unlimited")
+              .eq("id", "current")
+              .maybeSingle();
+            if (settingsError) throw settingsError;
+            if (ticket === generation)
+              model.inventoryUnlimited = settings?.inventory_unlimited === true;
+            if (ticket === generation) model.inventoryModeLoaded = true;
+          }
         }
       } catch (e) {
         if(ticket===generation)model.error = Commerce.safeError(e);
@@ -361,6 +374,7 @@ Object.assign(
     function cellValue(row, column) {
       if (model.tab === "inventory" && column === "product_id")
         return products.find((p) => p.id === row.product_id)?.name || row.product_id;
+      if (column === "available_quantity" && model.inventoryUnlimited) return "Unlimited";
       if (column === "available_quantity" && row[column] == null) return "Not counted yet";
       return row[column] ?? "";
     }
@@ -368,7 +382,7 @@ Object.assign(
       if (model.tab === "inventory") {
         if (column === "product_id") return "Product";
         if (column === "size_ml") return "Bottle size";
-        if (column === "available_quantity") return "Bottles counted";
+        if (column === "available_quantity") return model.inventoryUnlimited ? "Availability" : "Bottles counted";
         if (column === "active") return "For sale";
       }
       return Commerce.statusLabel(column);
@@ -438,7 +452,14 @@ Object.assign(
               .join("")}</div>`
           : "") + (model.stats ? `<div class="stat-grid" style="margin-top:16px"><article class="summary"><h2>Total orders</h2><strong>${esc(model.stats.totalOrders)}</strong></article><article class="summary"><h2>Total customers</h2><strong>${esc(model.stats.totalUsers)}</strong></article><article class="summary"><h2>Online now</h2><strong id="admin-online-count">—</strong></article></div>` : "");
       const addEditor = model.editing && !(model.editing.id || model.editing.product_id) ? editor() : "";
-      return `<section class="page-shell admin-page"><div class="section-head"><div><p class="eyebrow">Parrfums Vault</p><h1 class="page-title">Administration</h1></div><button class="btn" data-admin-refresh>Refresh</button></div><nav class="admin-tabs" aria-label="Administration sections">${tabs.map((t) => `<button class="btn ${model.tab === t ? "primary" : ""}" data-admin-tab="${t}" aria-pressed="${model.tab === t}">${esc(Commerce.statusLabel(t))}</button>`).join("")}</nav>${model.error ? `<p class="error" role="alert">${esc(model.error)}</p>` : ""}${model.loading ? '<p role="status">Loading…</p>' : ""}${model.tab === "inventory" ? '<p class="sub inventory-help">Choose a size row, select Set count, and enter the number of bottles physically ready to sell. Enter 0 if none are available; never guess. Saved counts update the storefront.</p>' : ""}${addEditor}${model.tab === "overview" ? overview : `<div class="admin-toolbar"><label for="admin-search">Search ${esc(model.tab)}</label><input id="admin-search" type="search" maxlength="120" value="${esc(model.filter)}">${model.tab==='orders'?`<label for="admin-order-status">Status</label><select id="admin-order-status" class="select"><option value="">All statuses</option>${['pending','confirmed','packed','shipped','delivered','cancelled','refunded'].map(v=>`<option value="${v}" ${model.status===v?'selected':''}>${Commerce.statusLabel(v)}</option>`).join('')}</select>`:''}<button class="btn" data-admin-search>Search</button><button class="btn" data-admin-sort>Reverse sort</button>${["products", "variants", "offers", "coupons"].includes(model.tab) ? '<button class="btn primary" data-admin-new>Add new</button>' : ""}</div><p class="sub">Page ${model.page+1} · Up to 50 records per page. Search orders across all pages by customer name, phone, email, order ID or reference.</p><div class="table-scroll"><table><thead><tr>${columns.map((c) => `<th scope="col">${esc(columnLabel(c))}</th>`).join("")}<th scope="col">Manage</th></tr></thead><tbody>${rows.map((row) => `<tr>${columns.map((c) => `<td>${esc(cellValue(row,c))}${c === "available_quantity" && row[c] !== null && row[c] <= row.low_stock_threshold ? " · Low stock" : ""}</td>`).join("")}<td><button class="btn small" data-admin-edit="${esc(row.id || row.product_id)}" data-admin-size="${row.size_ml || ""}">${model.tab === "inventory" ? "Set count" : "Manage"}</button></td></tr>${editorMatches(row) ? `<tr class="admin-inline-editor-row"><td colspan="${columns.length + 1}">${editor()}</td></tr>` : ""}`).join("")}</tbody></table><div class="offer-actions"><button class="btn" data-admin-page="-1" ${model.page===0?'disabled':''}>Previous page</button><button class="btn" data-admin-page="1" ${(model.rows?.length||0)<50?'disabled':''}>Next page</button></div>${!rows.length ? '<p role="status">No matching records.</p>' : ""}</div>`}<p class="sub">All administrative writes are authorized in PostgreSQL and recorded in an audit log.</p></section>`;
+      const inventoryHelp = model.tab === "inventory"
+        ? !model.inventoryModeLoaded
+          ? '<p class="sub inventory-help" role="status">Could not confirm the store stock mode. Refresh this page before changing availability.</p>'
+          : model.inventoryUnlimited
+            ? '<div class="sub inventory-help"><p><strong>Unlimited availability is ON.</strong> Every active bottle size is available, and orders do not reduce stock counts.</p><p>When the client provides real counts, switch to tracked counts. This clears old counts so each size must be recounted before tracked sales resume.</p><button class="btn" type="button" data-admin-inventory-mode="tracked">Switch to tracked counts</button></div>'
+            : '<div class="sub inventory-help"><p><strong>Tracked stock is ON.</strong> Enter the physical bottles ready to sell for each size. Use 0 for none; never estimate.</p><button class="btn" type="button" data-admin-inventory-mode="unlimited">Enable unlimited availability</button></div>'
+        : "";
+      return `<section class="page-shell admin-page"><div class="section-head"><div><p class="eyebrow">Parrfums Vault</p><h1 class="page-title">Administration</h1></div><button class="btn" data-admin-refresh>Refresh</button></div><nav class="admin-tabs" aria-label="Administration sections">${tabs.map((t) => `<button class="btn ${model.tab === t ? "primary" : ""}" data-admin-tab="${t}" aria-pressed="${model.tab === t}">${esc(Commerce.statusLabel(t))}</button>`).join("")}</nav>${model.error ? `<p class="error" role="alert">${esc(model.error)}</p>` : ""}${model.loading ? '<p role="status">Loading…</p>' : ""}${inventoryHelp}${addEditor}${model.tab === "overview" ? overview : `<div class="admin-toolbar"><label for="admin-search">Search ${esc(model.tab)}</label><input id="admin-search" type="search" maxlength="120" value="${esc(model.filter)}">${model.tab==='orders'?`<label for="admin-order-status">Status</label><select id="admin-order-status" class="select"><option value="">All statuses</option>${['pending','confirmed','packed','shipped','delivered','cancelled','refunded'].map(v=>`<option value="${v}" ${model.status===v?'selected':''}>${Commerce.statusLabel(v)}</option>`).join('')}</select>`:''}<button class="btn" data-admin-search>Search</button><button class="btn" data-admin-sort>Reverse sort</button>${["products", "variants", "offers", "coupons"].includes(model.tab) ? '<button class="btn primary" data-admin-new>Add new</button>' : ""}</div><p class="sub">Page ${model.page+1} · Up to 50 records per page. Search orders across all pages by customer name, phone, email, order ID or reference.</p><div class="table-scroll"><table><thead><tr>${columns.map((c) => `<th scope="col">${esc(columnLabel(c))}</th>`).join("")}<th scope="col">Manage</th></tr></thead><tbody>${rows.map((row) => `<tr>${columns.map((c) => `<td>${esc(cellValue(row,c))}${c === "available_quantity" && !model.inventoryUnlimited && row[c] !== null && row[c] <= row.low_stock_threshold ? " · Low stock" : ""}</td>`).join("")}<td>${model.tab === "inventory" && model.inventoryUnlimited ? '<span class="sub">Not tracked</span>' : `<button class="btn small" data-admin-edit="${esc(row.id || row.product_id)}" data-admin-size="${row.size_ml || ""}">${model.tab === "inventory" ? "Set count" : "Manage"}</button>`}</td></tr>${editorMatches(row) ? `<tr class="admin-inline-editor-row"><td colspan="${columns.length + 1}">${editor()}</td></tr>` : ""}`).join("")}</tbody></table><div class="offer-actions"><button class="btn" data-admin-page="-1" ${model.page===0?'disabled':''}>Previous page</button><button class="btn" data-admin-page="1" ${(model.rows?.length||0)<50?'disabled':''}>Next page</button></div>${!rows.length ? '<p role="status">No matching records.</p>' : ""}</div>`}<p class="sub">All administrative writes are authorized in PostgreSQL and recorded in an audit log.</p></section>`;
     }
     async function mfa() {
       try {
@@ -480,6 +501,21 @@ Object.assign(
         if (e.target.closest("[data-admin-website]")) { location.href = "/?edit=1"; return; }
         if (e.target.closest("[data-admin-details]")) { model.adminView = "details"; generation++; model.loading = false; model.page = 0; model.status = ""; model.tab = "overview"; model.rows = null; model.editing = null; model.filter = ""; render("admin"); return; }
         if (!e.target.closest(".admin-page")) return;
+        const inventoryMode = e.target.closest("[data-admin-inventory-mode]");
+        if (inventoryMode) {
+          const unlimited = inventoryMode.dataset.adminInventoryMode === "unlimited";
+          await Commerce.rpc("admin_set_inventory_mode", {
+            p_unlimited: unlimited,
+          });
+          model.rows = null;
+          model.editing = null;
+          await loadCatalogue();
+          await load();
+          toast(unlimited
+            ? "Unlimited availability is on for all active sizes and configured combos."
+            : "Tracked stock is on. Enter the real bottle count for each size.");
+          return;
+        }
         const tab = e.target.closest("[data-admin-tab]");
         if (tab) {
           generation++;model.loading=false;model.page=0;model.status="";

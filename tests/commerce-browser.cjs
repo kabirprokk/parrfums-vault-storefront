@@ -52,9 +52,10 @@ const base = process.env.PV_TEST_URL || "http://127.0.0.1:8000";
     get("angel-share").variants.forEach((v) => { v.available_quantity = null; });
     render("product/angel-share");
   });
-  assert.equal(await page.locator(".detail [data-add]").isDisabled(), true);
-  assert.match(await page.locator(".detail [data-add]").innerText(), /availability awaiting confirmation/i,
-    "unconfirmed live inventory must explain why adding is unavailable");
+  assert.equal(await page.locator(".detail [data-add]").count(), 0,
+    "unconfirmed inventory must not expose an add-to-bag button");
+  assert.match(await page.locator(".detail .stock-state").innerText(), /availability awaiting confirmation/i,
+    "unconfirmed live inventory must explain why ordering needs confirmation");
   await page.evaluate(() => {
     get("angel-share").variants.forEach((v) => { v.available_quantity = 100; });
     render("product/angel-share");

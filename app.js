@@ -200,11 +200,13 @@ async function loadCatalogue() {
   const safeImage = path => typeof path === 'string' && /^assets\/[a-zA-Z0-9._/-]+$/.test(path) && !path.includes('..') || typeof path === 'string' && path.startsWith('https://lshwmudskeeknmcxlffe.supabase.co/storage/v1/object/public/catalogue-media/') && !path.includes('..');
 
   try {
+    const settingsRequest = read('storefront_settings', 'revision,inventory_unlimited&id=eq.current')
+      .catch(() => read('storefront_settings', 'revision&id=eq.current'));
     const [rows, prices, offersRows, settings, components, ratings, popularity] = await Promise.all([
       read('products', '*&active=eq.true&order=sort_order'),
       read('product_prices', 'product_id,size_ml,price_inr,sku,available_quantity,active,low_stock_threshold&order=product_id,size_ml'),
       read('offers', 'id,name,price_inr,badge,notes,description,image_path,sort_order&active=eq.true&order=sort_order'),
-      read('storefront_settings', 'revision&id=eq.current'),
+      settingsRequest,
       read('offer_components','*'),read('product_review_summary','*'),read('product_popularity','*')
     ]);
     if (settings?.[0]?.revision !== CATALOGUE_REVISION) throw new Error('Catalogue update pending');
@@ -229,11 +231,12 @@ async function loadCatalogue() {
       return { ...row, variants: prices.filter(v=>v.product_id===row.id), id: row.id, name: row.name, kind: 'combo', price: row.price_inr, badge: row.badge, notes: row.notes, desc: row.description, img: row.image_path };
     });
 
-    const nextSignature=JSON.stringify({nextProducts,nextOffers,components,ratings,popularity,revision:settings?.[0]?.revision});
+    const inventoryUnlimited=settings?.[0]?.inventory_unlimited===true;
+    const nextSignature=JSON.stringify({nextProducts,nextOffers,components,ratings,popularity,revision:settings?.[0]?.revision,inventoryUnlimited});
     const catalogueChanged=nextSignature!==catalogueSignature;
     catalogueSignature=nextSignature;
 
-    Commerce.cache.components=components; Commerce.cache.summary=ratings; Commerce.cache.popularity=popularity;
+    Commerce.cache.components=components; Commerce.cache.summary=ratings; Commerce.cache.popularity=popularity; Commerce.cache.inventoryUnlimited=inventoryUnlimited;
     products.splice(0, products.length, ...nextProducts);
     combos.splice(0, combos.length, ...nextOffers);
     const firstPrices = nextProducts[0].prices;
@@ -1430,6 +1433,7 @@ function startLiveStorefrontUpdates() {
         .on("postgres_changes", { event: "*", schema: "public", table: "products" }, scheduleRefresh)
         .on("postgres_changes", { event: "*", schema: "public", table: "offers" }, scheduleRefresh)
         .on("postgres_changes", { event: "*", schema: "public", table: "offer_components" }, scheduleRefresh)
+        .on("postgres_changes", { event: "*", schema: "public", table: "storefront_settings" }, scheduleRefresh)
         .on("postgres_changes", { event: "*", schema: "public", table: "site_content" }, scheduleRefresh)
         .subscribe();
     }

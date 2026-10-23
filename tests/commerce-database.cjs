@@ -5,6 +5,9 @@ const user='00000000-0000-4000-8000-000000000001',other='00000000-0000-4000-8000
  const db=new PGlite();
  await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;create schema auth;create table auth.users(id uuid primary key);create function auth.jwt() returns jsonb language sql stable as $$select jsonb_build_object('aal',coalesce(nullif(current_setting('request.jwt.claim.aal',true),''),'aal1'))$$;create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema auth to anon,authenticated;grant execute on function auth.uid() to anon,authenticated;`);
  for(const f of fs.readdirSync(path.join(__dirname,'../supabase/migrations')).filter(f=>f.endsWith('.sql')).sort())await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations',f),'utf8'));
+ // Production defaults to unlimited until real inventory counts are entered;
+ // this fixture starts in tracked mode so the existing stock-guard cases apply.
+ await db.exec("update public.storefront_settings set inventory_unlimited=false where id='current'");
  await db.query('insert into auth.users values($1),($2),($3)',[user,other,admin]);await db.query('insert into public.admin_users(user_id) values($1)',[admin]);
  const role=async(uid,service=false)=>db.exec(`reset role;set role ${service?'service_role':'authenticated'};select set_config('request.jwt.claim.sub','${uid||''}',false);select set_config('request.jwt.claim.aal','${uid===admin?'aal2':'aal1'}',false)`);
  const root=async()=>db.exec('reset role');
@@ -98,5 +101,16 @@ const user='00000000-0000-4000-8000-000000000001',other='00000000-0000-4000-8000
  await role(null,true);const late=await db.query('select public.begin_payment_attempt($1,$2,$3,$4)',[expiryOrder,user,crypto.randomUUID(),'razorpay']).then(()=>false,err=>/ORDER_EXPIRED/.test(err.message));assert.equal(late,true);
  // Hidden helpers and private ledgers cannot be called/read by customers or guests.
  await role(user);for(const query of ["select public.release_order_inventory('"+paidOrder+"')","select public.expire_order_reservations()","select * from public.payment_events","select * from public.inventory_requests"]){await assert.rejects(db.exec(query),/permission denied/);}
- await db.close();console.log('PASS: admin RLS, unknown stock, quantity/address validation, immutable snapshots, idempotency, inventory release, zero-stock adjustment retries, coupons, private orders, payment amount/signature boundary, duplicate/out-of-order payment events, verified review moderation, fulfilment/refund states and private helpers.');
+ await assert.rejects(db.query('select public.admin_set_inventory_mode(true)'),/ADMIN_REQUIRED/);
+ await role(admin);await db.exec("select set_config('request.jwt.claim.aal','aal1',false)");
+ await assert.rejects(db.query('select public.admin_set_inventory_mode(true)'),/ADMIN_REQUIRED/,'Inventory mode changes require AAL2');
+ await db.exec("select set_config('request.jwt.claim.aal','aal2',false)");
+ await db.query('select public.admin_set_inventory_mode(true)');
+ await root();await db.exec("update public.product_prices set available_quantity=null where product_id='angel-share' and size_ml=50;delete from public.commerce_rate_limits");
+ await role(user);const unlimitedOrder=await checkout();
+ await root();assert.equal((await db.query("select available_quantity from public.product_prices where product_id='angel-share' and size_ml=50")).rows[0].available_quantity,null,'Unlimited orders do not fabricate or decrement stock');
+ assert.equal(Number((await db.query('select count(*) n from public.stock_movements where order_id=$1',[unlimitedOrder])).rows[0].n),0,'Unlimited orders do not create stock movements');
+ await role(admin);await db.query('select public.admin_set_inventory_mode(false)');
+ await role(user);await assert.rejects(checkout([item],crypto.randomUUID(),{...delivery,address_line1:'321 New Tracked Test Street'}),/STOCK_NOT_CONFIGURED/,'Returning to tracked mode requires real counts to be entered');
+ await db.close();console.log('PASS: admin RLS, tracked and unlimited stock modes, AAL2 inventory-mode changes, unknown-stock guards, quantity/address validation, immutable snapshots, idempotency, inventory release, zero-stock adjustment retries, coupons, private orders, payment amount/signature boundary, duplicate/out-of-order payment events, verified review moderation, fulfilment/refund states and private helpers.');
 })().catch(e=>{console.error(e);process.exit(1);});

@@ -9,6 +9,7 @@ const Commerce = (() => {
     summary: [],
     popularity: [],
     components: [],
+    inventoryUnlimited: false,
     admin: false,
     adminChecked: false,
   };
@@ -120,6 +121,19 @@ const Commerce = (() => {
           label: "Confirm combo availability with the store",
           quantity: null,
         };
+      if (cache.inventoryUnlimited) {
+        for (const c of components) {
+          const product = get(c.product_id);
+          const v = variant(product, c.size_ml);
+          if (!product || product.active === false || !v?.active)
+            return {
+              available: false,
+              label: "Combo unavailable",
+              quantity: 0,
+            };
+        }
+        return { available: true, label: "Available", quantity: null, unlimited: true };
+      }
       let count = Infinity;
       for (const c of components) {
         const v = variant(get(c.product_id), c.size_ml);
@@ -142,14 +156,16 @@ const Commerce = (() => {
       };
     }
     const v = variant(p, size);
-    if (!v || v.available_quantity === null)
+    if (!v || (!cache.inventoryUnlimited && v.available_quantity === null))
       return {
         available: false,
         label: "Availability awaiting confirmation",
         quantity: null,
       };
-    if (!v.active || v.available_quantity === 0)
+    if (!v.active || p.active === false || (!cache.inventoryUnlimited && v.available_quantity === 0))
       return { available: false, label: "Out of stock", quantity: 0 };
+    if (cache.inventoryUnlimited)
+      return { available: true, label: "Available", quantity: null, unlimited: true };
     return {
       available: true,
       label:
