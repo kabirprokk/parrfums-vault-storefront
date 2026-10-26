@@ -1,5 +1,5 @@
 module.exports = async function (req, res) {
-  const site = process.env.SITE_URL || "https://parrfums-vault.vercel.app";
+  const site = process.env.SITE_URL || "https://parrfumsvault.in";
   if (!site || !/^https:\/\/[^/?#]+\/?$/.test(site)) {
     res.setHeader("Cache-Control", "no-store");
     return res.status(503).send("SITE_URL requires owner configuration.");

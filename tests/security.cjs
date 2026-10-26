@@ -64,7 +64,7 @@ assert.doesNotMatch(read("admin.js"), /\sstyle\s*=/i, "Admin markup avoids inlin
 const securityTxt = read(".well-known/security.txt");
 assert.match(securityTxt, /^Contact: mailto:quillsandcologne@gmail\.com$/m);
 assert.match(securityTxt, /^Expires: 2027-10-23T00:00:00\.000Z$/m);
-assert.match(securityTxt, /^Canonical: https:\/\/parrfums-vault\.vercel\.app\/.well-known\/security\.txt$/m);
+assert.match(securityTxt, /^Canonical: https:\/\/parrfumsvault.in\/.well-known\/security\.txt$/m);
 assert.ok(read(".gitignore").includes(".env.*"));
 assert.ok(!read("app.js").includes("rpc('create_customer_order'"));
 const foundation = read(
