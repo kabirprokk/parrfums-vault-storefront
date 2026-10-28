@@ -1,6 +1,6 @@
 # Transactional email setup
 
-The `order-email` Edge Function sends an itemized order confirmation after checkout. The `payments` function sends a separate receipt only after Razorpay payment verification. Email delivery is best-effort; order creation/payment state do not depend on Resend. Resend idempotency keys prevent duplicate sends for the same order event.
+The `order-email` Edge Function sends an itemized confirmation to the customer and a separate fulfillment notification to the store after checkout. The `payments` function sends a separate receipt to the customer and payment-confirmed notice to the store only after Razorpay verification. Customers can resend details from their order page; ownership is checked server-side. Email delivery is best-effort; order creation/payment state do not depend on Resend. Resend idempotency keys prevent duplicate sends for the same order event.
 
 ## Resend domain
 
@@ -28,6 +28,7 @@ The authenticated sender must use the verified domain. Customer replies go to th
 ORDER_EMAIL_FROM=Parrfums Vault <orders@mail.parrfumsvault.in>
 ORDER_EMAIL_REPLY_TO=quillsandcologne@gmail.com
 ORDER_EMAIL_TEMPLATE_ID=parrfums-vault-order-and-payment-updates
+ORDER_NOTIFICATION_TO=quillsandcologne@gmail.com
 SITE_URL=https://parrfumsvault.in
 ```
 

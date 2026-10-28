@@ -42,10 +42,10 @@ export async function sendOrderEmail({
   if (!orderResponse.ok) throw Error("ORDER_EMAIL_LOOKUP_FAILED");
   const orders = await orderResponse.json();
   const order = orders[0];
-  if (!order) throw Error("ORDER_EMAIL_ORDER_NOT_FOUND");
+  if (!order) throw Object.assign(Error("ORDER_EMAIL_ORDER_NOT_FOUND"), { code: "ORDER_EMAIL_ORDER_NOT_FOUND" });
   if (event === "paid" && order.payment_status !== "paid")
     throw Error("ORDER_EMAIL_NOT_PAID");
-  if (!order.email) throw Error("ORDER_EMAIL_ADDRESS_MISSING");
+  if (!order.email) throw Object.assign(Error("ORDER_EMAIL_ADDRESS_MISSING"), { code: "ORDER_EMAIL_ADDRESS_MISSING" });
 
   const itemQuery = new URLSearchParams({
     select: "item_name,size_ml,quantity,line_total_inr",
@@ -80,49 +80,81 @@ export async function sendOrderEmail({
   const itemRowsText = lines
     .map((item) => `${item.name} × ${item.quantity} — ${money(item.total)}`)
     .join("\n");
-  const subject = paid
-    ? `Payment received for order ${reference}`
-    : `Order ${reference} received — payment pending`;
   const status = paid ? "Paid" : "Payment pending";
-  const response = await fetcher("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${env("RESEND_API_KEY")}`,
-      "Content-Type": "application/json",
-      "Idempotency-Key": `pv-${event}-${order.id}`,
+  const template = {
+    id: env("ORDER_EMAIL_TEMPLATE_ID") || "parrfums-vault-order-and-payment-updates",
+    variables: {
+      EVENT_TITLE: paid ? "Payment received" : "Order received",
+      EVENT_MESSAGE: paid
+        ? "is paid. Your receipt and order details are below."
+        : "is placed and awaiting payment.",
+      PAYMENT_STATUS: status,
+      CUSTOMER_NAME: escapeHtml(order.recipient_name),
+      ORDER_NUMBER: escapeHtml(reference),
+      ITEM_ROWS: itemRows,
+      ITEM_ROWS_TEXT: escapeHtml(itemRowsText),
+      SUBTOTAL: money(order.subtotal_inr),
+      SHIPPING: money(order.shipping_inr),
+      DISCOUNT: money(order.discount_inr),
+      TOTAL: money(order.total_inr),
+      PHONE_NUMBER: escapeHtml(order.phone),
+      CONTACT_EMAIL: escapeHtml(order.email),
+      DELIVERY_ADDRESS: escapeHtml(address),
+      ORDER_URL: escapeHtml(`${site}/#orders/${encodeURIComponent(order.id)}`),
     },
-    body: JSON.stringify({
+  };
+  const send = async ({ to, subject, idempotencyKey, variables = template.variables }) => {
+    const response = await fetcher("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${env("RESEND_API_KEY")}`,
+        "Content-Type": "application/json",
+        "Idempotency-Key": idempotencyKey,
+      },
+      body: JSON.stringify({
       from: env("ORDER_EMAIL_FROM"),
       ...(env("ORDER_EMAIL_REPLY_TO")
         ? { reply_to: env("ORDER_EMAIL_REPLY_TO") }
         : {}),
-      to: [order.email],
+      to: [to],
       subject,
-      template: {
-        id: env("ORDER_EMAIL_TEMPLATE_ID") || "parrfums-vault-order-and-payment-updates",
-        variables: {
-          EVENT_TITLE: paid ? "Payment received" : "Order received",
-          EVENT_MESSAGE: paid
-            ? "is paid. Your receipt and order details are below."
-            : "is placed and awaiting payment.",
-          PAYMENT_STATUS: status,
-          CUSTOMER_NAME: escapeHtml(order.recipient_name),
-          ORDER_NUMBER: escapeHtml(reference),
-          ITEM_ROWS: itemRows,
-          ITEM_ROWS_TEXT: escapeHtml(itemRowsText),
-          SUBTOTAL: money(order.subtotal_inr),
-          SHIPPING: money(order.shipping_inr),
-          DISCOUNT: money(order.discount_inr),
-          TOTAL: money(order.total_inr),
-          PHONE_NUMBER: escapeHtml(order.phone),
-          CONTACT_EMAIL: escapeHtml(order.email),
-          DELIVERY_ADDRESS: escapeHtml(address),
-          ORDER_URL: escapeHtml(`${site}/#orders/${encodeURIComponent(order.id)}`),
-        },
+      template: { id: template.id, variables },
+      }),
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!response.ok) {
+      let providerCode = "UNKNOWN";
+      try {
+        const result = await response.json();
+        providerCode = String(result.name || result.code || "UNKNOWN").slice(0, 80);
+      } catch {}
+      throw Object.assign(Error("ORDER_EMAIL_DELIVERY_FAILED"), {
+        code: `RESEND_${response.status}_${providerCode}`,
+      });
+    }
+  };
+  const sends = [send({
+    to: order.email,
+    subject: paid ? `Payment received for order ${reference}` : `Order ${reference} received — payment pending`,
+    idempotencyKey: `pv-${event}-${order.id}`,
+  })];
+  const merchantEmail = env("ORDER_NOTIFICATION_TO");
+  if (merchantEmail && merchantEmail.toLowerCase() !== order.email.toLowerCase()) {
+    sends.push(send({
+      to: merchantEmail,
+      subject: `${paid ? "Order paid" : "New order"}: ${reference} — ${status}`,
+      idempotencyKey: `pv-merchant-${event}-${order.id}`,
+      variables: {
+        ...template.variables,
+        EVENT_TITLE: paid ? "Order payment confirmed" : "New order received",
+        EVENT_MESSAGE: paid
+          ? "has been paid. Prepare this order for fulfillment."
+          : "was placed. Review the delivery and payment details below.",
       },
-    }),
-    signal: AbortSignal.timeout(10000),
-  });
-  if (!response.ok) throw Error("ORDER_EMAIL_DELIVERY_FAILED");
+    }));
+  }
+  const results = await Promise.allSettled(sends);
+  const failure = results.find((result) => result.status === "rejected");
+  if (failure) throw failure.reason;
   return true;
 }

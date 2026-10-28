@@ -416,7 +416,7 @@ Object.assign(
           : o.payment_status === "cancelled"
             ? "The last payment attempt did not complete. You can try again securely. If money was deducted, refresh this order status before retrying."
             : "Continue to Razorpay to choose an available payment method. Your card and UPI details are entered securely with Razorpay, never stored by Parrfums Vault.";
-      const paymentPanel = `<section class="payment-panel ${o.payment_status === "paid" ? "is-confirmed" : ""}" aria-labelledby="payment-heading"><div class="payment-panel-top"><div><p class="eyebrow">Secure checkout</p><h2 id="payment-heading">${paymentHeading}</h2></div><strong class="payment-total">${money(o.total_inr)}</strong></div><p class="payment-description">${paymentDescription}</p><p id="payment-notice" class="payment-notice" role="status" aria-live="polite"></p><div class="payment-panel-actions">${!paymentClosed ? `<button class="btn primary" data-pay-order="${id}">Continue to secure payment</button>` : ""}<button class="btn ghost" data-refresh-order="${id}">Refresh status</button></div></section>`;
+      const paymentPanel = `<section class="payment-panel ${o.payment_status === "paid" ? "is-confirmed" : ""}" aria-labelledby="payment-heading"><div class="payment-panel-top"><div><p class="eyebrow">Secure checkout</p><h2 id="payment-heading">${paymentHeading}</h2></div><strong class="payment-total">${money(o.total_inr)}</strong></div><p class="payment-description">${paymentDescription}</p><p id="payment-notice" class="payment-notice" role="status" aria-live="polite"></p><div class="payment-panel-actions">${!paymentClosed ? `<button class="btn primary" data-pay-order="${id}">Continue to secure payment</button>` : ""}<button class="btn ghost" data-refresh-order="${id}">Refresh status</button><button class="btn ghost" data-email-order="${id}">Resend order details by email</button></div></section>`;
       return `<section class="page-shell order-page"><p class="eyebrow">Your order</p><h1 class="page-title">${esc(o.order_number)}</h1><p class="sub">Placed ${Commerce.formatDate(o.created_at)} · ${Commerce.statusLabel(o.payment_status)}</p>${["cancelled", "refunded"].includes(o.status) ? `<p class="shipping-notice">This order is ${Commerce.statusLabel(o.status).toLowerCase()}.</p>` : ""}<ol class="order-timeline">${[
         "pending",
         "confirmed",
@@ -465,6 +465,38 @@ Object.assign(
         throw error;
       }
       return result;
+    }
+    async function resendOrderEmail(id, button) {
+      const notice = document.querySelector("#payment-notice");
+      if (!notice) return;
+      button.disabled = true;
+      button.setAttribute("aria-busy", "true");
+      notice.textContent = "Sending order details…";
+      try {
+        const { data } = await supabaseClient.auth.getSession();
+        if (!data.session) throw Error("Sign in again to resend this email.");
+        const order = Commerce.cache.orders.get(id);
+        const response = await fetch(SUPABASE_URL + "/functions/v1/order-email", {
+          method: "POST",
+          headers: {
+            Authorization: "Bearer " + data.session.access_token,
+            apikey: CATALOGUE_KEY,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            order_id: id,
+            event: order?.payment_status === "paid" ? "paid" : "placed",
+          }),
+          signal: AbortSignal.timeout(12000),
+        });
+        if (!response.ok) throw Error("Email could not be sent. Please try again shortly.");
+        notice.textContent = "Order details sent to your checkout email and the store.";
+      } catch (error) {
+        notice.textContent = Commerce.safeError(error);
+      } finally {
+        button.disabled = false;
+        button.removeAttribute("aria-busy");
+      }
     }
     async function pay(id, button) {
       const el = document.querySelector("#payment-notice");
@@ -649,6 +681,8 @@ Object.assign(
       }
       const payment = e.target.closest("[data-pay-order]");
       if (payment) void pay(payment.dataset.payOrder, payment);
+      const emailOrder = e.target.closest("[data-email-order]");
+      if (emailOrder) void resendOrderEmail(emailOrder.dataset.emailOrder, emailOrder);
       const retry = e.target.closest("[data-retry-reviews]");
       if (retry) {
         Commerce.cache.reviews.delete(retry.dataset.retryReviews);

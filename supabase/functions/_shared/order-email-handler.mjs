@@ -39,6 +39,7 @@ export function createOrderEmailHandler({ env, fetcher = fetch }) {
       if (!auth.ok) return respond(401, { code: "AUTH_REQUIRED" });
       const user = await auth.json();
       const body = await request.json();
+      const event = body.event === "paid" ? "paid" : "placed";
       if (!uuid.test(user.id || "") || !uuid.test(body.order_id || ""))
         return respond(400, { code: "INVALID_REQUEST" });
       if (!env("RESEND_API_KEY") || !env("ORDER_EMAIL_FROM"))
@@ -47,11 +48,12 @@ export function createOrderEmailHandler({ env, fetcher = fetch }) {
         env,
         fetcher,
         orderId: body.order_id,
-        event: "placed",
+        event,
         userId: user.id,
       });
       return respond(202, { sent: true });
-    } catch {
+    } catch (error) {
+      console.error("Order email delivery failed:", error?.code || error?.message || "UNKNOWN");
       return respond(503, { code: "EMAIL_DELIVERY_UNAVAILABLE" });
     }
   };

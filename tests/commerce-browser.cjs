@@ -253,6 +253,17 @@ const base = process.env.PV_TEST_URL || "http://127.0.0.1:8000";
   assert.equal(await page.locator(".payment-panel").count(), 1);
   assert.match(await page.locator(".payment-panel").innerText(), /850/);
   assert.match(await page.locator(".payment-panel").innerText(), /never stored by Parrfums Vault/i);
+  assert.equal(await page.locator("[data-email-order]").count(), 1,
+    "order page exposes a customer-authorized email retry without initiating payment");
+  await page.route("**/functions/v1/order-email", async (r) => {
+    assert.equal(r.request().postDataJSON().order_id, oid);
+    assert.equal(r.request().postDataJSON().event, "placed");
+    await r.fulfill({ status: 202, json: { sent: true } });
+  });
+  await page.locator("[data-email-order]").click();
+  await page.waitForFunction(() =>
+    document.querySelector("#payment-notice")?.textContent.includes("sent to your checkout email and the store"),
+  );
   await a11y("Order payment accessibility");
   await page.evaluate(() => {
     supabaseClient.auth.getSession = async () => ({
