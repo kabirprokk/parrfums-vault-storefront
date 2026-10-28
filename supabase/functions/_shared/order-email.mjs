@@ -39,7 +39,7 @@ export async function sendOrderEmail({
     `${base}/rest/v1/customer_orders?${orderQuery}`,
     { headers, signal: AbortSignal.timeout(10000) },
   );
-  if (!orderResponse.ok) throw Error("ORDER_EMAIL_LOOKUP_FAILED");
+  if (!orderResponse.ok) throw Object.assign(Error("ORDER_EMAIL_LOOKUP_FAILED"), { code: "ORDER_EMAIL_LOOKUP_FAILED" });
   const orders = await orderResponse.json();
   const order = orders[0];
   if (!order) throw Object.assign(Error("ORDER_EMAIL_ORDER_NOT_FOUND"), { code: "ORDER_EMAIL_ORDER_NOT_FOUND" });
@@ -56,7 +56,7 @@ export async function sendOrderEmail({
     `${base}/rest/v1/customer_order_items?${itemQuery}`,
     { headers, signal: AbortSignal.timeout(10000) },
   );
-  if (!itemResponse.ok) throw Error("ORDER_EMAIL_ITEMS_FAILED");
+  if (!itemResponse.ok) throw Object.assign(Error("ORDER_EMAIL_ITEMS_FAILED"), { code: "ORDER_EMAIL_ITEMS_FAILED" });
   const items = await itemResponse.json();
   const site = (env("SITE_URL") || "https://parrfumsvault.in").replace(/\/$/, "");
   const reference = order.order_number || order.id.slice(0, 8).toUpperCase();
@@ -129,7 +129,7 @@ export async function sendOrderEmail({
         providerCode = String(result.name || result.code || "UNKNOWN").slice(0, 80);
       } catch {}
       throw Object.assign(Error("ORDER_EMAIL_DELIVERY_FAILED"), {
-        code: `RESEND_${response.status}_${providerCode}`,
+        code: `RESEND_${response.status}_${providerCode}`.replace(/[^A-Za-z0-9_-]/g, "_").toUpperCase(),
       });
     }
   };

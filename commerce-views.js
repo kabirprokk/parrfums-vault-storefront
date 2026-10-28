@@ -489,7 +489,11 @@ Object.assign(
           }),
           signal: AbortSignal.timeout(12000),
         });
-        if (!response.ok) throw Error("Email could not be sent. Please try again shortly.");
+        if (!response.ok) {
+          let result = {};
+          try { result = await response.json(); } catch {}
+          throw Error(`Email could not be sent (${result.code || "EMAIL_DELIVERY_UNAVAILABLE"}).`);
+        }
         notice.textContent = "Order details sent to your checkout email and the store.";
       } catch (error) {
         notice.textContent = Commerce.safeError(error);

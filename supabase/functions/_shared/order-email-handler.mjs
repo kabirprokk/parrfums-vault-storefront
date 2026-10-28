@@ -54,7 +54,11 @@ export function createOrderEmailHandler({ env, fetcher = fetch }) {
       return respond(202, { sent: true });
     } catch (error) {
       console.error("Order email delivery failed:", error?.code || error?.message || "UNKNOWN");
-      return respond(503, { code: "EMAIL_DELIVERY_UNAVAILABLE" });
+      const rawCode = String(error?.code || error?.message || "EMAIL_DELIVERY_UNAVAILABLE");
+      const code = /^[A-Za-z0-9_-]{3,100}$/.test(rawCode)
+        ? rawCode.toUpperCase().replace(/[^A-Z0-9_-]/g, "_")
+        : "EMAIL_DELIVERY_UNAVAILABLE";
+      return respond(503, { code });
     }
   };
 }
