@@ -402,6 +402,21 @@ Object.assign(
         return `<section class="page-shell"><h1 class="page-title">Loading your order…</h1></section>`;
       if (o.error)
         return `<section class="page-shell"><h1 class="page-title">Order unavailable</h1><p class="error" role="alert">${esc(o.error)}</p><button class="btn" data-refresh-order="${id}">Try again</button><a class="text-link" href="#account">Your account</a></section>`;
+      const paymentClosed = ["paid", "partially_refunded", "refunded"].includes(o.payment_status) || ["cancelled", "refunded"].includes(o.status);
+      const paymentHeading = {
+        paid: "Payment confirmed",
+        refunded: "Payment refunded",
+        partially_refunded: "Partially refunded",
+        cancelled: "Payment not completed",
+      }[o.payment_status] || (paymentClosed ? "Payment unavailable" : "Complete your payment");
+      const paymentDescription = o.payment_status === "paid"
+        ? "Your payment has been confirmed by Razorpay."
+        : ["refunded", "partially_refunded"].includes(o.payment_status) || paymentClosed
+          ? `This order is ${esc(Commerce.statusLabel(o.payment_status).toLowerCase())}.`
+          : o.payment_status === "cancelled"
+            ? "The last payment attempt did not complete. You can try again securely. If money was deducted, refresh this order status before retrying."
+            : "Continue to Razorpay to choose an available payment method. Your card and UPI details are entered securely with Razorpay, never stored by Parrfums Vault.";
+      const paymentPanel = `<section class="payment-panel ${o.payment_status === "paid" ? "is-confirmed" : ""}" aria-labelledby="payment-heading"><div class="payment-panel-top"><div><p class="eyebrow">Secure checkout</p><h2 id="payment-heading">${paymentHeading}</h2></div><strong class="payment-total">${money(o.total_inr)}</strong></div><p class="payment-description">${paymentDescription}</p><p id="payment-notice" class="payment-notice" role="status" aria-live="polite"></p><div class="payment-panel-actions">${!paymentClosed ? `<button class="btn primary" data-pay-order="${id}">Continue to secure payment</button>` : ""}<button class="btn ghost" data-refresh-order="${id}">Refresh status</button></div></section>`;
       return `<section class="page-shell order-page"><p class="eyebrow">Your order</p><h1 class="page-title">${esc(o.order_number)}</h1><p class="sub">Placed ${Commerce.formatDate(o.created_at)} · ${Commerce.statusLabel(o.payment_status)}</p>${["cancelled", "refunded"].includes(o.status) ? `<p class="shipping-notice">This order is ${Commerce.statusLabel(o.status).toLowerCase()}.</p>` : ""}<ol class="order-timeline">${[
         "pending",
         "confirmed",
@@ -415,7 +430,7 @@ Object.assign(
         })
         .join(
           "",
-        )}</ol><div class="order-detail-grid"><div><h2>Delivery</h2><p>${esc(o.recipient_name)}<br>${esc(o.address_line1)}${o.address_line2 ? `<br>${esc(o.address_line2)}` : ""}<br>${esc(o.city)}, ${esc(o.state)} ${esc(o.postal_code)}</p>${o.courier_name ? `<p>Courier: ${esc(o.courier_name)}</p>` : ""}${o.tracking_number ? `<p>Tracking number: ${esc(o.tracking_number)}</p>` : ""}${/^https:\/\//.test(o.tracking_url || "") ? `<a class="text-link" href="${esc(o.tracking_url)}" target="_blank" rel="noreferrer">Courier tracking</a>` : ""}${o.estimated_delivery ? `<p>Estimated delivery: ${Commerce.formatDate(o.estimated_delivery)}</p>` : ""}</div><aside class="summary"><h2>Order summary</h2>${o.items.map((i) => `<div class="sum-line"><span>${esc(i.item_name)} × ${i.quantity}<small>${i.size_ml ? i.size_ml + "ml" : ""}</small></span><span>${money(i.line_total_inr)}</span></div>`).join("")}<div class="sum-line"><span>Subtotal</span><span>${money(o.subtotal_inr)}</span></div><div class="sum-line"><span>Shipping</span><span>${money(o.shipping_inr)}</span></div><div class="sum-line"><span>Discount</span><span>−${money(o.discount_inr)}</span></div><div class="sum-line total"><span>Total</span><span>${money(o.total_inr)}</span></div></aside></div><p id="payment-notice" class="sub" role="status"></p><div class="offer-actions">${!["paid", "partially_refunded", "refunded"].includes(o.payment_status) && !["cancelled", "refunded"].includes(o.status) ? `<button class="btn primary" data-pay-order="${id}">Pay securely</button>` : ""}<button class="btn ghost" data-refresh-order="${id}">Refresh status</button><button class="btn ghost" data-reorder="${id}">Buy again</button><a class="text-link" href="#account">Order history</a></div><p class="sub">Only provider-verified payments are marked paid. If a payment is pending, refresh this status before trying again.</p></section>`;
+        )}</ol><div class="order-detail-grid"><div><h2>Delivery</h2><p>${esc(o.recipient_name)}<br>${esc(o.address_line1)}${o.address_line2 ? `<br>${esc(o.address_line2)}` : ""}<br>${esc(o.city)}, ${esc(o.state)} ${esc(o.postal_code)}</p>${o.courier_name ? `<p>Courier: ${esc(o.courier_name)}</p>` : ""}${o.tracking_number ? `<p>Tracking number: ${esc(o.tracking_number)}</p>` : ""}${/^https:\/\//.test(o.tracking_url || "") ? `<a class="text-link" href="${esc(o.tracking_url)}" target="_blank" rel="noreferrer">Courier tracking</a>` : ""}${o.estimated_delivery ? `<p>Estimated delivery: ${Commerce.formatDate(o.estimated_delivery)}</p>` : ""}</div><aside class="summary"><h2>Order summary</h2>${o.items.map((i) => `<div class="sum-line"><span>${esc(i.item_name)} × ${i.quantity}<small>${i.size_ml ? i.size_ml + "ml" : ""}</small></span><span>${money(i.line_total_inr)}</span></div>`).join("")}<div class="sum-line"><span>Subtotal</span><span>${money(o.subtotal_inr)}</span></div><div class="sum-line"><span>Shipping</span><span>${money(o.shipping_inr)}</span></div><div class="sum-line"><span>Discount</span><span>−${money(o.discount_inr)}</span></div><div class="sum-line total"><span>Total</span><span>${money(o.total_inr)}</span></div></aside></div>${paymentPanel}<div class="order-secondary-actions"><button class="btn ghost" data-reorder="${id}">Buy again</button><a class="text-link" href="#account">Order history</a></div><p class="sub payment-footnote">Only provider-verified payments are marked paid. If payment is pending, refresh the status before retrying.</p></section>`;
     }
     function trackingPage() {
       return `<section class="page-shell"><p class="eyebrow">Order tracking</p><h1 class="page-title">Follow your fragrance.</h1><p class="page-intro">Order details are private. Sign in to look up your own order reference.</p>${authUser ? '<form id="tracking-lookup" class="form-grid"><div class="field full-field"><label for="order-reference">Order reference</label><input id="order-reference" name="reference" required maxlength="80" placeholder="PV-…"></div><button class="btn primary">Find my order</button><p class="error" id="tracking-error" role="alert"></p></form>' : '<button class="btn primary" data-auth-sign-in>Sign in</button>'}</section>`;
@@ -453,8 +468,14 @@ Object.assign(
     }
     async function pay(id, button) {
       const el = document.querySelector("#payment-notice");
+      if (!el) return;
       button.disabled = true;
+      button.setAttribute("aria-busy", "true");
       el.textContent = "Preparing a secure payment…";
+      const unlock = () => {
+        button.disabled = false;
+        button.removeAttribute("aria-busy");
+      };
       try {
         let key;
         try {
@@ -508,30 +529,29 @@ Object.assign(
               Commerce.cache.orders.delete(id);
               await fetchOrder(id);
             } catch (error) {
-              el.textContent = error.customerMessage
-                ? error.message
-                : Commerce.safeError(error);
+              el.textContent = `${error.customerMessage ? error.message : Commerce.safeError(error)} Refresh your order status before retrying.`;
+              unlock();
             }
           },
           modal: {
             ondismiss: () => {
               el.textContent =
                 "Payment window closed. No payment has been assumed successful; refresh your order status before trying again.";
-              button.disabled = false;
+              unlock();
             },
           },
         });
         checkout.on("payment.failed", () => {
           el.textContent =
             "Payment was not completed. Refresh order status before retrying.";
-          button.disabled = false;
+          unlock();
         });
         checkout.open();
       } catch (error) {
         el.textContent = error.customerMessage
           ? error.message
           : Commerce.safeError(error);
-        button.disabled = false;
+        unlock();
       }
     }
     function reviews(p) {

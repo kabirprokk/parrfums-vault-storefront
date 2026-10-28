@@ -250,6 +250,49 @@ const base = process.env.PV_TEST_URL || "http://127.0.0.1:8000";
   assert.equal(await page.evaluate(() => state.cart.length), 0);
   assert.equal(await page.locator(".order-timeline li").count(), 5);
   assert.match(await page.locator("#app").textContent(), /unpaid/i);
+  assert.equal(await page.locator(".payment-panel").count(), 1);
+  assert.match(await page.locator(".payment-panel").innerText(), /850/);
+  assert.match(await page.locator(".payment-panel").innerText(), /never stored by Parrfums Vault/i);
+  await a11y("Order payment accessibility");
+  await page.evaluate(() => {
+    supabaseClient.auth.getSession = async () => ({
+      data: { session: { access_token: "browser-test-token" } },
+      error: null,
+    });
+  });
+  await page.route("**/functions/v1/payments", async (r) => {
+    const body = r.request().postDataJSON();
+    if (body.action === "verify")
+      return r.fulfill({ status: 503, json: { message: "Mock verification outage" } });
+    return r.fulfill({
+      json: {
+        key: "rzp_test_unit",
+        amount: 85000,
+        currency: "INR",
+        provider_order_id: "order_unit",
+      },
+    });
+  });
+  await page.route("https://checkout.razorpay.com/v1/checkout.js", (r) =>
+    r.fulfill({
+      contentType: "application/javascript",
+      body: "window.Razorpay=class{constructor(options){this.options=options}on(){}open(){this.options.handler({razorpay_order_id:'order_unit',razorpay_payment_id:'pay_unit',razorpay_signature:'test'})}}",
+    }),
+  );
+  await page.locator("[data-pay-order]").click();
+  await page.waitForFunction(() =>
+    document.querySelector("#payment-notice")?.textContent.includes("Mock verification outage"),
+  );
+  assert.equal(await page.locator("[data-pay-order]").isEnabled(), true,
+    "a temporary payment verification error must let the customer retry after checking status");
+  await page.evaluate(() => {
+    const id = currentPath.slice("orders/".length);
+    Commerce.cache.orders.get(id).payment_status = "cancelled";
+    render(currentPath, { keepScroll: true });
+  });
+  assert.equal(await page.locator("[data-pay-order]").count(), 1,
+    "a cancelled payment attempt must allow a new attempt while the order remains open");
+  assert.match(await page.locator("#payment-heading").innerText(), /Payment not completed/);
   await page.evaluate(() => {
     authUser = null;
     Commerce.cache.admin = false;
