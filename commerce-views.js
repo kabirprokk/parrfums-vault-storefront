@@ -238,6 +238,26 @@ Object.assign(
           p_quote_hash: checkoutState.quote.quote_hash,
         });
         if (!/^[0-9a-f-]{36}$/i.test(id)) throw Error("INVALID_ORDER_RESPONSE");
+        let orderEmailSent = false;
+        try {
+          const { data } = await supabaseClient.auth.getSession();
+          if (data.session) {
+            const emailResponse = await fetch(
+              SUPABASE_URL + "/functions/v1/order-email",
+              {
+                method: "POST",
+                headers: {
+                  Authorization: "Bearer " + data.session.access_token,
+                  apikey: CATALOGUE_KEY,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ order_id: id }),
+                signal: AbortSignal.timeout(8000),
+              },
+            );
+            orderEmailSent = emailResponse.ok;
+          }
+        } catch {}
         try {
           for (let i = localStorage.length - 1; i >= 0; i--) {
             const key = localStorage.key(i);
@@ -259,6 +279,8 @@ Object.assign(
         checkoutState.error = "";
         Commerce.cache.orders.delete(id);
         location.hash = "#orders/" + id;
+        if (!orderEmailSent)
+          toast("Order placed. Email confirmation is unavailable; your order is saved in your account.");
         void refreshAccountData(authUser);
       } catch (error) {
         notice(Commerce.safeError(error), true);

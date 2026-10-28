@@ -2,3 +2,5 @@
 verify_jwt = false # The handler verifies the user's token with Supabase Auth.
 [functions.payment-webhook]
 verify_jwt = false # Provider HMAC verification is mandatory before processing.
+[functions.order-email]
+verify_jwt = false # The handler verifies the user's token with Supabase Auth.

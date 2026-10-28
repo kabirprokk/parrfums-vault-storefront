@@ -1,4 +1,5 @@
 import { paymentProvider } from "./payment-provider.mjs";
+import { sendOrderEmail } from "./order-email.mjs";
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 async function readBody(request, max) {
   if (Number(request.headers.get("content-length") || 0) > max)
@@ -30,6 +31,14 @@ export function createPaymentHandler({
   fetcher = fetch,
   webhook = false,
 }) {
+  const notifyPaidOrder = async (orderId) => {
+    if (!env("RESEND_API_KEY") || !env("ORDER_EMAIL_FROM")) return;
+    try {
+      await sendOrderEmail({ env, fetcher, orderId, event: "paid" });
+    } catch (error) {
+      console.error("Paid order email delivery failed:", error.message);
+    }
+  };
   const rpc = async (name, args) => {
     const response = await fetcher(
       env("SUPABASE_URL") + "/rest/v1/rpc/" + name,
@@ -138,6 +147,8 @@ export function createPaymentHandler({
           p_refunded_paise: payment.refunded,
           p_body_hash: hash,
         });
+        if (result.status === "paid")
+          await notifyPaidOrder(result.order_id);
         return respond(200, result);
       }
       const token = request.headers.get("authorization");
@@ -275,6 +286,8 @@ export function createPaymentHandler({
           p_currency: payment.currency,
           p_refunded_paise: payment.refunded,
         });
+        if (result.status === "paid")
+          await notifyPaidOrder(result.order_id || body.order_id);
         return respond(200, result);
       }
       return respond(400, { code: "INVALID_ACTION" });

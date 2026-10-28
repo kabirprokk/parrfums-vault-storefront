@@ -47,13 +47,14 @@ const base = process.env.PV_TEST_URL || "http://127.0.0.1:8000";
   assert.equal(await addToBag.isDisabled(), false, "available product should be addable");
   await addToBag.click();
   assert.match(await page.locator("[role=status]").allInnerTexts().then((xs) => xs.join(" ")), /added to your bag/i);
-  assert.equal(await page.locator(".detail [data-add]").isDisabled(), false, "add button must not remain busy or disabled");
+  assert.equal(await page.locator(".detail .product-qty output").innerText(), "1",
+    "adding an item replaces Add to bag with its quantity stepper");
   await page.evaluate(() => {
     Commerce.cache.inventoryUnlimited = true;
     get("angel-share").variants.forEach((v) => { v.available_quantity = null; });
     render("product/angel-share");
   });
-  await page.locator(".detail [data-add]").click();
+  await page.locator('.detail [data-qty][data-delta="1"]').click();
   assert.equal(await page.evaluate(() => state.cart[0].qty), 2,
     "unlimited inventory allows adding another item when backend quantities are null");
   await page.evaluate(() => {
@@ -83,6 +84,7 @@ const base = process.env.PV_TEST_URL || "http://127.0.0.1:8000";
   angel30.price_inr = 510;
   angel50.available_quantity = 0;
   await page.evaluate(() => loadCatalogue());
+  await page.evaluate(() => { state.cart = []; save(); render("product/angel-share"); });
   assert.equal(await page.locator(".detail .variant.selected").getAttribute("data-size"), "30",
     "detail page selects the available size when the default size is out of stock");
   assert.equal(await page.locator(".detail [data-add]").isDisabled(), false);
@@ -240,6 +242,9 @@ const base = process.env.PV_TEST_URL || "http://127.0.0.1:8000";
   );
   await page.locator("#checkout-form [type=submit]").click();
   await page.waitForFunction(() => currentPath.startsWith("orders/"));
+  await page.waitForFunction(
+    () => document.querySelectorAll(".order-timeline li").length === 5,
+  );
   assert.equal(keys.length, 2);
   assert.equal(keys[0], keys[1], "Retry uses the same idempotency key");
   assert.equal(await page.evaluate(() => state.cart.length), 0);

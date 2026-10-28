@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "Buildless Parrfums Vault storefront; dependencies are development and test tools only.",
   "scripts": {
-    "test": "node tests/database.cjs && node tests/commerce-database.cjs && node tests/payments.mjs && node tests/security.cjs && node tests/seo.cjs",
+    "test": "node tests/database.cjs && node tests/commerce-database.cjs && node tests/payments.mjs && node tests/order-email.mjs && node tests/security.cjs && node tests/seo.cjs",
     "test:browser": "node tests/browser.cjs && node tests/commerce-browser.cjs && node tests/admin-browser.cjs && node tests/edit-mode-browser.cjs",
     "test:all": "npm test && npm run test:browser && npm run test:audit",
     "optimize:media": "node scripts/optimize-media.cjs",

@@ -326,20 +326,34 @@ const priceBlock = p => {
           <div class="price-ladder">${sizes.filter(s => s !== heroSize).map(s => `<span>${s}ml ${money(priceFor(p, s))}</span>`).join('<span aria-hidden="true">·</span>')}</div>`;
 }
 
+function cartQuantityControl(index, className = 'qty') {
+  const item = state.cart[index];
+  if (!item) return '';
+  const availability = Commerce.stock(get(item.id), item.size);
+  const max = availability.unlimited ? 20 : Math.min(20, availability.quantity || 0);
+  return `<div class="${className}" role="group" aria-label="Quantity for ${esc(item.name)}">
+    <button type="button" data-qty="${index}" data-delta="-1" aria-label="Decrease ${esc(item.name)} quantity">−</button>
+    <output aria-live="polite">${item.qty}</output>
+    <button type="button" data-qty="${index}" data-delta="1" aria-label="Increase ${esc(item.name)} quantity" ${item.qty >= max ? 'disabled' : ''}>+</button>
+  </div>`;
+}
+
 function card(p) {
   const wished = state.wish.includes(p.id);
   const size = defaultSize(p), inStock = Commerce.available(p, size);
+  const cartIndex = state.cart.findIndex(i => i.id === p.id && i.size === size);
   const addLabel = inStock ? `Add ${size}ml · ${money(priceFor(p, size))}` : Commerce.stock(p, size).label;
   return `<article class="product-card">
     <div class="product-image"><a href="#product/${p.id}" aria-label="View ${esc(p.name)}">${imgTag(p.img, `${p.name} — Parrfums Vault fragrance`)}</a>
       <button class="heart ${wished ? 'active' : ''}" data-wish="${p.id}" aria-label="${wished ? 'Remove' : 'Add'} ${esc(p.name)} ${wished ? 'from' : 'to'} wishlist" aria-pressed="${wished}">${heartSvg(wished)}</button></div>
     <div class="product-meta"><a href="#product/${p.id}"><h3>${esc(p.name)}</h3><p>${esc(formatAccords(p.notes))}</p>${priceBlock(p)}</a>
-      ${inStock?`<button class="quick-add" data-add="${p.id}" data-size="${size}">${esc(addLabel)} <span aria-hidden="true">+</span></button>`:availabilityInquiryLink(p,size,'quick-add availability-inquiry')}</div>
+      ${cartIndex>=0?cartQuantityControl(cartIndex,'qty quick-qty'):inStock?`<button class="quick-add" data-add="${p.id}" data-size="${size}">${esc(addLabel)} <span aria-hidden="true">+</span></button>`:availabilityInquiryLink(p,size,'quick-add availability-inquiry')}</div>
   </article>`;
 }
 
 function offerCard(c) {
   const availability = Commerce.stock(c, 0);
+  const cartIndex = state.cart.findIndex(i => i.id === c.id && i.size === 0);
   return `<article class="offer-card">
     <div class="offer-img">${imgTag(c.img, `${c.name} — ${c.badge}`)}<span class="offer-badge">Combo</span></div>
     <div class="offer-body">
@@ -349,7 +363,7 @@ function offerCard(c) {
       <p class="offer-notes">${esc(c.notes)}</p>
       <p class="offer-price">${money(c.price)}</p>
       <div class="offer-actions">
-        ${availability.available?`<button class="btn primary" data-add="${c.id}">Add to bag</button>${waLink(`Hi Parrfums Vault! I'd like to order the ${c.name} (${c.badge}) for ${money(c.price)}.`, 'Order on WhatsApp', 'btn ghost wa-btn')}`:availabilityInquiryLink(c,0,'btn wa-btn')}
+        ${cartIndex>=0?cartQuantityControl(cartIndex):availability.available?`<button class="btn primary" data-add="${c.id}">Add to bag</button>`:availabilityInquiryLink(c,0,'btn wa-btn')}${availability.available?waLink(`Hi Parrfums Vault! I'd like to order the ${c.name} (${c.badge}) for ${money(c.price)}.`, 'Order on WhatsApp', 'btn ghost wa-btn'):''}
       </div>
     </div>
   </article>`;
@@ -661,16 +675,22 @@ function productView(p) {
   if (!p) return notFound();
   const addToBagButton = (item, size) => {
     const availability = Commerce.stock(item, size);
-    return availability.available
-      ? `<button class="btn primary full" type="button" data-add="${esc(item.id)}">Add to bag</button>`
-      : availabilityInquiryLink(item,size,'btn wa-btn full');
+    const cartIndex = state.cart.findIndex(i => i.id === item.id && i.size === size);
+    return cartIndex >= 0
+      ? cartQuantityControl(cartIndex, 'qty product-qty')
+      : availability.available
+        ? `<button class="btn primary full" type="button" data-add="${esc(item.id)}" data-size="${size}">Add to bag</button>`
+        : availabilityInquiryLink(item,size,'btn wa-btn full');
   };
   const mobileBuyBar = (item, size) => {
     const availability=Commerce.stock(item,size), label=availability.available?'Add to bag':availability.label;
     const value=isCombo(item)?item.price:priceFor(item,size);
-    const action=availability.available
-      ? `<button class="btn primary" type="button" data-add="${esc(item.id)}" data-size="${size}">${icon('bag')}<span>${label}</span></button>`
-      : availabilityInquiryLink(item,size,'btn wa-btn');
+    const cartIndex = state.cart.findIndex(i => i.id === item.id && i.size === size);
+    const action=cartIndex >= 0
+      ? cartQuantityControl(cartIndex, 'qty mobile-buybar-qty')
+      : availability.available
+        ? `<button class="btn primary" type="button" data-add="${esc(item.id)}" data-size="${size}">${icon('bag')}<span>${label}</span></button>`
+        : availabilityInquiryLink(item,size,'btn wa-btn');
     return `<aside class="mobile-buybar" aria-label="Quick purchase"><span class="mobile-buybar-price"><strong data-mobile-price>${money(value)}</strong>${size?`<small>${size}ml</small>`:''}</span>${action}</aside>`;
   };
   if (isCombo(p)) {
@@ -759,11 +779,7 @@ function cart() {
       <div>${state.cart.map((i, n) => `<div class="cart-item">
         ${imgTag(i.img, i.name)}
         <div><h3>${esc(i.name)}</h3><p>${i.combo ? esc(i.badge) : `${i.size}ml · ${esc(i.notes)}`}</p>${Commerce.badge(get(i.id),i.size)}
-          <div class="qty" role="group" aria-label="Quantity for ${esc(i.name)}">
-            <button data-qty="${n}" data-delta="-1" aria-label="Decrease quantity">−</button>
-            <span>${i.qty}</span>
-            <button data-qty="${n}" data-delta="1" aria-label="Increase quantity">+</button>
-          </div>
+          ${cartQuantityControl(n)}
         </div>
         <div><strong>${money(i.price * i.qty)}</strong><br><button class="remove" data-remove="${n}" aria-label="Remove ${esc(i.name)} from bag">Remove</button></div>
       </div>`).join('')}</div>
@@ -1211,7 +1227,7 @@ document.addEventListener('click', e => {
     else state.cart.push({ id: p.id, name: p.name, notes: p.notes, img: p.img, size, price, qty: 1, combo: isCombo(p), badge });
     save();
     if(add.hasAttribute('data-move-wishlist')){state.wish=state.wish.filter(id=>id!==p.id);save();if(authUser)void supabaseClient.from('wishlist_items').delete().eq('user_id',authUser.id).eq('product_id',p.id).then(({error})=>{if(error){state.wish.push(p.id);save();toast('Added to bag, but wishlist removal could not sync');}});render('wishlist',{keepScroll:true});}
-    flashAdded(add);
+    render(null, { keepScroll: true });
     toast(`${p.name} added to your bag`);
     return;
   }
