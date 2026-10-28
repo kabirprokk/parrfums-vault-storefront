@@ -154,6 +154,37 @@ assert.equal(
     .status,
   200,
 );
+let attached = false;
+const initializeHandler = createPaymentHandler({
+  env,
+  fetcher: async (url, options = {}) => {
+    const json = (value) => new Response(JSON.stringify(value), { status: 200 });
+    if (url.endsWith("/auth/v1/user")) return json({ id: uid });
+    if (url.includes("/customer_orders?"))
+      return json([{ id: oid, total_inr: 850 }]);
+    if (url.endsWith("/rpc/begin_payment_attempt"))
+      return json({
+        id: uid,
+        order_id: oid,
+        provider_order_id: null,
+        amount_paise: 85000,
+      });
+    if (url.endsWith("/rpc/claim_payment_initialization")) return json(true);
+    if (url.endsWith("/rpc/attach_provider_order")) {
+      attached = true;
+      return new Response(null, { status: 204 });
+    }
+    if (url.includes("api.razorpay.com/v1/orders"))
+      return json({ id: "order_FIRST", amount: 85000, currency: "INR" });
+    throw Error("Unexpected URL " + url);
+  },
+});
+const initialized = await initializeHandler(
+  req({ action: "initiate", order_id: oid, request_key: uid }),
+);
+assert.equal(initialized.status, 200, "void attach RPC 204 must not fail first payment attempt");
+assert.equal(attached, true);
+assert.equal((await initialized.json()).provider_order_id, "order_FIRST");
 const webhook = createPaymentHandler({ env, fetcher, webhook: true });
 const raw = JSON.stringify({
   payload: {

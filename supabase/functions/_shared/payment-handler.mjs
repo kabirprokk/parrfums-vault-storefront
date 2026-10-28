@@ -45,7 +45,16 @@ export function createPaymentHandler({
       },
     );
     if (!response.ok) throw Error("PAYMENT_STATE_CONFLICT");
-    return response.json();
+    // PostgREST returns 204 with an empty body for successful void RPCs
+    // (for example attach_provider_order). Do not turn that success into a
+    // JSON parse error after the provider order has already been created.
+    const text = await response.text();
+    if (!text) return null;
+    try {
+      return JSON.parse(text);
+    } catch {
+      throw Error("INVALID_RPC_RESPONSE");
+    }
   };
   return async (request) => {
     const origin = request.headers.get("origin");

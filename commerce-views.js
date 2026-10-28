@@ -465,6 +465,10 @@ Object.assign(
           currency: config.currency,
           order_id: config.provider_order_id,
           name: "Parrfums Vault",
+          description: "Secure payment for your fragrance order",
+          image: new URL("assets/parrfums-vault-logo.png", location.origin)
+            .href,
+          theme: { color: "#a86d43" },
           handler: async (result) => {
             el.textContent = "Verifying payment with the provider…";
             try {
