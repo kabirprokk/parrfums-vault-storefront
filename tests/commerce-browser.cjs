@@ -253,6 +253,12 @@ const base = process.env.PV_TEST_URL || "http://127.0.0.1:8000";
   assert.equal(await page.locator(".payment-panel").count(), 1);
   assert.match(await page.locator(".payment-panel").innerText(), /850/);
   assert.match(await page.locator(".payment-panel").innerText(), /never stored by Parrfums Vault/i);
+  await page.evaluate(() => {
+    supabaseClient.auth.getSession = async () => ({
+      data: { session: { access_token: "browser-test-token" } },
+      error: null,
+    });
+  });
   assert.equal(await page.locator("[data-email-order]").count(), 1,
     "order page exposes a customer-authorized email retry without initiating payment");
   await page.route("**/functions/v1/order-email", async (r) => {
@@ -265,12 +271,6 @@ const base = process.env.PV_TEST_URL || "http://127.0.0.1:8000";
     document.querySelector("#payment-notice")?.textContent.includes("sent to your checkout email and the store"),
   );
   await a11y("Order payment accessibility");
-  await page.evaluate(() => {
-    supabaseClient.auth.getSession = async () => ({
-      data: { session: { access_token: "browser-test-token" } },
-      error: null,
-    });
-  });
   await page.route("**/functions/v1/payments", async (r) => {
     const body = r.request().postDataJSON();
     if (body.action === "verify")
