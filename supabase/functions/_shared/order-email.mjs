@@ -137,8 +137,13 @@ export async function sendOrderEmail({
     subject: paid ? `Payment received for order ${reference}` : `Order ${reference} received — payment pending`,
     idempotencyKey: `pv-${event}-${order.id}`,
   })];
-  const merchantEmail = env("ORDER_NOTIFICATION_TO");
-  if (merchantEmail && merchantEmail.toLowerCase() !== order.email.toLowerCase()) {
+  // Never silently omit the fulfillment notice because an optional secret was
+  // not configured. This fallback is the store contact documented in
+  // EMAIL_SETUP.md; ORDER_NOTIFICATION_TO remains the preferred override.
+  const merchantEmail = env("ORDER_NOTIFICATION_TO") ||
+    env("ORDER_EMAIL_REPLY_TO") ||
+    "quillsandcologne@gmail.com";
+  if (merchantEmail.toLowerCase() !== order.email.toLowerCase()) {
     sends.push(send({
       to: merchantEmail,
       subject: `${paid ? "Order paid" : "New order"}: ${reference} — ${status}`,

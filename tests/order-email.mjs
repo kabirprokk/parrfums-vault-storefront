@@ -94,4 +94,12 @@ assert.equal(customerPaid.body.template.variables.PAYMENT_STATUS, "Paid");
 assert.equal(customerPaid.options.headers["Idempotency-Key"], `pv-paid-${oid}`);
 assert.match(merchantPaid.body.subject, /Order paid/);
 assert.equal(merchantPaid.options.headers["Idempotency-Key"], `pv-merchant-paid-${oid}`);
+
+sent = [];
+delete envValues.ORDER_NOTIFICATION_TO;
+assert.equal(await sendOrderEmail({ env, fetcher, orderId: oid, event: "paid" }), true);
+assert.ok(
+  sent.some(({ body }) => body.to[0] === "quillsandcologne@gmail.com"),
+  "the documented store contact receives paid notices if the override is missing",
+);
 console.log("PASS: order email ownership scope, unpaid order receipt, verified-paid gating, escaping, idempotency and missing-provider behavior.");
