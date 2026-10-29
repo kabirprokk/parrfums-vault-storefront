@@ -50,7 +50,6 @@ export async function sendOrderEmail({
   const itemQuery = new URLSearchParams({
     select: "item_name,size_ml,quantity,line_total_inr",
     order_id: `eq.${orderId}`,
-    order: "created_at.asc",
   });
   const itemResponse = await fetcher(
     `${base}/rest/v1/customer_order_items?${itemQuery}`,
