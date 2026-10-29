@@ -476,6 +476,14 @@ function setupCarousel() {
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   const lowMotion = motion.matches || navigator.connection?.saveData || (navigator.deviceMemory && navigator.deviceMemory <= 2);
   let index = 0, paused = lowMotion, hovered = false, focused = false, visible = true, startX = null, fadeTimer, heightFrame;
+  const finishTransition = () => {
+    clearTimeout(fadeTimer);
+    cancelAnimationFrame(heightFrame);
+    root.querySelector('.combo-outgoing')?.remove();
+    slides.forEach(slide => slide.classList.remove('combo-entering'));
+    stage.style.height = '';
+    stage.style.transition = '';
+  };
   const setPause = () => {
     pause.innerHTML = paused ? playSvg : pauseSvg;
     pause.setAttribute('aria-label', paused ? 'Play slideshow' : 'Pause slideshow');
@@ -484,10 +492,9 @@ function setupCarousel() {
   const show = (next, manual = false) => {
     const nextIndex = (next + slides.length) % slides.length;
     if (nextIndex === index) return;
-    clearTimeout(fadeTimer);
-    cancelAnimationFrame(heightFrame);
-    root.querySelector('.combo-outgoing')?.remove();
-    slides.forEach(slide => slide.classList.remove('combo-entering'));
+    // Settle an in-flight fade before starting another. Otherwise a rapid click
+    // can leave a stale timeout resetting the height during the next transition.
+    finishTransition();
     if (!lowMotion) {
       const currentHeight = stage.getBoundingClientRect().height;
       stage.style.transition = 'height .48s cubic-bezier(.2,.7,.2,1)';
@@ -508,12 +515,7 @@ function setupCarousel() {
       stage.style.height = lockedHeight;
       stage.getBoundingClientRect();
       heightFrame = requestAnimationFrame(() => { stage.style.height = `${nextHeight}px`; });
-      fadeTimer = setTimeout(() => {
-        stage.querySelector('.combo-outgoing')?.remove();
-        slides[index].classList.remove('combo-entering');
-        stage.style.height = '';
-        stage.style.transition = '';
-      }, 550);
+      fadeTimer = setTimeout(finishTransition, 550);
     }
     dots.forEach((d,i)=>d.setAttribute('aria-pressed',String(i===index)));
     if(manual) root.querySelector('[data-slide-status]').textContent=slides[index].getAttribute('aria-label');
