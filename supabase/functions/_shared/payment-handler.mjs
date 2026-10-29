@@ -32,11 +32,16 @@ export function createPaymentHandler({
   webhook = false,
 }) {
   const notifyPaidOrder = async (orderId) => {
-    if (!env("RESEND_API_KEY") || !env("ORDER_EMAIL_FROM")) return;
+    if (!env("RESEND_API_KEY") || !env("ORDER_EMAIL_FROM"))
+      return { status: "not_configured" };
     try {
-      await sendOrderEmail({ env, fetcher, orderId, event: "paid" });
+      const accepted = await sendOrderEmail({ env, fetcher, orderId, event: "paid" });
+      return { status: accepted ? "accepted" : "not_configured" };
     } catch (error) {
-      console.error("Paid order email delivery failed:", error.message);
+      const code = String(error?.code || error?.message || "EMAIL_DELIVERY_UNAVAILABLE")
+        .replace(/[^A-Za-z0-9_-]/g, "_").slice(0, 100);
+      console.error("Paid order email delivery failed:", code);
+      return { status: "failed", code };
     }
   };
   const rpc = async (name, args) => {
@@ -147,9 +152,10 @@ export function createPaymentHandler({
           p_refunded_paise: payment.refunded,
           p_body_hash: hash,
         });
-        if (result.status === "paid")
-          await notifyPaidOrder(result.order_id);
-        return respond(200, result);
+        const emailNotification = result.status === "paid"
+          ? await notifyPaidOrder(result.order_id)
+          : { status: "not_sent" };
+        return respond(200, { ...result, email_notification: emailNotification });
       }
       const token = request.headers.get("authorization");
       if (!token?.startsWith("Bearer "))
@@ -286,9 +292,10 @@ export function createPaymentHandler({
           p_currency: payment.currency,
           p_refunded_paise: payment.refunded,
         });
-        if (result.status === "paid")
-          await notifyPaidOrder(result.order_id || body.order_id);
-        return respond(200, result);
+        const emailNotification = result.status === "paid"
+          ? await notifyPaidOrder(result.order_id || body.order_id)
+          : { status: "not_sent" };
+        return respond(200, { ...result, email_notification: emailNotification });
       }
       return respond(400, { code: "INVALID_ACTION" });
     } catch (error) {

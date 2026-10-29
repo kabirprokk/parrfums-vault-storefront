@@ -560,7 +560,10 @@ Object.assign(
               });
               el.textContent =
                 verified.status === "paid"
-                  ? "Payment verified. Refreshing your order…"
+                  ? verified.email_notification?.status === "failed" ||
+                    verified.email_notification?.status === "not_configured"
+                    ? "Payment verified. The email notification could not be sent; your payment is confirmed. Use “Resend order details by email” to retry."
+                    : "Payment verified. Refreshing your order…"
                   : "Payment is pending verification. Refresh your order status before retrying.";
               Commerce.cache.orders.delete(id);
               await fetchOrder(id);
