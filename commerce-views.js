@@ -679,9 +679,9 @@ Object.assign(
       },
       returns: {
         title: "Return & Refund Policy",
-        text: "You may request a refund within 7 days of receiving your product. Contact the store with your order reference to request it. If approved, the seller initiates the refund through the original payment provider; the order is marked refunded only after verified provider information is received. The time for funds to appear depends on the payment provider and bank. Contact the store if the refund status has not updated.",
+        text: "You may request a refund within 7 days of receiving your product. During this 7-day period, the perfume bottle must remain unused, unbroken and undamaged to be eligible for a return. Contact the store with your order reference to request it. If approved, the seller initiates the refund through the original payment provider; the order is marked refunded only after verified provider information is received. The time for funds to appear depends on the payment provider and bank. Contact the store if the refund status has not updated.",
         missing:
-          "Please contact the store with your order reference to ask about product-condition requirements and return shipping.",
+          "Please contact the store with your order reference to ask about return shipping.",
       },
       cancellation: {
         title: "Cancellation Policy",
