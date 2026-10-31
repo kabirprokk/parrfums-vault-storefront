@@ -42,12 +42,10 @@ const IMG = {
   candy: [media('candy')], leather: [media('leather')],
   guilty: [media('guilty-man')], vanilla: [media('vanilla-28')],
   hero: media('editorial-essentials'), botanicals: media('editorial-ritual'),
-  offerFestive: media('combo-festive'), offerDuo: media('combo-duo')
+  offerDuo: media('combo-duo')
 };
 const COMBO_SLIDES = [
-  { image: media('combo-festive'), offer: 'festive-four', label: 'The Festive Four' },
   { image: media('combo-duo'), offer: 'duo-plus', label: 'The Duo Plus' },
-  { image: media('combo-festive-diwali'), offer: 'festive-four', label: 'The Diwali gift edit' },
   { image: media('combo-duo-gift'), offer: 'duo-plus', label: 'One for you. One for them.' },
   { image: media('combo-duo-diwali'), offer: 'duo-plus', label: 'A little more to give' }
 ];
@@ -91,15 +89,8 @@ const products = [
   }
 ];
 
-/* The two offers the brand actually runs. */
+/* Active storefront offers. */
 const combos = [
-  {
-    id: 'festive-four', name: 'The Festive Four', kind: 'combo', price: 2600,
-    badge: 'Buy 2 × 100ml, get 2 × 30ml FREE',
-    notes: 'Choose your free fragrances: Guilty Man or Vanilla 28',
-    desc: 'Four full fragrances — two 100ml bottles and two 30ml on the house. The festive edit, ready to gift.',
-    img: IMG.offerFestive
-  },
   {
     id: 'duo-plus', name: 'The Duo Plus', kind: 'combo', price: 1600,
     badge: 'Buy 2 × 50ml, get 1 × 30ml FREE',
@@ -227,7 +218,7 @@ async function loadCatalogue() {
 
       return { ...row, variants: prices.filter(v=>v.product_id===row.id), id: row.id, name: row.name, category: row.category, gender: row.gender, notes: row.notes, desc: row.description, img: row.image_path, gallery: row.gallery_paths.length?row.gallery_paths:[row.image_path], sizes, prices: productPrices };
     });
-    const nextOffers = offersRows.map(row => {
+    const nextOffers = offersRows.filter(row => row.id !== 'festive-four').map(row => {
       if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(row.id) || !safeImage(row.image_path) || !Number.isSafeInteger(row.price_inr) || row.price_inr <= 0) throw new Error('Invalid offer row');
       return { ...row, variants: prices.filter(v=>v.product_id===row.id), id: row.id, name: row.name, kind: 'combo', price: row.price_inr, badge: row.badge, notes: row.notes, desc: row.description, img: row.image_path };
     });
@@ -669,7 +660,7 @@ function collections() {
       }).join('')}
     </div>
     <div class="shop-foot">
-      <div><p class="eyebrow">Gifting?</p><h2>Four fragrances for ₹2,600.</h2><p>The Festive Four — 2 × 100ml with 2 × 30ml on the house.</p></div>
+       <div><p class="eyebrow">Gifting?</p><h2>Three fragrances for ₹1,600.</h2><p>The Duo Plus — 2 × 50ml with a 30ml fragrance on the house.</p></div>
       <a class="btn primary" href="#offers">See the offers</a>
     </div>
   </section>`;

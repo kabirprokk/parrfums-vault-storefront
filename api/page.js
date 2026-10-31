@@ -29,7 +29,7 @@ module.exports = async function (req, res) {
     combo = false,
     ratings = [];
   try {
-    if (/^[a-z0-9]+(-[a-z0-9]+)*$/.test(id) && id.length <= 100) {
+    if (id !== "festive-four" && /^[a-z0-9]+(-[a-z0-9]+)*$/.test(id) && id.length <= 100) {
       product = (
         await query(
           "products",

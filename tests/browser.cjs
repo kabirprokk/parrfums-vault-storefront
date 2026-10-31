@@ -33,13 +33,14 @@ fs.mkdirSync(artifacts,{recursive:true});
   assert.equal(await page.locator('.landing').count(),1,'Returning to the top keeps the landing page visible');
   assert.equal(await page.locator('.main-nav a[href="#offers"]').count(),0,'No duplicate Offers navigation');
  assert.equal(await page.locator('.site-header a[href="#combos"]').count(),1);
- assert.equal(await page.locator('.combo-slide').count(),5);
+  assert.equal(await page.locator('.combo-slide').count(),3);
+  assert.equal(await page.locator('[href="#product/festive-four"]').count(),0,'Removed Festive Four is not linked from the storefront');
  await page.locator('.combo-carousel').scrollIntoViewIfNeeded();
  await page.locator('[data-carousel-next]').click();
  assert.equal(await page.locator('[data-slide="1"]').getAttribute('aria-pressed'),'true');
  await page.locator('.combo-carousel').focus();await page.keyboard.press('ArrowLeft');
  assert.equal(await page.locator('[data-slide="0"]').getAttribute('aria-pressed'),'true');
- for(let i=0;i<5;i++){
+  for(let i=0;i<3;i++){
    await page.locator(`[data-slide="${i}"]`).click();
    await page.locator('.combo-slide:not([hidden]):not(.combo-outgoing) img').evaluate(i=>i.decode());
  }
