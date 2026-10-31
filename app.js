@@ -431,7 +431,7 @@ const themeIcon = () => window.PVTheme?.icon() || '';
 
 /* ---------------------------------------------------------------- landing */
 function landing() {
-  return `<section class="landing">
+  return `<section class="landing" id="top">
     <div class="landing-bg" role="img" aria-label="Parrfums Vault fragrance photography"></div>
     <div class="landing-scrim" aria-hidden="true"></div>
     <div class="landing-top"><span class="brand landing-brand" role="img" aria-label="Parrfums Vault">${brandMark}</span><div class="landing-top-actions"><button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to dark mode">${themeIcon()}</button></div></div>
@@ -445,7 +445,7 @@ function landingShowcase() {
   <section class="section combo-section" id="the-vault"><div class="section-head"><div><p class="eyebrow">The gifting edit</p><h2>Some things are better <em>together.</em></h2></div></div>${comboSlideshow({ showcase: true })}</section>
   <section class="section landing-collection"><div class="section-head"><div><p class="eyebrow">Meet the collection</p><h2>Six scents. A world of <em>feeling.</em></h2></div></div><div class="landing-gallery">${products.map(p=>`<figure><a href="#product/${encodeURIComponent(p.id)}" aria-label="${esc(p.name)}">${imgTag(p.img,`${p.name} by Parrfums Vault`)}</a><figcaption><h3>${esc(p.name)}</h3><p>${esc(p.notes)}</p></figcaption></figure>`).join('')}</div></section>
   <section class="ritual-section"><div class="ritual-art">${imgTag(media('editorial-gifting'),'A fragrance, thoughtfully wrapped')}${imgTag(media('editorial-evening'),'Parrfums Vault, an evening ritual')}</div><div class="ritual-copy"><p class="eyebrow">Made for the moments</p><h2>Let the memory<br><em>linger.</em></h2><p>A familiar note. A favourite person. A moment that becomes a memory. This is our world of fragrance — personal, expressive, and made to stay with you.</p></div></section>
-  <div class="landing-signoff"><img class="footer-logo" src="assets/parrfums-vault-logo.png" alt="Parrfums Vault" width="76" height="76"><p>Handmade in Mumbai. Worn everywhere.</p><small>© ${new Date().getFullYear()} Parrfums Vault</small></div>`;
+  <div class="landing-signoff"><a class="landing-signoff-link" href="#top" aria-label="Return to the top of the page"><img class="footer-logo" src="assets/parrfums-vault-logo.png" alt="" width="76" height="76"><p>Handmade in Mumbai. Worn everywhere.</p><small>© ${new Date().getFullYear()} Parrfums Vault</small></a></div>`;
 }
 
 function home() {

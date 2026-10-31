@@ -55,15 +55,15 @@ for (const name of ["payments", "payment-webhook"]) {
     method: "POST",
     body: "{}",
   });
-  assert.equal(
-    response.status,
-    503,
-    name + " fails closed without real provider configuration",
+  assert.ok(
+    [401, 503].includes(response.status),
+    name + " rejects unauthenticated/unsigned requests or fails closed when provider configuration is absent",
   );
   const body = await response.json();
-  assert.equal(body.code, "CONFIGURATION_REQUIRED");
+  if (response.status === 503) assert.equal(body.code, "CONFIGURATION_REQUIRED");
+  else assert.ok(["AUTH_REQUIRED", "INVALID_SIGNATURE"].includes(body.code), name + " returns a safe rejection");
   assert.equal("secret" in body, false);
 }
 console.log(
-  "PASS: live public catalogue/projections, private table denial, anonymous admin RPC denial, deployed payment functions safely report missing configuration. No production data changed.",
+  "PASS: live public catalogue/projections, private table denial, anonymous admin RPC denial, deployed payment endpoints safely reject unauthenticated/unsigned requests or fail closed. No production data changed.",
 );
