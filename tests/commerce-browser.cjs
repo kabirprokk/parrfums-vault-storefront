@@ -304,6 +304,13 @@ const base = process.env.PV_TEST_URL || "http://127.0.0.1:8000";
     "a cancelled payment attempt must allow a new attempt while the order remains open");
   assert.match(await page.locator("#payment-heading").innerText(), /Payment not completed/);
   await page.evaluate(() => {
+    const id = currentPath.slice("orders/".length);
+    Commerce.cache.orders.set(id, { error: "This order was not found in your account." });
+    render(currentPath, { keepScroll: true });
+  });
+  assert.match(await page.locator("#app").textContent(), /sign in with that same email account/i);
+  assert.match((await page.locator("[data-auth-sign-out]").innerText()).toLowerCase(), /sign out and switch account/);
+  await page.evaluate(() => {
     authUser = null;
     Commerce.cache.admin = false;
     Commerce.cache.adminChecked = true;

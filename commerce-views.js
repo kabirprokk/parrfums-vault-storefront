@@ -435,7 +435,7 @@ Object.assign(
       if (o.loading)
         return `<section class="page-shell"><h1 class="page-title">Loading your order…</h1></section>`;
       if (o.error)
-        return `<section class="page-shell"><h1 class="page-title">Order unavailable</h1><p class="error" role="alert">${esc(o.error)}</p><button class="btn" data-refresh-order="${id}">Try again</button><a class="text-link" href="#account">Your account</a></section>`;
+        return `<section class="page-shell"><h1 class="page-title">Order unavailable</h1><p class="error" role="alert">${esc(o.error)}</p>${String(o.error).includes("not found in your account") ? '<p class="page-intro">Order details are private to the account used at checkout. Sign out, then sign in with that same email account and open this link again.</p><button class="btn primary" type="button" data-auth-sign-out>Sign out and switch account</button>' : `<button class="btn" data-refresh-order="${id}">Try again</button>`}<a class="text-link" href="#account">Your account</a></section>`;
       const paymentClosed = ["paid", "partially_refunded", "refunded"].includes(o.payment_status) || ["cancelled", "refunded"].includes(o.status);
       const paymentHeading = {
         paid: "Payment confirmed",
