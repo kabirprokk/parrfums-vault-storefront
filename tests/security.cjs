@@ -5,6 +5,12 @@ const assert = require("node:assert/strict"),
 const root = path.resolve(__dirname, ".."),
   read = (f) => fs.readFileSync(path.join(root, f), "utf8");
 const config = JSON.parse(read("vercel.json"));
+const adminHeaders = Object.fromEntries(
+  config.headers.find((r) => r.source === "/admin/:path*").headers.map((h) => [h.key, h.value]),
+);
+assert.match(adminHeaders["Cache-Control"], /no-store/);
+assert.match(adminHeaders["X-Robots-Tag"], /noindex/);
+assert.match(read("robots.txt"), /Disallow: \/admin/);
 const headers = Object.fromEntries(
   config.headers
     .find((r) => r.source === "/(.*)")

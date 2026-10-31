@@ -161,7 +161,7 @@ const initializeHandler = createPaymentHandler({
     const json = (value) => new Response(JSON.stringify(value), { status: 200 });
     if (url.endsWith("/auth/v1/user")) return json({ id: uid });
     if (url.includes("/customer_orders?"))
-      return json([{ id: oid, total_inr: 850 }]);
+      return json([{ id: oid, total_inr: 850, recipient_name: "Checkout Customer", email: "buyer@example.invalid", phone: "9892506314" }]);
     if (url.endsWith("/rpc/begin_payment_attempt"))
       return json({
         id: uid,
@@ -184,7 +184,13 @@ const initialized = await initializeHandler(
 );
 assert.equal(initialized.status, 200, "void attach RPC 204 must not fail first payment attempt");
 assert.equal(attached, true);
-assert.equal((await initialized.json()).provider_order_id, "order_FIRST");
+const initializedBody = await initialized.json();
+assert.equal(initializedBody.provider_order_id, "order_FIRST");
+assert.deepEqual(initializedBody.prefill, {
+  name: "Checkout Customer",
+  email: "buyer@example.invalid",
+  contact: "9892506314",
+}, "Razorpay prefill must use the delivery details saved on this exact order");
 const webhook = createPaymentHandler({ env, fetcher, webhook: true });
 const raw = JSON.stringify({
   payload: {

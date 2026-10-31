@@ -583,6 +583,7 @@ Object.assign(
           image: new URL("assets/parrfums-vault-logo.png", location.origin)
             .href,
           prefill: config.prefill,
+          readonly: { contact: true },
           method: { emi: false, paylater: false },
           theme: {
             color: document.documentElement.dataset.theme === "dark" ? "#e8c29e" : "#a86d43",

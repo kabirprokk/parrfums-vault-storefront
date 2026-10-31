@@ -255,7 +255,7 @@ const base = process.env.PV_TEST_URL || "http://127.0.0.1:8000";
     return r.fulfill({ json: { key: "rzp_test_unit", amount: 85000, currency: "INR", provider_order_id: "order_unit", prefill: { contact: "9876543210" } } });
   });
   await page.route("https://checkout.razorpay.com/v1/checkout.js", (r) =>
-    r.fulfill({ contentType: "application/javascript", body: "window.Razorpay=class{constructor(options){this.options=options}on(){}open(){this.options.handler({razorpay_order_id:'order_unit',razorpay_payment_id:'pay_unit',razorpay_signature:'test'})}}" }),
+    r.fulfill({ contentType: "application/javascript", body: "window.Razorpay=class{constructor(options){this.options=options;window.__lastRazorpayOptions=options}on(){}open(){this.options.handler({razorpay_order_id:'order_unit',razorpay_payment_id:'pay_unit',razorpay_signature:'test'})}}" }),
   );
   await page.locator("[data-place-order]").click();
   await page.waitForFunction(() => document.querySelector("[data-review-notice]")?.textContent);
@@ -270,6 +270,11 @@ const base = process.env.PV_TEST_URL || "http://127.0.0.1:8000";
   await page.route("**/functions/v1/order-email", (r) => r.fulfill({ status: 202, json: { sent: true } }));
   await page.locator("[data-place-order]").click();
   await page.waitForFunction(() => currentPath.startsWith("orders/"));
+  await page.waitForFunction(() => window.__lastRazorpayOptions);
+  assert.equal(await page.evaluate(() => window.__lastRazorpayOptions.prefill.contact), "9876543210",
+    "Razorpay receives the phone entered for this order rather than a stale profile number");
+  assert.equal(await page.evaluate(() => window.__lastRazorpayOptions.readonly.contact), true,
+    "Razorpay contact prefill is locked to this order's delivery phone");
   await page.waitForFunction(
     () => document.querySelectorAll(".order-timeline li").length === 5,
   );
