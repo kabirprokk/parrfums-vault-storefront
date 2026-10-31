@@ -18,6 +18,8 @@ Object.assign(
       ascending: false,
       status: "",
       orderTargetApplied: false,
+      otpEmail: "",
+      otpMessage: "",
     };
     try {
       const requestedOrder = new URLSearchParams(location.search).get("order");
@@ -396,12 +398,16 @@ Object.assign(
     function admin() {
       if (!authReady)
         return '<section class="page-shell"><h1>Administration</h1><p role="status">Checking your session…</p></section>';
-      if (!authUser)
-        return '<section class="page-shell"><h1>Administration</h1><p>Sign in with an authorized administrator account.</p><button class="btn primary" data-auth-sign-in>Sign in</button></section>';
+      if (!authUser) {
+        const emailStep = model.otpEmail
+          ? `<p class="sub" role="status">${esc(model.otpMessage || "If this account is eligible, a sign-in code has been sent.")}</p><form id="admin-email-otp-verify" class="form-grid"><div class="field"><label for="admin-email-code">Email sign-in code</label><input id="admin-email-code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></div><button class="btn primary" type="submit">Verify code</button><button class="text-link" type="button" data-admin-email-change>Use a different email</button></form>`
+          : `<form id="admin-email-otp-send" class="form-grid"><div class="field"><label for="admin-email">Administrator email</label><input id="admin-email" name="email" type="email" autocomplete="email" required maxlength="254"></div><button class="btn primary" type="submit">Send sign-in code</button></form><p class="sub" role="status">Only authorized administrator accounts can access this panel.</p>`;
+        return `<section class="page-shell"><h1>Administration</h1><p>Sign in with an authorized administrator email.</p>${emailStep}<p class="sub">Or use Google sign-in.</p><button class="btn ghost" data-auth-sign-in>Sign in with Google</button><p class="error" role="alert">${esc(model.error)}</p></section>`;
+      }
       if (!Commerce.cache.adminChecked)
         return '<section class="page-shell"><h1>Administration</h1><p role="status">Checking authorization…</p></section>';
       if (!Commerce.cache.admin)
-        return `<section class="page-shell"><h1>Protected administration</h1><p>This area requires owner-granted database membership and an authenticated MFA session.</p><button class="btn" data-admin-mfa>Verify with authenticator</button><div data-mfa-panel></div><p class="error" data-admin-error role="alert"></p><a href="#account">Return to account</a></section>`;
+        return `<section class="page-shell"><h1>Administration unavailable</h1><p>This signed-in account is not authorized for the admin panel.</p><button class="btn" type="button" data-auth-sign-out>Sign out</button><a href="#account">Return to account</a></section>`;
       if (!model.orderTargetApplied) {
         model.orderTargetApplied = true;
         try {
@@ -481,42 +487,9 @@ Object.assign(
         : "";
       return `<section class="page-shell admin-page"><div class="section-head"><div><p class="eyebrow">Parrfums Vault</p><h1 class="page-title">Administration</h1></div><button class="btn" data-admin-refresh>Refresh</button></div><nav class="admin-tabs" aria-label="Administration sections">${tabs.map((t) => `<button class="btn ${model.tab === t ? "primary" : ""}" data-admin-tab="${t}" aria-pressed="${model.tab === t}">${esc(Commerce.statusLabel(t))}</button>`).join("")}</nav>${model.error ? `<p class="error" role="alert">${esc(model.error)}</p>` : ""}${model.loading ? '<p role="status">Loading…</p>' : ""}${inventoryHelp}${addEditor}${model.tab === "overview" ? overview : `<div class="admin-toolbar"><label for="admin-search">Search ${esc(model.tab)}</label><input id="admin-search" type="search" maxlength="120" value="${esc(model.filter)}">${model.tab==='orders'?`<label for="admin-order-status">Status</label><select id="admin-order-status" class="select"><option value="">All statuses</option>${['pending','confirmed','packed','shipped','delivered','cancelled','refunded'].map(v=>`<option value="${v}" ${model.status===v?'selected':''}>${Commerce.statusLabel(v)}</option>`).join('')}</select>`:''}<button class="btn" data-admin-search>Search</button><button class="btn" data-admin-sort>Reverse sort</button>${["products", "variants", "offers", "coupons"].includes(model.tab) ? '<button class="btn primary" data-admin-new>Add new</button>' : ""}</div><p class="sub">Page ${model.page+1} · Up to 50 records per page. Search orders across all pages by customer name, phone, email, order ID or reference.</p><div class="table-scroll"><table><thead><tr>${columns.map((c) => `<th scope="col">${esc(columnLabel(c))}</th>`).join("")}<th scope="col">Manage</th></tr></thead><tbody>${rows.map((row) => `<tr>${columns.map((c) => `<td>${esc(cellValue(row,c))}${c === "available_quantity" && !model.inventoryUnlimited && row[c] !== null && row[c] <= row.low_stock_threshold ? " · Low stock" : ""}</td>`).join("")}<td>${model.tab === "inventory" && model.inventoryUnlimited ? '<span class="sub">Not tracked</span>' : `<button class="btn small" data-admin-edit="${esc(row.id || row.product_id)}" data-admin-size="${row.size_ml || ""}">${model.tab === "inventory" ? "Set count" : "Manage"}</button>`}</td></tr>${editorMatches(row) ? `<tr class="admin-inline-editor-row"><td colspan="${columns.length + 1}">${editor()}</td></tr>` : ""}`).join("")}</tbody></table><div class="offer-actions"><button class="btn" data-admin-page="-1" ${model.page===0?'disabled':''}>Previous page</button><button class="btn" data-admin-page="1" ${(model.rows?.length||0)<50?'disabled':''}>Next page</button></div>${!rows.length ? '<p role="status">No matching records.</p>' : ""}</div>`}<p class="sub">All administrative writes are authorized in PostgreSQL and recorded in an audit log.</p></section>`;
     }
-    async function mfa() {
-      try {
-        const membership = await supabaseClient
-          .from("admin_users")
-          .select("user_id")
-          .eq("user_id", authUser.id)
-          .maybeSingle();
-        if (membership.error || !membership.data) throw Error("ADMIN_REQUIRED");
-        const { data, error } = await supabaseClient.auth.mfa.listFactors();
-        if (error) throw error;
-        let factor = data.totp.find((f) => f.status === "verified");
-        let qr = "";
-        if (!factor) {
-          const result = await supabaseClient.auth.mfa.enroll({
-            factorType: "totp",
-            friendlyName: "Parrfums Vault administrator",
-          });
-          if (result.error) throw result.error;
-          factor = result.data;
-          qr = result.data.totp.qr_code;
-        }
-        model.mfa = factor.id;
-        const panel = document.querySelector("[data-mfa-panel]");
-        panel.innerHTML = `${qr ? '<p>Scan the QR code in your authenticator, then enter its current code.</p><img class="mfa-qr" alt="Authenticator enrolment QR code">' : ""}<form id="admin-mfa"><label for="mfa-code">Six digit authenticator code</label><input id="mfa-code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required><button class="btn primary">Verify</button></form>`;
-        if (qr)
-          panel.querySelector("img").src = qr.startsWith("data:image/svg+xml")
-            ? qr
-            : "data:image/svg+xml;charset=utf-8," + encodeURIComponent(qr);
-      } catch (e) {
-        document.querySelector("[data-admin-error]").textContent =
-          Commerce.safeError(e);
-      }
-    }
     document.addEventListener("click", async (e) => {
       try {
-        if (e.target.closest("[data-admin-mfa]")) return void mfa();
+        if (e.target.closest("[data-admin-email-change]")) { model.otpEmail = ""; model.otpMessage = ""; model.error = ""; render("admin", { keepScroll: true }); return; }
         if (e.target.closest("[data-admin-menu]")) { model.adminView = "menu"; render("admin"); return; }
         if (e.target.closest("[data-admin-website]")) { location.href = "/?edit=1"; return; }
         if (e.target.closest("[data-admin-details]")) { model.adminView = "details"; generation++; model.loading = false; model.page = 0; model.status = ""; model.tab = "overview"; model.rows = null; model.editing = null; model.filter = ""; render("admin"); return; }
@@ -620,19 +593,37 @@ Object.assign(
       }
     });
     document.addEventListener("submit", async (e) => {
-      if (e.target.getAttribute("id") === "admin-mfa") {
+      if (e.target.id === "admin-email-otp-send") {
         e.preventDefault();
+        const email = String(new FormData(e.target).get("email") || "").trim().toLowerCase();
+        const button = e.target.querySelector('[type="submit"]');
+        button.disabled = true;
         try {
-          const { error } = await supabaseClient.auth.mfa.challengeAndVerify({
-            factorId: model.mfa,
-            code: new FormData(e.target).get("code"),
-          });
-          if (error) throw error;
-          await Commerce.onAuth(authUser);
-          render("admin");
-        } catch (error) {
-          document.querySelector("[data-admin-error]").textContent =
-            "Verification failed. Check the current code and try again.";
+          const { error } = await supabaseClient.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+          model.otpEmail = email;
+          model.otpMessage = "If this account is eligible, a sign-in code has been sent. Check your inbox.";
+          model.error = error ? "We could not send a code. Wait before trying again or use Google sign-in." : "";
+        } catch {
+          model.otpEmail = email;
+          model.otpMessage = "If this account is eligible, a sign-in code has been sent. Check your inbox.";
+          model.error = "We could not send a code. Wait before trying again or use Google sign-in.";
+        }
+        render("admin", { keepScroll: true });
+        return;
+      }
+      if (e.target.id === "admin-email-otp-verify") {
+        e.preventDefault();
+        const code = String(new FormData(e.target).get("code") || "").trim();
+        const button = e.target.querySelector('[type="submit"]');
+        button.disabled = true;
+        const { error } = await supabaseClient.auth.verifyOtp({ email: model.otpEmail, token: code, type: "email" });
+        if (error) {
+          model.error = "That code could not be verified. Check it and try again.";
+          render("admin", { keepScroll: true });
+        } else {
+          model.otpEmail = "";
+          model.otpMessage = "";
+          model.error = "";
         }
         return;
       }

@@ -726,6 +726,7 @@ do $$ declare c record; begin
   execute format('alter table public.customer_orders drop constraint %I',c.conname);
  end loop;
 end $$;
+
 alter table public.customer_orders add constraint order_total_consistent check(total_inr=subtotal_inr+shipping_inr-discount_inr and total_inr>=0);
 alter table public.customer_order_items add column sku text, add column metadata jsonb not null default '{}'::jsonb;
 create table public.order_status_events (
@@ -1328,3 +1329,22 @@ begin
   end loop;
 end $$;
 
+-- Admin access now follows authenticated identity membership; no AAL2/TOTP gate.
+create or replace function public.is_admin()
+returns boolean
+language sql stable security definer
+set search_path=pg_catalog,public
+as $$
+  select exists (
+    select 1 from public.admin_users where user_id = (select auth.uid())
+  )
+$$;
+
+-- Add the second owner-approved email account by its existing auth user ID.
+insert into public.admin_users(user_id)
+select id from auth.users
+where id in (
+  '0522fd55-928f-4e02-a8e9-1928b2151601',
+  'f3295e90-cde2-4df2-906a-5a45cb495a01'
+)
+on conflict (user_id) do nothing;

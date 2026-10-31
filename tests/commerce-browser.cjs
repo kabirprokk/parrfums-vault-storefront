@@ -307,15 +307,25 @@ const base = process.env.PV_TEST_URL || "http://127.0.0.1:8000";
     authUser = null;
     Commerce.cache.admin = false;
     Commerce.cache.adminChecked = true;
+    window.__otpCalls = [];
+    supabaseClient.auth.signInWithOtp = async (args) => { window.__otpCalls.push(["send", args]); return { error: null }; };
+    supabaseClient.auth.verifyOtp = async (args) => { window.__otpCalls.push(["verify", args]); return { error: null }; };
     render("admin");
   });
   assert.equal(await page.locator("#admin-editor").count(), 0);
   assert.match(await page.locator("#app").textContent(), /Sign in/);
+  await page.locator("#admin-email").fill("hidden-admin@example.invalid");
+  await page.locator("#admin-email-otp-send [type=submit]").click();
+  assert.doesNotMatch(await page.locator("#app").textContent(), /hidden-admin@example\.invalid/i, "Sent-to email is not shown back in the UI");
+  await page.locator("#admin-email-code").fill("123456");
+  await page.locator("#admin-email-otp-verify [type=submit]").click();
+  assert.deepEqual(await page.evaluate(() => window.__otpCalls.map(([kind]) => kind)), ["send", "verify"]);
+  assert.equal(await page.evaluate(() => window.__otpCalls[0][1].options.shouldCreateUser), false, "OTP cannot create new accounts");
   await page.evaluate(() => {
     authUser = { id: "00000000-0000-4000-8000-000000000001" };
     render("admin");
   });
-  assert.match(await page.locator("#app").textContent(), /MFA/);
+  assert.match(await page.locator("#app").textContent(), /not authorized/i);
   assert.equal(await page.locator("#admin-editor").count(), 0);
   for (const route of [
     "privacy",

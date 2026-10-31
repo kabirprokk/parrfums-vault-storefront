@@ -13,7 +13,7 @@ const user='00000000-0000-4000-8000-000000000001',other='00000000-0000-4000-8000
  const root=async()=>db.exec('reset role');
  const delivery={recipient_name:'Security Test',phone:'9876543210',email:'unit@example.invalid',address_line1:'123 Test Street',city:'Mumbai',state:'Maharashtra',postal_code:'400001'};
  // The consolidated read policies preserve active public catalogue data,
- // owner-only customer data, and the additional AAL2 administrator view.
+  // owner-only customer data, and membership-only administrator access.
  await db.exec(`insert into public.customer_profiles(user_id) values('${user}'),('${other}')`);
  await role(user);assert.equal((await db.query('select user_id from public.customer_profiles')).rows.length,1);
  await role(other);assert.equal((await db.query('select user_id from public.customer_profiles')).rows[0].user_id,other);
@@ -28,11 +28,12 @@ const user='00000000-0000-4000-8000-000000000001',other='00000000-0000-4000-8000
  await assert.rejects(checkout(),/STOCK_NOT_CONFIGURED/);
  await assert.rejects(db.query('select public.admin_adjust_inventory($1,50,5,$2)',[item.id,crypto.randomUUID()]),/ADMIN_REQUIRED/);
  await assert.rejects(db.exec("insert into public.admin_users(user_id) values('"+user+"')"),/permission denied/);
- await role(admin);
- await db.exec("select set_config('request.jwt.claim.aal','aal1',false)");
- await assert.rejects(db.query('select public.admin_adjust_inventory($1,50,5,$2)',[item.id,crypto.randomUUID()]),/ADMIN_REQUIRED/);
- await db.exec("select set_config('request.jwt.claim.aal','aal2',false)");
- await db.query('select public.admin_adjust_inventory($1,50,5,$2)',[item.id,crypto.randomUUID()]);
+  await role(admin);
+  await db.exec("select set_config('request.jwt.claim.aal','aal1',false)");
+  await db.query('select public.admin_adjust_inventory($1,50,5,$2)',[item.id,crypto.randomUUID()]);
+  await role(user);
+  await db.exec("select set_config('request.jwt.claim.aal','aal2',false)");
+  await assert.rejects(db.query('select public.admin_adjust_inventory($1,50,5,$2)',[item.id,crypto.randomUUID()]),/ADMIN_REQUIRED/,'AAL2 without admin membership does not grant admin access');
  await role(user);
  for(const quantity of [0,-1,21,999999999999])await assert.rejects(checkout([{...item,quantity}]),/INVALID_/);
  await assert.rejects(checkout([{...item,id:'does-not-exist'}]),/PRODUCT_UNAVAILABLE/);
@@ -101,16 +102,14 @@ const user='00000000-0000-4000-8000-000000000001',other='00000000-0000-4000-8000
  await role(null,true);const late=await db.query('select public.begin_payment_attempt($1,$2,$3,$4)',[expiryOrder,user,crypto.randomUUID(),'razorpay']).then(()=>false,err=>/ORDER_EXPIRED/.test(err.message));assert.equal(late,true);
  // Hidden helpers and private ledgers cannot be called/read by customers or guests.
  await role(user);for(const query of ["select public.release_order_inventory('"+paidOrder+"')","select public.expire_order_reservations()","select * from public.payment_events","select * from public.inventory_requests"]){await assert.rejects(db.exec(query),/permission denied/);}
- await assert.rejects(db.query('select public.admin_set_inventory_mode(true)'),/ADMIN_REQUIRED/);
- await role(admin);await db.exec("select set_config('request.jwt.claim.aal','aal1',false)");
- await assert.rejects(db.query('select public.admin_set_inventory_mode(true)'),/ADMIN_REQUIRED/,'Inventory mode changes require AAL2');
- await db.exec("select set_config('request.jwt.claim.aal','aal2',false)");
- await db.query('select public.admin_set_inventory_mode(true)');
+  await assert.rejects(db.query('select public.admin_set_inventory_mode(true)'),/ADMIN_REQUIRED/);
+  await role(admin);await db.exec("select set_config('request.jwt.claim.aal','aal1',false)");
+  await db.query('select public.admin_set_inventory_mode(true)');
  await root();await db.exec("update public.product_prices set available_quantity=null where product_id='angel-share' and size_ml=50;delete from public.commerce_rate_limits");
  await role(user);const unlimitedOrder=await checkout();
  await root();assert.equal((await db.query("select available_quantity from public.product_prices where product_id='angel-share' and size_ml=50")).rows[0].available_quantity,null,'Unlimited orders do not fabricate or decrement stock');
  assert.equal(Number((await db.query('select count(*) n from public.stock_movements where order_id=$1',[unlimitedOrder])).rows[0].n),0,'Unlimited orders do not create stock movements');
  await role(admin);await db.query('select public.admin_set_inventory_mode(false)');
  await role(user);await assert.rejects(checkout([item],crypto.randomUUID(),{...delivery,address_line1:'321 New Tracked Test Street'}),/STOCK_NOT_CONFIGURED/,'Returning to tracked mode requires real counts to be entered');
- await db.close();console.log('PASS: admin RLS, tracked and unlimited stock modes, AAL2 inventory-mode changes, unknown-stock guards, quantity/address validation, immutable snapshots, idempotency, inventory release, zero-stock adjustment retries, coupons, private orders, payment amount/signature boundary, duplicate/out-of-order payment events, verified review moderation, fulfilment/refund states and private helpers.');
+  await db.close();console.log('PASS: membership-based admin RLS without MFA, tracked and unlimited stock modes, unknown-stock guards, quantity/address validation, immutable snapshots, idempotency, inventory release, zero-stock adjustment retries, coupons, private orders, payment amount/signature boundary, duplicate/out-of-order payment events, verified review moderation, fulfilment/refund states and private helpers.');
 })().catch(e=>{console.error(e);process.exit(1);});

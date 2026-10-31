@@ -78,11 +78,14 @@ assert.match(securityTxt, /^Expires: 2027-10-23T00:00:00\.000Z$/m);
 assert.match(securityTxt, /^Canonical: https:\/\/parrfumsvault.in\/.well-known\/security\.txt$/m);
 assert.ok(read(".gitignore").includes(".env.*"));
 assert.ok(!read("app.js").includes("rpc('create_customer_order'"));
-const foundation = read(
-  "supabase/migrations/20261022105858_commerce_foundation.sql",
+const adminAuth = read(
+  "supabase/migrations/20261031180000_email_authenticated_admin_access.sql",
 );
-assert.ok(foundation.includes("auth.jwt()->>'aal'"));
-assert.ok(foundation.includes("='aal2'"));
+assert.ok(adminAuth.includes("public.admin_users"));
+assert.doesNotMatch(adminAuth, /auth\.jwt\(\).*aal/i);
+assert.ok(read("admin.js").includes("signInWithOtp"));
+assert.ok(read("admin.js").includes('verifyOtp({ email: model.otpEmail'));
+const foundation = read("supabase/migrations/20261022105858_commerce_foundation.sql");
 assert.ok(foundation.includes("revoke create on schema public"));
 for (const match of [
   ...read(
@@ -91,5 +94,5 @@ for (const match of [
 ])
   assert.ok(match.index >= 0);
 console.log(
-  "PASS: restrictive CSP and security.txt, vendored SDK integrity, frontend secret/dynamic-code checks, ignored secrets, removal of legacy checkout and database MFA boundary.",
+  "PASS: restrictive CSP and security.txt, vendored SDK integrity, frontend secret/dynamic-code checks, ignored secrets, legacy checkout removal and membership-based admin authorization.",
 );
