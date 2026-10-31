@@ -8,6 +8,8 @@ Object.assign(
       busy: false,
       error: "",
       notice: "",
+      consented: false,
+      orderId: null,
     };
     const tracking = new Map();
     const reviewStar = filled => `<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" fill="${filled ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="m12 2.5 2.95 5.98 6.6.96-4.78 4.66 1.13 6.58L12 17.57l-5.9 3.11 1.13-6.58-4.78-4.66 6.6-.96L12 2.5Z"/></svg>`;
@@ -43,7 +45,7 @@ Object.assign(
         return `<section class="page-shell"><h1 class="page-title">Your bag is empty.</h1><p class="sub">Choose a fragrance before checkout.</p><a class="btn" href="#shop">Explore fragrance</a></section>`;
       Commerce.analytics("begin_checkout");
       if (!authUser)
-        return `<section class="page-shell"><p class="eyebrow">Choose how to continue</p><h1 class="page-title">Your next signature.</h1><p class="page-intro">Sign in to check availability, apply a coupon and save a persistent order. Prefer to speak to us? Guest enquiries remain available on WhatsApp.</p><button class="btn primary" data-auth-sign-in>Sign in for checkout</button>${waLink(orderMessage(state.cart.reduce((n, i) => n + i.price * i.qty, 0)), "Enquire on WhatsApp", "btn ghost wa-btn")}<p class="sub">A WhatsApp enquiry does not automatically create an order or reserve stock.</p><a class="text-link" href="#cart">Return to bag</a></section>`;
+      return `<section class="page-shell"><p class="eyebrow">Choose how to continue</p><h1 class="page-title">Your next signature.</h1><p class="page-intro">Sign in to check availability, apply a coupon and save a persistent order. Prefer to speak to us? Guest enquiries remain available on WhatsApp.</p><button class="btn primary" data-auth-sign-in>Sign in for checkout</button>${waLink(orderMessage(state.cart.reduce((n, i) => n + i.price * i.qty, 0)), "Enquire on WhatsApp", "btn ghost wa-btn")}<p class="sub">A WhatsApp enquiry does not automatically create an order or reserve stock.</p><a class="text-link" href="#cart">Return to bag</a></section>`;
       let draft = {};
       try {
         draft = JSON.parse(
@@ -94,7 +96,7 @@ Object.assign(
           6,
         ],
       ];
-      return `<section class="page-shell"><p class="eyebrow">Almost yours</p><h1 class="page-title">Checkout</h1><p class="page-intro">Review the server-confirmed price, availability and delivery total before placing your order. Payment is verified separately.</p><div class="checkout"><form id="checkout-form" novalidate><div class="form-grid">${fields.map(([id, label, value, auto, max]) => `<div class="field ${["email", "phone", "address", "address2"].includes(id) ? "full-field" : ""}"><label for="${id}">${label}</label><input id="${id}" name="${id}" value="${esc(value)}" maxlength="${max}" autocomplete="${auto}" type="${id === "email" ? "email" : id === "phone" ? "tel" : "text"}" ${["last", "address2"].includes(id) ? "" : "required"} ${["phone", "pin"].includes(id) ? 'inputmode="numeric"' : ""} aria-describedby="err-${id}"><span id="err-${id}" class="field-error"></span></div>`).join("")}</div><div class="field coupon-field"><label for="coupon">Coupon (optional)</label><input id="coupon" name="coupon" maxlength="40" autocomplete="off" value="${esc(checkoutState.payload?.p_coupon || "")}"></div><label class="order-consent"><input type="checkbox" id="order-consent"> I agree to save these delivery details and this order to my account. <a href="#privacy">Privacy information</a>.</label><div id="form-error" class="error" role="alert">${esc(checkoutState.error)}</div><p class="sub" data-checkout-notice role="status">${esc(checkoutState.notice)}</p><div class="checkout-actions"><button class="btn ghost" type="button" data-quote-checkout ${!catalogueReady ? "disabled" : ""}>Review availability & total</button><button class="btn primary" type="submit" ${!catalogueReady ? "disabled" : ""}>Place order</button></div>${!catalogueReady ? '<p class="error">Online checkout is temporarily unavailable. Your bag is saved; you can contact the store.</p>' : ""}<p class="sub">Shipping is extra: Mumbai ₹100 · Outside Mumbai ₹120.</p></form><aside class="summary" data-server-summary>${summary()}</aside></div></section>`;
+      return `<section class="page-shell"><p class="eyebrow">Almost yours</p><h1 class="page-title">Checkout</h1><p class="page-intro">Review the server-confirmed price, availability and delivery total before placing your order. Payment is verified separately.</p><div class="checkout"><form id="checkout-form" novalidate><div class="field full-field location-tools"><button class="btn ghost small" type="button" data-use-location="checkout">Use my location to fill address</button><span class="sub" data-location-status role="status">Optional. Your browser will ask permission first.</span></div><div class="form-grid">${fields.map(([id, label, value, auto, max]) => `<div class="field ${["email", "phone", "address", "address2"].includes(id) ? "full-field" : ""}"><label for="${id}">${label}</label><input id="${id}" name="${id}" value="${esc(value)}" maxlength="${max}" autocomplete="${auto}" type="${id === "email" ? "email" : id === "phone" ? "tel" : "text"}" ${["last", "address2"].includes(id) ? "" : "required"} ${["phone", "pin"].includes(id) ? 'inputmode="numeric"' : ""} aria-describedby="err-${id}"><span id="err-${id}" class="field-error"></span></div>`).join("")}</div><div class="field coupon-field"><label for="coupon">Coupon (optional)</label><input id="coupon" name="coupon" maxlength="40" autocomplete="off" value="${esc(checkoutState.payload?.p_coupon || "")}"></div><label class="order-consent"><input type="checkbox" id="order-consent"> I agree to save these delivery details and this order to my account. <a href="#privacy">Privacy information</a>.</label><div id="form-error" class="error" role="alert">${esc(checkoutState.error)}</div><p class="sub" data-checkout-notice role="status">${esc(checkoutState.notice)}</p><div class="checkout-actions"><button class="btn ghost" type="button" data-quote-checkout ${!catalogueReady ? "disabled" : ""}>Review availability & total</button><button class="btn primary" type="submit" disabled ${!catalogueReady ? "disabled" : ""}>Review order</button></div>${!catalogueReady ? '<p class="error">Online checkout is temporarily unavailable. Your bag is saved; you can contact the store.</p>' : ""}<p class="sub">Shipping is extra: Mumbai ₹100 · Outside Mumbai ₹120.</p></form><aside class="summary" data-server-summary>${summary()}</aside></div></section>`;
     }
     function summary() {
       const q = checkoutState.quote;
@@ -111,7 +113,7 @@ Object.assign(
       checkoutState.busy = value;
       document
         .querySelectorAll("#checkout-form button")
-        .forEach((b) => (b.disabled = value));
+        .forEach((b) => (b.disabled = value || (b.matches('[type="submit"]') && !document.querySelector('#order-consent')?.checked)));
       const b = document.querySelector('#checkout-form [type="submit"]');
       if (b) b.textContent = value ? label : "Place order";
     }
@@ -162,6 +164,7 @@ Object.assign(
       if (!p) return null;
       notice("", true);
       busy(true, "Checking availability…");
+      window.PVLoader?.show("Confirming availability and shipping");
       try {
         const q = await Commerce.rpc("quote_checkout", p);
         checkoutState.quote = q;
@@ -173,8 +176,10 @@ Object.assign(
           );
         } catch {}
         document.querySelector("[data-server-summary]").innerHTML = summary();
-        notice("Total confirmed. Review the summary, then place your order.");
+        checkoutState.consented = Boolean(form.querySelector("#order-consent")?.checked);
+        notice("Your total is confirmed. Review your delivery details and items next.");
         if (p.p_coupon) Commerce.analytics("coupon_applied");
+        location.hash = "#checkout-review";
         return q;
       } catch (error) {
         checkoutState.quote = null;
@@ -182,7 +187,15 @@ Object.assign(
         return null;
       } finally {
         busy(false);
+        window.PVLoader?.hide();
       }
+    }
+    function checkoutReview() {
+      const q = checkoutState.quote, p = checkoutState.payload;
+      if (!q || !p) return `<section class="page-shell"><p class="eyebrow">Checkout</p><h1 class="page-title">Review your order</h1><p class="page-intro">Your checkout details need to be confirmed again.</p><a class="btn primary" href="#checkout">Return to checkout</a></section>`;
+      const d = p.p_delivery;
+      const lines = q.items || [];
+      return `<section class="page-shell checkout-review-page"><p class="eyebrow">Before we wrap it</p><h1 class="page-title">Review your order.</h1><p class="page-intro">Check the delivery details and total. Your address determines the shipping fee.</p><div class="checkout-review-grid"><article class="summary"><h2>Your fragrances</h2>${lines.map(i=>`<div class="sum-line"><span>${esc(i.item_name)} × ${i.quantity}${i.size_ml?`<small>${i.size_ml}ml</small>`:''}</span><strong>${money(i.line_total_inr)}</strong></div>`).join('')}<div class="sum-line"><span>Subtotal</span><span>${money(q.subtotal_inr)}</span></div><div class="sum-line"><span>Shipping</span><span>${money(q.shipping_inr)}</span></div>${q.discount_inr?`<div class="sum-line"><span>Discount</span><span>−${money(q.discount_inr)}</span></div>`:''}<div class="sum-line total"><strong>Total</strong><strong>${money(q.total_inr)}</strong></div></article><article class="summary"><h2>Deliver to</h2><p>${esc(d.recipient_name)}<br>${esc(d.phone)}<br>${esc(d.email)}<br>${esc(d.address_line1)}${d.address_line2?`<br>${esc(d.address_line2)}`:''}<br>${esc(d.city)}, ${esc(d.state)} ${esc(d.postal_code)}</p><button type="button" class="text-link" data-edit-checkout>Change delivery details</button></article></div><label class="order-consent review-consent"><input type="checkbox" data-review-consent ${checkoutState.consented?'checked':''}> I agree to save these delivery details and this order to my account. <a href="#privacy">Privacy information</a>.</label><p class="sub" data-review-notice role="status"></p><div class="checkout-review-actions"><a class="btn ghost" href="#checkout">Back</a><button class="btn primary" type="button" data-place-order ${checkoutState.consented?'':'disabled'}>Place order &amp; pay securely</button></div></section>`;
     }
     async function requestKey(p) {
       const bytes = await crypto.subtle.digest(
@@ -211,14 +224,18 @@ Object.assign(
         location.hash = "#account";
         return;
       }
-      const p = validate(form);
+      const p = form ? validate(form) : checkoutState.payload;
       if (!p) return;
-      if (!form.querySelector("#order-consent").checked) {
-        notice(
-          "Please agree to save the delivery information and order.",
-          true,
-        );
-        form.querySelector("#order-consent").focus();
+      const consented = form ? form.querySelector("#order-consent")?.checked : checkoutState.consented;
+      if (!consented) {
+        const reviewNotice = document.querySelector('[data-review-notice]');
+        if (reviewNotice) reviewNotice.textContent = "Please agree before placing your order.";
+        document.querySelector('[data-review-consent]')?.focus();
+        return;
+      }
+      if (checkoutState.orderId) {
+        const button = document.querySelector('[data-place-order]');
+        if (button) void pay(checkoutState.orderId, button);
         return;
       }
       if (
@@ -229,6 +246,7 @@ Object.assign(
         return;
       }
       busy(true, "Placing order…");
+      window.PVLoader?.show("Preparing your secure checkout");
       notice("", true);
       try {
         const nonce = await requestKey(p);
@@ -238,6 +256,7 @@ Object.assign(
           p_quote_hash: checkoutState.quote.quote_hash,
         });
         if (!/^[0-9a-f-]{36}$/i.test(id)) throw Error("INVALID_ORDER_RESPONSE");
+        checkoutState.orderId = id;
         let orderEmailSent = false;
         try {
           const { data } = await supabaseClient.auth.getSession();
@@ -278,18 +297,22 @@ Object.assign(
         checkoutState.notice = "";
         checkoutState.error = "";
         Commerce.cache.orders.delete(id);
+        try { sessionStorage.setItem("pv-open-payment-after-order", id); } catch {}
         location.hash = "#orders/" + id;
         if (!orderEmailSent)
           toast("Order placed. Email confirmation is unavailable; your order is saved in your account.");
         void refreshAccountData(authUser);
       } catch (error) {
-        notice(Commerce.safeError(error), true);
+        const reviewNotice = document.querySelector('[data-review-notice]');
+        if (reviewNotice) reviewNotice.textContent = Commerce.safeError(error);
+        else notice(Commerce.safeError(error), true);
         if (String(error.message).includes("PRICING_CHANGED")) {
           checkoutState.quote = null;
           document.querySelector("[data-server-summary]").innerHTML = summary();
         }
       } finally {
         busy(false);
+        window.PVLoader?.hide();
       }
     }
     function history(orders) {
@@ -300,7 +323,7 @@ Object.assign(
       return orders
         .map(
           (o) =>
-            `<article class="history-order"><div class="section-head"><div><h3>${esc(o.order_number || o.id.slice(0, 8).toUpperCase())}</h3><p class="sub">${Commerce.formatDate(o.created_at)} · ${Commerce.statusLabel(o.status)} · ${Commerce.statusLabel(o.payment_status)}</p></div><strong>${money(o.total_inr)}</strong></div><ul>${(o.customer_order_items || []).map((i) => `<li>${esc(i.item_name)}${i.size_ml ? ` · ${i.size_ml}ml` : ""} × ${i.quantity} — ${money(i.line_total_inr)}</li>`).join("")}</ul><div class="offer-actions"><a class="btn" href="#orders/${o.id}">View order & tracking</a><button class="btn ghost" data-reorder="${o.id}">Buy again</button></div></article>`,
+            `<article class="history-order"><div class="section-head"><div><h3>${esc(Commerce.shortOrderReference(o.order_number || o.id.slice(0, 8).toUpperCase()))}</h3><p class="sub">${Commerce.formatDate(o.created_at)} · ${Commerce.statusLabel(o.status)} · ${Commerce.statusLabel(o.payment_status)}</p></div><strong>${money(o.total_inr)}</strong></div><ul>${(o.customer_order_items || []).map((i) => `<li>${esc(i.item_name)}${i.size_ml ? ` · ${i.size_ml}ml` : ""} × ${i.quantity} — ${money(i.line_total_inr)}</li>`).join("")}</ul><div class="offer-actions"><a class="btn" href="#orders/${o.id}">View order & tracking</a><a class="btn ghost" href="#shop">Continue shopping</a></div></article>`,
         )
         .join("");
     }
@@ -384,8 +407,19 @@ Object.assign(
             : Commerce.safeError(error),
         });
       }
-      if (currentPath === "orders/" + id)
+      if (currentPath === "orders/" + id) {
         render(currentPath, { keepScroll: true });
+        let autoPay = false;
+        try {
+          autoPay = sessionStorage.getItem("pv-open-payment-after-order") === id;
+          if (autoPay) sessionStorage.removeItem("pv-open-payment-after-order");
+        } catch {}
+        if (autoPay && Commerce.cache.orders.get(id)?.payment_status !== "paid")
+          setTimeout(() => {
+            const button = document.querySelector(`[data-pay-order="${id}"]`);
+            if (button) void pay(id, button);
+          }, 80);
+      }
     }
     function orderPage(id) {
       if (!authReady)
@@ -416,8 +450,9 @@ Object.assign(
           : o.payment_status === "cancelled"
             ? "The last payment attempt did not complete. You can try again securely. If money was deducted, refresh this order status before retrying."
             : "Continue to Razorpay to choose an available payment method. Your card and UPI details are entered securely with Razorpay, never stored by Parrfums Vault.";
-      const paymentPanel = `<section class="payment-panel ${o.payment_status === "paid" ? "is-confirmed" : ""}" aria-labelledby="payment-heading"><div class="payment-panel-top"><div><p class="eyebrow">Secure checkout</p><h2 id="payment-heading">${paymentHeading}</h2></div><strong class="payment-total">${money(o.total_inr)}</strong></div><p class="payment-description">${paymentDescription}</p><p id="payment-notice" class="payment-notice" role="status" aria-live="polite"></p><div class="payment-panel-actions">${!paymentClosed ? `<button class="btn primary" data-pay-order="${id}">Continue to secure payment</button>` : ""}<button class="btn ghost" data-refresh-order="${id}">Refresh status</button><button class="btn ghost" data-email-order="${id}">Resend order details by email</button></div></section>`;
-      return `<section class="page-shell order-page"><p class="eyebrow">Your order</p><h1 class="page-title">${esc(o.order_number)}</h1><p class="sub">Placed ${Commerce.formatDate(o.created_at)} · ${Commerce.statusLabel(o.payment_status)}</p>${["cancelled", "refunded"].includes(o.status) ? `<p class="shipping-notice">This order is ${Commerce.statusLabel(o.status).toLowerCase()}.</p>` : ""}<ol class="order-timeline">${[
+      const paid = o.payment_status === "paid";
+      const paymentPanel = `<section class="payment-panel ${paid ? "is-confirmed" : ""}" aria-labelledby="payment-heading"><div class="payment-panel-top"><div><p class="eyebrow">Secure checkout</p><h2 id="payment-heading">${paymentHeading}</h2></div><strong class="payment-total">${money(o.total_inr)}</strong></div><p class="payment-description">${paymentDescription}</p><p id="payment-notice" class="payment-notice" role="status" aria-live="polite"></p><div class="payment-panel-actions">${!paymentClosed ? `<button class="btn primary" data-pay-order="${id}">Continue to secure payment</button>` : ""}${paid ? `<button class="btn ghost" data-refresh-order="${id}">Refresh status</button><button class="btn ghost" data-email-order="${id}">Resend order details by email</button>` : ""}</div></section>`;
+      return `<section class="page-shell order-page"><p class="eyebrow">Your order</p><h1 class="page-title order-reference" title="${esc(o.order_number)}">${esc(Commerce.shortOrderReference(o.order_number))}</h1><button class="text-link copy-order-reference" type="button" data-copy-order-ref="${esc(o.order_number)}">Copy order reference</button><p class="sub">Placed ${Commerce.formatDate(o.created_at)} · ${Commerce.statusLabel(o.payment_status)}</p>${["cancelled", "refunded"].includes(o.status) ? `<p class="shipping-notice">This order is ${Commerce.statusLabel(o.status).toLowerCase()}.</p>` : ""}<ol class="order-timeline">${[
         "pending",
         "confirmed",
         "packed",
@@ -430,7 +465,7 @@ Object.assign(
         })
         .join(
           "",
-        )}</ol><div class="order-detail-grid"><div><h2>Delivery</h2><p>${esc(o.recipient_name)}<br>${esc(o.address_line1)}${o.address_line2 ? `<br>${esc(o.address_line2)}` : ""}<br>${esc(o.city)}, ${esc(o.state)} ${esc(o.postal_code)}</p>${o.courier_name ? `<p>Courier: ${esc(o.courier_name)}</p>` : ""}${o.tracking_number ? `<p>Tracking number: ${esc(o.tracking_number)}</p>` : ""}${/^https:\/\//.test(o.tracking_url || "") ? `<a class="text-link" href="${esc(o.tracking_url)}" target="_blank" rel="noreferrer">Courier tracking</a>` : ""}${o.estimated_delivery ? `<p>Estimated delivery: ${Commerce.formatDate(o.estimated_delivery)}</p>` : ""}</div><aside class="summary"><h2>Order summary</h2>${o.items.map((i) => `<div class="sum-line"><span>${esc(i.item_name)} × ${i.quantity}<small>${i.size_ml ? i.size_ml + "ml" : ""}</small></span><span>${money(i.line_total_inr)}</span></div>`).join("")}<div class="sum-line"><span>Subtotal</span><span>${money(o.subtotal_inr)}</span></div><div class="sum-line"><span>Shipping</span><span>${money(o.shipping_inr)}</span></div><div class="sum-line"><span>Discount</span><span>−${money(o.discount_inr)}</span></div><div class="sum-line total"><span>Total</span><span>${money(o.total_inr)}</span></div></aside></div>${paymentPanel}<div class="order-secondary-actions"><button class="btn ghost" data-reorder="${id}">Buy again</button><a class="text-link" href="#account">Order history</a></div><p class="sub payment-footnote">Only provider-verified payments are marked paid. If payment is pending, refresh the status before retrying.</p></section>`;
+        )}</ol><div class="order-detail-grid"><div><h2>Delivery</h2><p>${esc(o.recipient_name)}<br>${esc(o.address_line1)}${o.address_line2 ? `<br>${esc(o.address_line2)}` : ""}<br>${esc(o.city)}, ${esc(o.state)} ${esc(o.postal_code)}</p>${o.courier_name ? `<p>Courier: ${esc(o.courier_name)}</p>` : ""}${o.tracking_number ? `<p>Tracking number: ${esc(o.tracking_number)}</p>` : ""}${/^https:\/\//.test(o.tracking_url || "") ? `<a class="text-link" href="${esc(o.tracking_url)}" target="_blank" rel="noreferrer">Courier tracking</a>` : ""}${o.estimated_delivery ? `<p>Estimated delivery: ${Commerce.formatDate(o.estimated_delivery)}</p>` : ""}</div><aside class="summary"><h2>Order summary</h2>${o.items.map((i) => `<div class="sum-line"><span>${esc(i.item_name)} × ${i.quantity}<small>${i.size_ml ? i.size_ml + "ml" : ""}</small></span><span>${money(i.line_total_inr)}</span></div>`).join("")}<div class="sum-line"><span>Subtotal</span><span>${money(o.subtotal_inr)}</span></div><div class="sum-line"><span>Shipping</span><span>${money(o.shipping_inr)}</span></div><div class="sum-line"><span>Discount</span><span>−${money(o.discount_inr)}</span></div><div class="sum-line total"><span>Total</span><span>${money(o.total_inr)}</span></div></aside></div>${paymentPanel}<div class="order-secondary-actions"><a class="btn ghost" href="#shop">Continue shopping</a><a class="text-link" href="#account">Order history</a></div><p class="sub payment-footnote">Only provider-verified payments are marked paid. If payment is pending, complete payment or refresh your order status before retrying.</p></section>`;
     }
     function trackingPage() {
       return `<section class="page-shell"><p class="eyebrow">Order tracking</p><h1 class="page-title">Follow your fragrance.</h1><p class="page-intro">Order details are private. Sign in to look up your own order reference.</p>${authUser ? '<form id="tracking-lookup" class="form-grid"><div class="field full-field"><label for="order-reference">Order reference</label><input id="order-reference" name="reference" required maxlength="80" placeholder="PV-…"></div><button class="btn primary">Find my order</button><p class="error" id="tracking-error" role="alert"></p></form>' : '<button class="btn primary" data-auth-sign-in>Sign in</button>'}</section>`;
@@ -547,7 +582,11 @@ Object.assign(
           description: "Secure payment for your fragrance order",
           image: new URL("assets/parrfums-vault-logo.png", location.origin)
             .href,
-          theme: { color: "#a86d43" },
+          prefill: config.prefill,
+          method: { emi: false, paylater: false },
+          theme: {
+            color: document.documentElement.dataset.theme === "dark" ? "#e8c29e" : "#a86d43",
+          },
           handler: async (result) => {
             el.textContent = "Verifying payment with the provider…";
             try {
@@ -670,8 +709,25 @@ Object.assign(
         .join("")}</nav></section>`;
     }
     document.addEventListener("click", (e) => {
+      const copyRef = e.target.closest('[data-copy-order-ref]');
+      if (copyRef) {
+        navigator.clipboard?.writeText(copyRef.dataset.copyOrderRef).then(() => {
+          const old = copyRef.textContent;
+          copyRef.textContent = 'Copied';
+          setTimeout(() => { copyRef.textContent = old; }, 1400);
+        }).catch(() => { copyRef.textContent = copyRef.dataset.copyOrderRef; });
+      }
       const review = e.target.closest("[data-quote-checkout]");
       if (review) void quote(document.querySelector("#checkout-form"));
+      const placeOrder = e.target.closest('[data-place-order]');
+      if (placeOrder) void submit(null);
+      const reviewConsent = e.target.closest('[data-review-consent]');
+      if (reviewConsent) {
+        checkoutState.consented = reviewConsent.checked;
+        const button = document.querySelector('[data-place-order]');
+        if (button) button.disabled = !reviewConsent.checked;
+      }
+      if (e.target.closest('[data-edit-checkout]')) location.hash = '#checkout';
       const refresh = e.target.closest("[data-refresh-order]");
       if (refresh) {
         Commerce.cache.orders.delete(refresh.dataset.refreshOrder);
@@ -757,6 +813,7 @@ Object.assign(
     });
     return {
       checkout,
+      checkoutReview,
       checkoutState,
       validateCheckout: validate,
       submitCheckout: submit,

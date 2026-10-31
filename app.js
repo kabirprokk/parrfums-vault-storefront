@@ -120,7 +120,7 @@ let state = {
   cart: readStore('am-cart', []),
   wish: readStore('am-wish', []),
   query: '', category: 'All', sort: 'featured',
-  galleryIndex: {}, finderAnswers: [], selectedSize: {}, deliveryZone: ''
+  galleryIndex: {}, finderAnswers: [], selectedSize: {}
 };
 let authUser = null;
 let authReady = !supabaseClient;
@@ -129,6 +129,7 @@ let accountProfile = null;
 let savedAddresses = [];
 let accountOrders = [];
 let accountLoading = false;
+let accountTab = 'addresses';
 let guestWishlist = [...state.wish];
 
 const app = document.querySelector('#app');
@@ -279,14 +280,41 @@ const updateCounts = () => {
   if (w) w.textContent = state.wish.length;
 };
 
-const toast = t => {
+const toast = (t, action = null) => {
   const x = document.querySelector('#toast');
   if (!x) return;
-  x.textContent = t;
+  x.replaceChildren(document.createTextNode(t));
+  if (action) {
+    const link = document.createElement('a');
+    link.href = action.href;
+    link.className = 'toast-action';
+    link.textContent = action.label;
+    x.append(' ', link);
+  }
   x.classList.add('show');
   clearTimeout(x._t);
   x._t = setTimeout(() => x.classList.remove('show'), 2200);
 };
+
+window.PVLoader = (() => {
+  const el = document.querySelector('#pv-loading');
+  let timer;
+  return {
+    show(label = 'Opening your vault') {
+      if (!el) return;
+      clearTimeout(timer);
+      el.querySelector('[data-loading-label]').textContent = label;
+      el.hidden = false;
+      requestAnimationFrame(() => el.classList.add('is-visible'));
+    },
+    hide() {
+      if (!el) return;
+      el.classList.remove('is-visible');
+      clearTimeout(timer);
+      timer = setTimeout(() => { el.hidden = true; }, 220);
+    },
+  };
+})();
 
 const announce = msg => { if (announcer) announcer.textContent = msg; };
 
@@ -338,6 +366,10 @@ function cartQuantityControl(index, className = 'qty') {
   </div>`;
 }
 
+function addedCartActions(index, className = 'added-cart-actions', qtyClass = 'qty') {
+  return `<div class="${className}">${cartQuantityControl(index, qtyClass)}<a class="btn small added-cart-link" href="#cart">Go to bag</a></div>`;
+}
+
 function card(p) {
   const wished = state.wish.includes(p.id);
   const size = defaultSize(p), inStock = Commerce.available(p, size);
@@ -347,7 +379,7 @@ function card(p) {
     <div class="product-image"><a href="#product/${p.id}" aria-label="View ${esc(p.name)}">${imgTag(p.img, `${p.name} — Parrfums Vault fragrance`)}</a>
       <button class="heart ${wished ? 'active' : ''}" data-wish="${p.id}" aria-label="${wished ? 'Remove' : 'Add'} ${esc(p.name)} ${wished ? 'from' : 'to'} wishlist" aria-pressed="${wished}">${heartSvg(wished)}</button></div>
     <div class="product-meta"><a href="#product/${p.id}"><h3>${esc(p.name)}</h3><p>${esc(formatAccords(p.notes))}</p>${priceBlock(p)}</a>
-      ${cartIndex>=0?cartQuantityControl(cartIndex,'qty quick-qty'):inStock?`<button class="quick-add" data-add="${p.id}" data-size="${size}">${esc(addLabel)} <span aria-hidden="true">+</span></button>`:availabilityInquiryLink(p,size,'quick-add availability-inquiry')}</div>
+      ${cartIndex>=0?addedCartActions(cartIndex,'added-cart-actions quick-added','qty quick-qty'):inStock?`<button class="quick-add" data-add="${p.id}" data-size="${size}">${esc(addLabel)} <span aria-hidden="true">+</span></button>`:availabilityInquiryLink(p,size,'quick-add availability-inquiry')}</div>
   </article>`;
 }
 
@@ -363,7 +395,7 @@ function offerCard(c) {
       <p class="offer-notes">${esc(c.notes)}</p>
       <p class="offer-price">${money(c.price)}</p>
       <div class="offer-actions">
-        ${cartIndex>=0?cartQuantityControl(cartIndex):availability.available?`<button class="btn primary" data-add="${c.id}">Add to bag</button>`:availabilityInquiryLink(c,0,'btn wa-btn')}${availability.available?waLink(`Hi Parrfums Vault! I'd like to order the ${c.name} (${c.badge}) for ${money(c.price)}.`, 'Order on WhatsApp', 'btn ghost wa-btn'):''}
+        ${cartIndex>=0?addedCartActions(cartIndex):availability.available?`<button class="btn primary" data-add="${c.id}">Add to bag</button>`:availabilityInquiryLink(c,0,'btn wa-btn')}${availability.available?waLink(`Hi Parrfums Vault! I'd like to order the ${c.name} (${c.badge}) for ${money(c.price)}.`, 'Order on WhatsApp', 'btn ghost wa-btn'):''}
       </div>
     </div>
   </article>`;
@@ -679,7 +711,7 @@ function productView(p) {
     const availability = Commerce.stock(item, size);
     const cartIndex = state.cart.findIndex(i => i.id === item.id && i.size === size);
     return cartIndex >= 0
-      ? cartQuantityControl(cartIndex, 'qty product-qty')
+      ? addedCartActions(cartIndex, 'added-cart-actions', 'qty product-qty')
       : availability.available
         ? `<button class="btn primary full" type="button" data-add="${esc(item.id)}" data-size="${size}">Add to bag</button>`
         : availabilityInquiryLink(item,size,'btn wa-btn full');
@@ -689,7 +721,7 @@ function productView(p) {
     const value=isCombo(item)?item.price:priceFor(item,size);
     const cartIndex = state.cart.findIndex(i => i.id === item.id && i.size === size);
     const action=cartIndex >= 0
-      ? cartQuantityControl(cartIndex, 'qty mobile-buybar-qty')
+      ? `<div class="mobile-added-actions">${cartQuantityControl(cartIndex, 'qty mobile-buybar-qty')}<a class="btn small" href="#cart">Bag</a></div>`
       : availability.available
         ? `<button class="btn primary" type="button" data-add="${esc(item.id)}" data-size="${size}">${icon('bag')}<span>${label}</span></button>`
         : availabilityInquiryLink(item,size,'btn wa-btn');
@@ -747,14 +779,13 @@ function notFound() {
 }
 
 function cartSummary(total) {
-  const ship = state.deliveryZone ? SHIPPING[state.deliveryZone] : null;
   return `<aside class="summary"><h2>Summary</h2>
     <div class="sum-line"><span>Subtotal</span><span>${money(total)}</span></div>
-    <label class="shipping-label" for="delivery-zone">Delivery location</label><select class="select shipping-select" id="delivery-zone"><option value="" ${!state.deliveryZone?'selected':''}>Choose your location</option><option value="mumbai" ${state.deliveryZone==='mumbai'?'selected':''}>Mumbai · ₹100</option><option value="outside" ${state.deliveryZone==='outside'?'selected':''}>Outside Mumbai · ₹120</option></select>
-    <div class="sum-line"><span>Shipping</span><span>${ship === null ? '₹100–₹120' : money(ship)}</span></div>
-    <div class="sum-line total"><span>${ship === null ? 'Total before shipping' : 'Total'}</span><span>${money(total + (ship || 0))}</span></div>
+    <div class="sum-line"><span>Shipping</span><span>₹100–₹120</span></div>
+    <p class="sub">Shipping is calculated from your delivery address.</p>
+    <div class="sum-line total"><span>Total before address</span><span>${money(total)} + shipping</span></div>
     ${authUser ? '<a class="btn primary full" href="#checkout">Continue to checkout</a>' : '<button class="btn primary full" type="button" data-auth-sign-in>Sign in to checkout</button>'}
-    ${waLink(orderMessage(total, ship), 'Send this order on WhatsApp', 'btn ghost full wa-btn')}
+    ${waLink(orderMessage(total), 'Send this order on WhatsApp', 'btn ghost full wa-btn')}
   </aside>`;
 }
 
@@ -823,34 +854,40 @@ function account() {
   </article>`).join('') : '<p class="sub">No saved addresses yet. Add one below.</p>';
   const ordersContent = Commerce.orderHistory(accountOrders);
 
+  let checkoutReturn = false;
+  try { checkoutReturn = sessionStorage.getItem('pv-checkout-return') === 'yes'; } catch {}
   return `<section class="page-shell account-page">
-    <div class="section-head"><div><p class="eyebrow">Signed in as ${esc(authUser.email || 'Google account')}</p><h1 class="page-title">Your account</h1><a class="text-link" href="#admin">Administration</a></div>
-      <button class="btn ghost" type="button" data-auth-sign-out>Sign out</button></div>
+    <div class="section-head"><div><p class="eyebrow">Signed in as ${esc(authUser.email || 'Google account')}</p><h1 class="page-title">Your account</h1><a class="text-link" href="#admin">Administration</a></div></div>
     ${accountLoading ? '<p class="sub" role="status">Loading your account data…</p>' : ''}
     ${authNotice ? `<p class="error" role="alert">${esc(authNotice)}</p>` : ''}
-    <section class="account-section"><h2>Profile</h2>
-      <form id="account-profile-form" class="form-grid">
+    <nav class="account-tabs" aria-label="Account sections">
+      <button type="button" class="btn ${accountTab === 'addresses' ? 'primary' : 'ghost'}" data-account-tab="addresses" aria-pressed="${accountTab === 'addresses'}">Delivery addresses</button>
+      <button type="button" class="btn ${accountTab === 'orders' ? 'primary' : 'ghost'}" data-account-tab="orders" aria-pressed="${accountTab === 'orders'}">Order history</button>
+    </nav>
+    ${accountTab === 'addresses' ? `<section class="account-section account-tab-panel" aria-label="Delivery addresses">
+      ${checkoutReturn ? '<p class="shipping-notice">Add or choose a delivery address, then continue to checkout.</p>' : ''}
+      <h2>Profile</h2><form id="account-profile-form" class="form-grid">
         <div class="field"><label for="account-name">Full name</label><input id="account-name" name="full_name" maxlength="120" required value="${esc(profileName)}"></div>
         <div class="field"><label for="account-phone">Mobile number</label><input id="account-phone" name="phone" type="tel" inputmode="numeric" maxlength="10" required value="${esc(profilePhone)}"></div>
         <button class="btn primary" type="submit">Save profile</button>
       </form>
-    </section>
-    <section class="account-section"><h2>Saved delivery addresses</h2>${addressCards}
+      <h2>Saved delivery addresses</h2>${addressCards}
       <form id="account-address-form" class="form-grid">
         <div class="field"><label for="address-label">Label</label><input id="address-label" name="label" maxlength="40" value="Home" required></div>
         <div class="field"><label for="address-recipient">Recipient name</label><input id="address-recipient" name="recipient_name" maxlength="120" required></div>
-        <div class="field"><label for="address-phone">Mobile number</label><input id="address-phone" name="phone" type="tel" inputmode="numeric" maxlength="10" required></div>
+        <div class="field"><label for="address-phone">Mobile number</label><input id="address-phone" name="phone" type="tel" inputmode="numeric" maxlength="10" required value="${esc(profilePhone)}"></div>
+        <div class="field full-field location-tools"><button class="btn ghost small" type="button" data-use-location="account">Use my location to fill address</button><span class="sub" data-location-status role="status">Only used after you allow location access.</span></div>
         <div class="field full-field"><label for="address-line1">Address</label><input id="address-line1" name="address_line1" maxlength="200" autocomplete="street-address" required></div>
         <div class="field full-field"><label for="address-line2">Apartment / area (optional)</label><input id="address-line2" name="address_line2" maxlength="200"></div>
         <div class="field"><label for="address-city">City</label><input id="address-city" name="city" maxlength="80" required></div>
         <div class="field"><label for="address-state">State</label><input id="address-state" name="state" maxlength="80" required></div>
         <div class="field"><label for="address-postal">PIN code</label><input id="address-postal" name="postal_code" inputmode="numeric" maxlength="6" required></div>
-        <label class="field full-field"><span><input type="checkbox" name="is_default"> Make this my default address</span></label>
+        <label class="field full-field check-row"><span><input type="checkbox" name="is_default"> Make this my default address</span></label>
         <button class="btn primary" type="submit">Save address</button>
       </form>
-    </section>
-    <section class="account-section"><h2>Order history</h2>${ordersContent}</section>
-    <p class="sub">You can sign out at any time. Saved addresses and order details are visible only to your account. <a href="#privacy">Privacy information</a>.</p>
+      ${checkoutReturn ? '<a class="btn ghost spaced-top-medium" href="#checkout">Continue to checkout</a>' : ''}
+    </section>` : `<section class="account-section account-tab-panel" aria-label="Order history"><h2>Order history</h2>${ordersContent}</section>`}
+    <div class="account-footer-actions"><p class="sub">Saved addresses and order details are visible only to your account. <a href="#privacy">Privacy information</a>.</p>${checkoutReturn ? '<a class="btn ghost" href="#checkout">Continue to checkout</a>' : ''}<button class="btn ghost account-signout" type="button" data-auth-sign-out>Sign out</button></div>
   </section>`;
 }
 
@@ -912,11 +949,14 @@ async function refreshAccountData(user) {
   }
 }
 
-async function startGoogleSignIn() {
+async function startGoogleSignIn(returnTo = '#account') {
   if (!supabaseClient) return;
   authNotice = '';
   const adminLogin = location.pathname.replace(/\/+$/, '') === '/admin';
-  try { sessionStorage.setItem('pv-auth-return', adminLogin ? '/admin' : '#account'); } catch {}
+  try {
+    sessionStorage.setItem('pv-auth-return', adminLogin ? '/admin' : returnTo);
+    if (currentPath === 'checkout' || returnTo === '#checkout') sessionStorage.setItem('pv-checkout-return', 'yes');
+  } catch {}
   const { error } = await supabaseClient.auth.signInWithOAuth({
     provider: 'google',
     options: { redirectTo: `${location.origin}${adminLogin ? '/admin' : location.pathname}`, queryParams: { prompt: 'select_account' } }
@@ -967,8 +1007,57 @@ async function saveAddress(form) {
   }
   const { error } = await supabaseClient.from('customer_addresses').insert(address);
   authNotice = error ? 'Address could not be saved. Please check the fields and try again.' : 'Address saved.';
-  if (!error) { await refreshAccountData(authUser); authNotice = 'Address saved.'; render('account', { keepScroll: true }); }
+  if (!error) {
+    await refreshAccountData(authUser);
+    let checkoutReturn = false;
+    try { checkoutReturn = sessionStorage.getItem('pv-checkout-return') === 'yes'; } catch {}
+    if (checkoutReturn) location.hash = '#checkout';
+    else { authNotice = 'Address saved.'; render('account', { keepScroll: true }); }
+  }
   else render('account', { keepScroll: true });
+}
+
+async function fillAddressFromLocation(button) {
+  const status = button.closest('.location-tools')?.querySelector('[data-location-status]');
+  const form = button.closest('form');
+  const say = text => { if (status) status.textContent = text; };
+  if (!navigator.geolocation) { say('Location is not available in this browser.'); return; }
+  button.disabled = true;
+  say('Waiting for your permission…');
+  navigator.geolocation.getCurrentPosition(async position => {
+    try {
+      say('Finding your address…');
+      const { latitude, longitude } = position.coords;
+      const url = new URL('https://nominatim.openstreetmap.org/reverse');
+      url.search = new URLSearchParams({ format: 'jsonv2', addressdetails: '1', lat: String(latitude), lon: String(longitude) });
+      const response = await fetch(url, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(10000) });
+      if (!response.ok) throw Error('REVERSE_GEOCODE_FAILED');
+      const data = await response.json(), a = data.address || {};
+      const city = a.city || a.town || a.village || a.municipality || a.suburb || '';
+      const road = [a.house_number, a.road].filter(Boolean).join(' ');
+      const area = a.neighbourhood || a.suburb || a.residential || '';
+      const values = {
+        address: road,
+        address_line1: road,
+        address2: area,
+        address_line2: area,
+        city,
+        state: a.state || '',
+        pin: a.postcode || '',
+        postal_code: a.postcode || '',
+      };
+      for (const [name, value] of Object.entries(values)) {
+        const field = form?.elements[name];
+        if (field && value) field.value = value;
+      }
+      say(road || city ? 'Address filled from your location. Check it before continuing.' : 'We could not find a street address here; please enter it manually.');
+    } catch {
+      say('We could not look up this location. Please enter your address manually.');
+    } finally { button.disabled = false; }
+  }, error => {
+    say(error.code === 1 ? 'Location permission was not granted. You can enter the address manually.' : 'Location unavailable. Please enter the address manually.');
+    button.disabled = false;
+  }, { enableHighAccuracy: false, timeout: 12000, maximumAge: 60000 });
 }
 
 async function setDefaultAddress(id) {
@@ -1036,7 +1125,7 @@ function initializeAuth() {
         history.replaceState(history.state, '', '/admin');
         setTimeout(() => render('admin', { keepScroll: true }), 0);
       }
-      if (returnTo === '#account' && location.hash !== returnTo) location.hash = returnTo;
+      if (returnTo.startsWith('#') && location.hash !== returnTo) location.hash = returnTo;
     }
     if (currentPath === 'account') render('account', { keepScroll: true });
     if (authUser && (previousId !== authUser.id || event === 'INITIAL_SESSION')) {
@@ -1075,7 +1164,7 @@ function setActiveNav(path) {
   });
 }
 
-const ROUTES = new Set(['landing', 'home', 'shop', 'combos', 'collections', 'finder', 'about', 'offers', 'cart', 'checkout', 'wishlist', 'account', 'privacy', 'terms', 'shipping', 'returns', 'cancellation', 'contact', 'faq', 'tracking', 'admin']);
+const ROUTES = new Set(['landing', 'home', 'shop', 'combos', 'collections', 'finder', 'about', 'offers', 'cart', 'checkout', 'checkout-review', 'wishlist', 'account', 'privacy', 'terms', 'shipping', 'returns', 'cancellation', 'contact', 'faq', 'tracking', 'admin']);
 
 function render(route, opts = {}) {
   normalizeCart();
@@ -1110,6 +1199,7 @@ function render(route, opts = {}) {
   else if (path === 'offers') view = offers();
   else if (path === 'cart') view = cart();
   else if (path === 'checkout') view = Commerce.checkout();
+  else if (path === 'checkout-review') view = Commerce.checkoutReview();
   else if (path === 'wishlist') view = wishlist();
   else if (path === 'account') view = account();
   else if (['privacy','terms','shipping','returns','cancellation','contact','faq'].includes(path)) view = Commerce.policy(path);
@@ -1129,6 +1219,8 @@ function render(route, opts = {}) {
       duration: matchMedia('(max-width: 760px)').matches ? 170 : 200,
       easing: 'cubic-bezier(.2,.7,.2,1)',
     });
+    window.PVLoader?.show('A little moment…');
+    setTimeout(() => window.PVLoader?.hide(), 360);
   }
   if(routeChanged && path.startsWith('product/')){const p=get(path.split('/')[1]);if(p)Commerce.remember(p.id);}
   window.PVEdit?.afterRender();
@@ -1166,13 +1258,19 @@ function flashAdded(btn) {
 }
 
 document.addEventListener('click', e => {
-  if (e.target.closest('[data-auth-sign-in]')) { void startGoogleSignIn(); return; }
+  const useLocation = e.target.closest('[data-use-location]');
+  if (useLocation) { fillAddressFromLocation(useLocation); return; }
+  const signIn = e.target.closest('[data-auth-sign-in]');
+  if (signIn) { void startGoogleSignIn(signIn.dataset.returnTo || '#account'); return; }
   if (e.target.closest('[data-auth-sign-out]')) {
     if (e.target.closest('#edit-toolbar') && window.PVEdit?.collect().length &&
       !window.confirm('You have unpublished website edits. Sign out without publishing them?')) return;
+    if (!e.target.closest('#edit-toolbar') && !window.confirm('Sign out of your Parrfums Vault account?')) return;
     void signOutAccount();
     return;
   }
+  const accountTabButton = e.target.closest('[data-account-tab]');
+  if (accountTabButton) { accountTab = accountTabButton.dataset.accountTab; render('account', { keepScroll: true }); return; }
   const addressDefault = e.target.closest('[data-address-default]');
   if (addressDefault) { void setDefaultAddress(addressDefault.dataset.addressDefault); return; }
   const addressDelete = e.target.closest('[data-address-delete]');
@@ -1229,8 +1327,8 @@ document.addEventListener('click', e => {
     else state.cart.push({ id: p.id, name: p.name, notes: p.notes, img: p.img, size, price, qty: 1, combo: isCombo(p), badge });
     save();
     if(add.hasAttribute('data-move-wishlist')){state.wish=state.wish.filter(id=>id!==p.id);save();if(authUser)void supabaseClient.from('wishlist_items').delete().eq('user_id',authUser.id).eq('product_id',p.id).then(({error})=>{if(error){state.wish.push(p.id);save();toast('Added to bag, but wishlist removal could not sync');}});render('wishlist',{keepScroll:true});}
-    render(null, { keepScroll: true });
-    toast(`${p.name} added to your bag`);
+     render(null, { keepScroll: true });
+     toast(`${p.name} added to your bag.`, { href: '#cart', label: 'Go to bag' });
     return;
   }
 
@@ -1309,8 +1407,12 @@ document.addEventListener('click', e => {
 });
 
 document.addEventListener('change', e => {
+  if (e.target.id === 'order-consent') {
+    const button = document.querySelector('#checkout-form [type="submit"]');
+    if (button) button.disabled = !e.target.checked;
+    e.target.closest('.order-consent')?.classList.toggle('is-checked', e.target.checked);
+  }
   if (e.target.id === 'sort') { state.sort = e.target.value; render(null, { keepScroll: true }); }
-  if (e.target.id === 'delivery-zone') { state.deliveryZone = e.target.value; render(null, {keepScroll:true}); }
 });
 
 document.addEventListener('input', e => {

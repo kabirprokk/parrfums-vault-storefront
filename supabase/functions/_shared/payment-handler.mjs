@@ -181,7 +181,7 @@ export function createPaymentHandler({
         return respond(400, { code: "INVALID_REQUEST" });
       const ordersResponse = await fetcher(
         env("SUPABASE_URL") +
-          "/rest/v1/customer_orders?select=id,user_id,total_inr,payment_status,status&id=eq." +
+          "/rest/v1/customer_orders?select=id,user_id,total_inr,payment_status,status,recipient_name,email,phone&id=eq." +
           body.order_id +
           "&user_id=eq." +
           user.id,
@@ -236,6 +236,11 @@ export function createPaymentHandler({
           amount: Number(attempt.amount_paise),
           currency: "INR",
           order_id: body.order_id,
+          prefill: {
+            name: orders[0].recipient_name,
+            email: orders[0].email,
+            contact: orders[0].phone,
+          },
         });
       }
       if (body.action === "verify") {

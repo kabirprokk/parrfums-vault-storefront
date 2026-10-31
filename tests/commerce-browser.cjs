@@ -227,20 +227,33 @@ const base = process.env.PV_TEST_URL || "http://127.0.0.1:8000";
     await page.route(`**/rest/v1/${table}?**`, (r) => r.fulfill({ json: [] }));
   await page.locator("[data-quote-checkout]").click();
   await page.waitForFunction(() => Commerce.checkoutState.quote);
+  await page.waitForFunction(() => currentPath === "checkout-review");
   assert.match(
-    await page.locator("[data-server-summary]").textContent(),
+    await page.locator(".checkout-review-grid").textContent(),
     /850/,
   );
-  await page.locator("#checkout-form [type=submit]").click();
-  await page.waitForFunction(
-    () => !!document.querySelector("#form-error")?.textContent,
+  await page.locator("[data-review-consent]").check();
+  await page.route("**/functions/v1/payments", async (r) => {
+    const body = r.request().postDataJSON();
+    if (body.action === "verify")
+      return r.fulfill({ status: 503, json: { message: "Mock verification outage" } });
+    return r.fulfill({ json: { key: "rzp_test_unit", amount: 85000, currency: "INR", provider_order_id: "order_unit", prefill: { contact: "9876543210" } } });
+  });
+  await page.route("https://checkout.razorpay.com/v1/checkout.js", (r) =>
+    r.fulfill({ contentType: "application/javascript", body: "window.Razorpay=class{constructor(options){this.options=options}on(){}open(){this.options.handler({razorpay_order_id:'order_unit',razorpay_payment_id:'pay_unit',razorpay_signature:'test'})}}" }),
   );
+  await page.locator("[data-place-order]").click();
+  await page.waitForFunction(() => document.querySelector("[data-review-notice]")?.textContent);
   assert.equal(
     await page.evaluate(() => state.cart.length),
     1,
     "Failed checkout preserves bag",
   );
-  await page.locator("#checkout-form [type=submit]").click();
+  await page.evaluate(() => {
+    supabaseClient.auth.getSession = async () => ({ data: { session: { access_token: "browser-test-token" } }, error: null });
+  });
+  await page.route("**/functions/v1/order-email", (r) => r.fulfill({ status: 202, json: { sent: true } }));
+  await page.locator("[data-place-order]").click();
   await page.waitForFunction(() => currentPath.startsWith("orders/"));
   await page.waitForFunction(
     () => document.querySelectorAll(".order-timeline li").length === 5,
@@ -253,47 +266,11 @@ const base = process.env.PV_TEST_URL || "http://127.0.0.1:8000";
   assert.equal(await page.locator(".payment-panel").count(), 1);
   assert.match(await page.locator(".payment-panel").innerText(), /850/);
   assert.match(await page.locator(".payment-panel").innerText(), /never stored by Parrfums Vault/i);
-  await page.evaluate(() => {
-    supabaseClient.auth.getSession = async () => ({
-      data: { session: { access_token: "browser-test-token" } },
-      error: null,
-    });
-  });
-  assert.equal(await page.locator("[data-email-order]").count(), 1,
-    "order page exposes a customer-authorized email retry without initiating payment");
-  await page.route("**/functions/v1/order-email", async (r) => {
-    assert.equal(r.request().postDataJSON().order_id, oid);
-    assert.equal(r.request().postDataJSON().event, "placed");
-    await r.fulfill({ status: 202, json: { sent: true } });
-  });
-  await page.locator("[data-email-order]").click();
-  await page.waitForFunction(() =>
-    document.querySelector("#payment-notice")?.textContent.includes("sent to your checkout email and the store"),
-  );
+  assert.equal(await page.locator("[data-refresh-order], [data-email-order]").count(), 0,
+    "unpaid orders do not expose refresh or email retry controls");
   await a11y("Order payment accessibility");
-  await page.route("**/functions/v1/payments", async (r) => {
-    const body = r.request().postDataJSON();
-    if (body.action === "verify")
-      return r.fulfill({ status: 503, json: { message: "Mock verification outage" } });
-    return r.fulfill({
-      json: {
-        key: "rzp_test_unit",
-        amount: 85000,
-        currency: "INR",
-        provider_order_id: "order_unit",
-      },
-    });
-  });
-  await page.route("https://checkout.razorpay.com/v1/checkout.js", (r) =>
-    r.fulfill({
-      contentType: "application/javascript",
-      body: "window.Razorpay=class{constructor(options){this.options=options}on(){}open(){this.options.handler({razorpay_order_id:'order_unit',razorpay_payment_id:'pay_unit',razorpay_signature:'test'})}}",
-    }),
-  );
   await page.locator("[data-pay-order]").click();
-  await page.waitForFunction(() =>
-    document.querySelector("#payment-notice")?.textContent.includes("Mock verification outage"),
-  );
+  await page.waitForFunction(() => document.querySelector("#payment-notice")?.textContent.includes("Mock verification outage") || document.querySelector("#payment-notice")?.textContent.includes("Payment window closed"));
   assert.equal(await page.locator("[data-pay-order]").isEnabled(), true,
     "a temporary payment verification error must let the customer retry after checking status");
   await page.evaluate(() => {

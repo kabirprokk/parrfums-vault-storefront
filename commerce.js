@@ -347,6 +347,10 @@ const Commerce = (() => {
     String(status || "")
       .replaceAll("_", " ")
       .replace(/^./, (x) => x.toUpperCase());
+  const shortOrderReference = (value) => {
+    const ref = String(value || "");
+    return ref.length > 20 ? `${ref.slice(0, 11)}…${ref.slice(-4)}` : ref;
+  };
   async function onAuth(user) {
     const uid = user?.id;
     const identityChanged = authIdentity !== (uid || null);
@@ -489,6 +493,7 @@ const Commerce = (() => {
     productUrl,
     formatDate,
     statusLabel,
+    shortOrderReference,
     onAuth,
     analytics,
   };

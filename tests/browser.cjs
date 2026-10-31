@@ -58,20 +58,19 @@ fs.mkdirSync(artifacts,{recursive:true});
    await page.locator('.detail [data-add]').click();
  }
  await page.goto(base+'/#cart',{waitUntil:'networkidle'});
- await page.locator('#delivery-zone').selectOption('mumbai');
- assert.match(await page.locator('.summary .sum-line.total').textContent(),/2,500/);
- await page.locator('#delivery-zone').selectOption('outside');
- assert.match(await page.locator('.summary .sum-line.total').textContent(),/2,520/);
+  assert.equal(await page.locator('#delivery-zone').count(),0,'shipping zone is no longer manually selected in the bag');
+  assert.match(await page.locator('.summary').textContent(),/calculated from your delivery address/i);
  assert.ok(!/complimentary/i.test(await page.locator('#app').textContent()));
  let whatsapp=await page.locator('.summary a.wa-btn').getAttribute('href');
- assert.match(decodeURIComponent(whatsapp),/Shipping: ₹120/);
- assert.match(decodeURIComponent(whatsapp),/Total: ₹2,520/);
+  assert.match(decodeURIComponent(whatsapp),/Shipping extra: Mumbai ₹100 \/ outside Mumbai ₹120/);
  await page.goto(base+'/#checkout',{waitUntil:'networkidle'});
  assert.match(await page.locator('h1').textContent(),/signature/);
  // Inspect the signed-in checkout presentation without creating a real customer/order.
  await page.evaluate(()=>{authUser={id:'00000000-0000-4000-8000-000000000001',email:'test@example.invalid',user_metadata:{}};render('checkout');});
  assert.match(await page.locator('[data-server-summary]').textContent(),/confirm prices/);
- await page.locator('#checkout-form [type=submit]').click();
+  assert.equal(await page.locator('#checkout-form [type=submit]').isDisabled(),true,'checkout continues only after consent');
+  await page.locator('#order-consent').check();
+  await page.locator('#checkout-form [type=submit]').click();
  assert.equal(await page.locator('#first').getAttribute('aria-invalid'),'true');
  assert.match(await page.locator('#err-first').textContent(),/Required/);
  await page.reload({waitUntil:'networkidle'});
