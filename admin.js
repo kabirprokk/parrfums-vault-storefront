@@ -621,10 +621,16 @@ Object.assign(
       const form = e.target;
       if (form.dataset.busy) return;
       if (!form.reportValidity()) return;
+      const submitted = new FormData(form);
+      const deactivating = ["products", "variants", "offers", "coupons"].includes(model.tab) &&
+        model.editing?.id && model.editing.active === true && !submitted.has("active");
+      if (deactivating && !window.confirm("Deactivate this item? It will no longer be offered for sale, but its history will be preserved.")) return;
+      if (model.tab === "orders" && submitted.get("status") === "cancelled" && model.editing?.status !== "cancelled" &&
+        !window.confirm("Cancel this order and release any reserved inventory? This action will be recorded in the audit history.")) return;
       form.dataset.busy = "true";
       const b = form.querySelector('[type="submit"]');
       b.disabled = true;
-      const f = new FormData(form),
+      const f = submitted,
         data = Object.fromEntries(f);
       for (const key of ["active"]) data[key] = f.has(key);
       for (const key of [

@@ -108,10 +108,16 @@ const { chromium } = require("playwright"),
   await page.locator("[data-admin-tab=products]").click();
   await page.locator("[data-admin-edit]").click();
   await page.locator("[name=active]").uncheck();
+  let archivePrompt = "";
+  page.once("dialog", async (dialog) => {
+    archivePrompt = dialog.message();
+    await dialog.accept();
+  });
   await page.locator("#admin-editor [type=submit]").click();
   await page.waitForFunction(() => !document.querySelector("#admin-editor"));
   assert.equal(writes.at(-1).name, "admin_save_product");
   assert.equal(writes.at(-1).args.p_data.active, false);
+  assert.match(archivePrompt, /deactivate this item/i);
   for (const tab of ["offers", "coupons", "orders", "reviews"]) {
     await page.locator(`[data-admin-tab=${tab}]`).click();
     await page.waitForFunction(
