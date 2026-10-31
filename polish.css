@@ -89,7 +89,9 @@ input.invalid,select.invalid{border-color:#b4432a}
 
 /* Parrfums Vault brand direction: warm ivory, ink, and antique gold. */
 :root{--ink:#211b18;--muted:#766b61;--cream:#f2ede5;--paper:#fbf9f5;--sage:#d9cbbb;--line:#dfd5ca;--accent:#a97845;--serif:'Cormorant Garamond',serif;--shadow-soft:0 18px 48px rgba(49,34,21,.1)}
-body{background:var(--paper)}
+body{background:var(--paper);display:flex;flex-direction:column;min-height:100vh;min-height:100svh}
+body> #app{flex:1 0 auto}
+body>footer{flex-shrink:0;margin-top:auto}
 .announcement{background:#211b18;letter-spacing:.12em}
 .wordmark{font-family:'Allura',cursive;font-size:34px;line-height:.9;letter-spacing:0;text-transform:lowercase;font-weight:400}
 .wordmark i{font:600 10px/1 var(--sans);letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin-left:3px;vertical-align:baseline}

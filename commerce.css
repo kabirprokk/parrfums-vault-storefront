@@ -320,8 +320,9 @@ body { font-variant-numeric: lining-nums tabular-nums; }
 .checkout-review-actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
 .payment-security-note { max-width: 760px; margin: 18px 0 0; padding: 14px 16px; border: 1px solid var(--line); border-left: 3px solid var(--accent); color: var(--muted); font-size: 13px; line-height: 1.65; }
 .payment-security-note strong { color: var(--ink); }
-.order-consent { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
+.order-consent { display: block; cursor: pointer; }
 .order-consent input[type="checkbox"], .check-row input[type="checkbox"] { appearance: none; width: 20px; height: 20px; flex: 0 0 20px; margin: 1px 0 0; border: 1px solid var(--muted); border-radius: 3px; background: var(--paper); display: grid; place-items: center; }
+.order-consent input[type="checkbox"] { display: inline-grid; vertical-align: top; margin: 2px 10px 0 0; }
 .order-consent input[type="checkbox"]::before, .check-row input[type="checkbox"]::before { content: ""; width: 10px; height: 6px; border-left: 2px solid var(--paper); border-bottom: 2px solid var(--paper); transform: rotate(-45deg) scale(0); transition: transform .12s ease; }
 .order-consent input[type="checkbox"]:checked, .check-row input[type="checkbox"]:checked { background: var(--accent); border-color: var(--accent); }
 .order-consent input[type="checkbox"]:checked::before, .check-row input[type="checkbox"]:checked::before { transform: rotate(-45deg) scale(1); }
