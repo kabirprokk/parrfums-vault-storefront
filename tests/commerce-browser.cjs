@@ -330,8 +330,10 @@ const base = process.env.PV_TEST_URL || "http://127.0.0.1:8000";
     await a11y(route + " accessibility");
   }
   await page.evaluate(() => render("cancellation"));
-  assert.match(await page.locator(".policy-page").textContent(), /once the seller confirms your order for processing, it can no longer be cancelled/i);
+  assert.match(await page.locator(".policy-page").textContent(), /cancel your order within 48 hours after placing it/i);
+  assert.match(await page.locator(".policy-page").textContent(), /cancellation is not available after 48 hours/i);
   await page.evaluate(() => render("returns"));
+  assert.match(await page.locator(".policy-page").textContent(), /request a refund within 7 days of receiving your product/i);
   assert.match(await page.locator(".policy-page").textContent(), /seller initiates the refund through the original payment provider/i);
   await page.evaluate(() => render("unknown-route"));
   assert.match(await page.locator("#app").textContent(), /This page isn’t here/);

@@ -679,15 +679,15 @@ Object.assign(
       },
       returns: {
         title: "Return & Refund Policy",
-        text: "Refunds are not automatic. Contact the store with your order reference to request a review. If approved, the seller initiates the refund through the original payment provider; the order is marked refunded only after verified provider information is received. The time for funds to appear depends on the payment provider and bank. Contact the store if the refund status has not updated.",
+        text: "You may request a refund within 7 days of receiving your product. Contact the store with your order reference to request it. If approved, the seller initiates the refund through the original payment provider; the order is marked refunded only after verified provider information is received. The time for funds to appear depends on the payment provider and bank. Contact the store if the refund status has not updated.",
         missing:
-          "Owner approval required: supply return eligibility, time limits, product-condition requirements, refund processing times and return shipping responsibilities.",
+          "Please contact the store with your order reference to ask about product-condition requirements and return shipping.",
       },
       cancellation: {
         title: "Cancellation Policy",
-        text: "Contact the store immediately with your order reference to request a cancellation. IMPORTANT: once the seller confirms your order for processing, it can no longer be cancelled or stopped in transit. A cancellation is effective only when the order status in your account shows Cancelled. If payment was already collected, any approved refund is handled under the Return & Refund Policy and applicable law.",
+        text: "You may request to cancel your order within 48 hours after placing it. Cancellation is not available after 48 hours. Contact the store with your order reference to request a cancellation. A cancellation is effective only when the order status in your account shows Cancelled. If payment was already collected, any approved refund is handled under the Return & Refund Policy and applicable law.",
         missing:
-          "Owner approval required: define cancellation eligibility, cutoff times and charges, if any.",
+          "",
       },
       contact: {
         title: "Contact",
