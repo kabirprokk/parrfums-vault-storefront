@@ -876,7 +876,6 @@ function account() {
         <div class="field"><label for="address-label">Label</label><input id="address-label" name="label" maxlength="40" value="Home" required></div>
         <div class="field"><label for="address-recipient">Recipient name</label><input id="address-recipient" name="recipient_name" maxlength="120" required></div>
         <div class="field"><label for="address-phone">Mobile number</label><input id="address-phone" name="phone" type="tel" inputmode="numeric" maxlength="10" required value="${esc(profilePhone)}"></div>
-        <div class="field full-field location-tools"><button class="btn ghost small" type="button" data-use-location="account">Use my location to fill address</button><span class="sub" data-location-status role="status">Only used after you allow location access.</span></div>
         <div class="field full-field"><label for="address-line1">Address</label><input id="address-line1" name="address_line1" maxlength="200" autocomplete="street-address" required></div>
         <div class="field full-field"><label for="address-line2">Apartment / area (optional)</label><input id="address-line2" name="address_line2" maxlength="200"></div>
         <div class="field"><label for="address-city">City</label><input id="address-city" name="city" maxlength="80" required></div>
@@ -1015,49 +1014,6 @@ async function saveAddress(form) {
     else { authNotice = 'Address saved.'; render('account', { keepScroll: true }); }
   }
   else render('account', { keepScroll: true });
-}
-
-async function fillAddressFromLocation(button) {
-  const status = button.closest('.location-tools')?.querySelector('[data-location-status]');
-  const form = button.closest('form');
-  const say = text => { if (status) status.textContent = text; };
-  if (!navigator.geolocation) { say('Location is not available in this browser.'); return; }
-  button.disabled = true;
-  say('Waiting for your permission…');
-  navigator.geolocation.getCurrentPosition(async position => {
-    try {
-      say('Finding your address…');
-      const { latitude, longitude } = position.coords;
-      const url = new URL('https://nominatim.openstreetmap.org/reverse');
-      url.search = new URLSearchParams({ format: 'jsonv2', addressdetails: '1', lat: String(latitude), lon: String(longitude) });
-      const response = await fetch(url, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(10000) });
-      if (!response.ok) throw Error('REVERSE_GEOCODE_FAILED');
-      const data = await response.json(), a = data.address || {};
-      const city = a.city || a.town || a.village || a.municipality || a.suburb || '';
-      const road = [a.house_number, a.road].filter(Boolean).join(' ');
-      const area = a.neighbourhood || a.suburb || a.residential || '';
-      const values = {
-        address: road,
-        address_line1: road,
-        address2: area,
-        address_line2: area,
-        city,
-        state: a.state || '',
-        pin: a.postcode || '',
-        postal_code: a.postcode || '',
-      };
-      for (const [name, value] of Object.entries(values)) {
-        const field = form?.elements[name];
-        if (field && value) field.value = value;
-      }
-      say(road || city ? 'Address filled from your location. Check it before continuing.' : 'We could not find a street address here; please enter it manually.');
-    } catch {
-      say('We could not look up this location. Please enter your address manually.');
-    } finally { button.disabled = false; }
-  }, error => {
-    say(error.code === 1 ? 'Location permission was not granted. You can enter the address manually.' : 'Location unavailable. Please enter the address manually.');
-    button.disabled = false;
-  }, { enableHighAccuracy: false, timeout: 12000, maximumAge: 60000 });
 }
 
 async function setDefaultAddress(id) {
@@ -1258,8 +1214,6 @@ function flashAdded(btn) {
 }
 
 document.addEventListener('click', e => {
-  const useLocation = e.target.closest('[data-use-location]');
-  if (useLocation) { fillAddressFromLocation(useLocation); return; }
   const signIn = e.target.closest('[data-auth-sign-in]');
   if (signIn) { void startGoogleSignIn(signIn.dataset.returnTo || '#account'); return; }
   if (e.target.closest('[data-auth-sign-out]')) {

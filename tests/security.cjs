@@ -40,10 +40,8 @@ assert.ok(csp.includes("wss://lshwmudskeeknmcxlffe.supabase.co"), "CSP allows th
 assert.equal(headers["X-Content-Type-Options"], "nosniff");
 assert.equal(headers["X-Frame-Options"], "DENY");
 assert.ok(headers["Strict-Transport-Security"].includes("max-age="));
-assert.match(headers["Permissions-Policy"], /geolocation=\(self\)/,
-  "location autofill is enabled only for this storefront origin");
-assert.ok(csp.includes("https://nominatim.openstreetmap.org"),
-  "CSP permits the consent-triggered reverse-geocoding request");
+assert.match(headers["Permissions-Policy"], /geolocation=\(\)/,
+  "geolocation is disabled when location autofill is not offered");
 const bundle = fs
   .readFileSync(path.join(root, "vendor/supabase-js-2.118.0.js"), "utf8")
   .replace(/\r\n/g, "\n");
