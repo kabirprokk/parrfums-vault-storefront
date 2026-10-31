@@ -13,6 +13,19 @@ const base = process.env.PV_TEST_URL || "http://127.0.0.1:8000";
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto(base + "/#shop", { waitUntil: "networkidle" });
   await page.waitForFunction(() => catalogueReady);
+  for (const query of ["", "a", "!!!", "हिंदी", "🌸", "<img src=x onerror=alert(1)>"]) {
+    await page.locator("#catalogue-search").fill(query);
+    await page.locator("[data-apply-filters]").click();
+    assert.equal(await page.locator("#catalogue-search").inputValue(), query.slice(0, 100));
+    const resultCount = await page.locator(".product-card").count();
+    assert.ok(resultCount >= 0 && resultCount <= 6,
+      `search input ${JSON.stringify(query)} should safely render a bounded result set`);
+    if (!query) assert.equal(resultCount, 6, "empty search shows all products");
+  }
+  await page.locator("#catalogue-search").fill("x".repeat(500));
+  await page.locator("[data-apply-filters]").click();
+  assert.equal((await page.locator("#catalogue-search").inputValue()).length, 100,
+    "excessively long search is constrained by the input limit");
   await page.locator("#catalogue-search").fill("no-such-fragrance");
   await page.locator("[data-apply-filters]").click();
   assert.equal(await page.locator(".product-card").count(), 0);
