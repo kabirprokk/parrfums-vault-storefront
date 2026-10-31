@@ -245,6 +245,8 @@ const base = process.env.PV_TEST_URL || "http://127.0.0.1:8000";
     await page.locator(".checkout-review-grid").textContent(),
     /850/,
   );
+  assert.match(await page.locator(".payment-security-note").textContent(), /no fixed payment link to preview on hover/i);
+  assert.match(await page.locator(".payment-security-note").textContent(), /does not store those payment details/i);
   await page.locator("[data-review-consent]").check();
   await page.route("**/functions/v1/payments", async (r) => {
     const body = r.request().postDataJSON();
