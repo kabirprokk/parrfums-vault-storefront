@@ -18,12 +18,16 @@ export async function sendOrderEmail({
   orderId,
   event,
   userId,
+  status,
 }) {
   if (!env("RESEND_API_KEY") || !env("ORDER_EMAIL_FROM")) return false;
-  if (!uuid.test(orderId || "") || !["placed", "paid"].includes(event))
+  if (!uuid.test(orderId || "") || !["placed", "paid", "status"].includes(event))
     throw Error("INVALID_EMAIL_EVENT");
   if (event === "placed" && !uuid.test(userId || ""))
     throw Error("EMAIL_AUTH_REQUIRED");
+  const allowedStatuses = new Set(["confirmed", "packed", "shipped", "delivered", "cancelled", "refunded"]);
+  if (event === "status" && !allowedStatuses.has(status || ""))
+    throw Error("INVALID_EMAIL_STATUS");
 
   const base = env("SUPABASE_URL"),
     serviceKey = env("SUPABASE_SERVICE_ROLE_KEY");
@@ -31,7 +35,7 @@ export async function sendOrderEmail({
   const headers = { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` };
   const orderQuery = new URLSearchParams({
     select:
-      "id,order_number,user_id,recipient_name,email,phone,address_line1,address_line2,city,state,postal_code,subtotal_inr,shipping_inr,discount_inr,total_inr,payment_status,created_at",
+      "id,order_number,user_id,recipient_name,email,phone,address_line1,address_line2,city,state,postal_code,subtotal_inr,shipping_inr,discount_inr,total_inr,payment_status,status,created_at",
     id: `eq.${orderId}`,
     ...(userId ? { user_id: `eq.${userId}` } : {}),
   });
@@ -45,6 +49,8 @@ export async function sendOrderEmail({
   if (!order) throw Object.assign(Error("ORDER_EMAIL_ORDER_NOT_FOUND"), { code: "ORDER_EMAIL_ORDER_NOT_FOUND" });
   if (event === "paid" && order.payment_status !== "paid")
     throw Error("ORDER_EMAIL_NOT_PAID");
+  if (event === "status" && order.status !== status)
+    throw Error("ORDER_STATUS_NOT_CURRENT");
   if (!order.email) throw Object.assign(Error("ORDER_EMAIL_ADDRESS_MISSING"), { code: "ORDER_EMAIL_ADDRESS_MISSING" });
 
   const itemQuery = new URLSearchParams({
@@ -79,7 +85,7 @@ export async function sendOrderEmail({
   const itemRowsText = lines
     .map((item) => `${item.name} × ${item.quantity} — ${money(item.total)}`)
     .join("\n");
-  const status = paid ? "Paid" : "Payment pending";
+  const paymentStatusLabel = paid ? "Paid" : "Payment pending";
   const template = {
     id: env("ORDER_EMAIL_TEMPLATE_ID") || "parrfums-vault-order-and-payment-updates",
     variables: {
@@ -87,7 +93,7 @@ export async function sendOrderEmail({
       EVENT_MESSAGE: paid
         ? "is paid. Your receipt and order details are below."
         : "is placed and awaiting payment.",
-      PAYMENT_STATUS: status,
+      PAYMENT_STATUS: paymentStatusLabel,
       CUSTOMER_NAME: escapeHtml(order.recipient_name),
       ORDER_NUMBER: escapeHtml(reference),
       ITEM_ROWS: itemRows,
@@ -102,7 +108,7 @@ export async function sendOrderEmail({
       ORDER_URL: escapeHtml(`${site}/#orders/${encodeURIComponent(order.id)}`),
     },
   };
-  const send = async ({ to, subject, idempotencyKey, variables = template.variables }) => {
+  const send = async ({ to, subject, idempotencyKey, variables = template.variables, html, text }) => {
     const response = await fetcher("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -111,13 +117,13 @@ export async function sendOrderEmail({
         "Idempotency-Key": idempotencyKey,
       },
       body: JSON.stringify({
-      from: env("ORDER_EMAIL_FROM"),
-      ...(env("ORDER_EMAIL_REPLY_TO")
-        ? { reply_to: env("ORDER_EMAIL_REPLY_TO") }
-        : {}),
-      to: [to],
-      subject,
-      template: { id: template.id, variables },
+        from: env("ORDER_EMAIL_FROM"),
+        ...(env("ORDER_EMAIL_REPLY_TO")
+          ? { reply_to: env("ORDER_EMAIL_REPLY_TO") }
+          : {}),
+        to: [to],
+        subject,
+        ...(html ? { html, text } : { template: { id: template.id, variables } }),
       }),
       signal: AbortSignal.timeout(10000),
     });
@@ -132,31 +138,62 @@ export async function sendOrderEmail({
       });
     }
   };
-  const sends = [send({
-    to: order.email,
-    subject: paid ? `Payment received for order ${reference}` : `Order ${reference} received — payment pending`,
-    idempotencyKey: `pv-${event}-${order.id}`,
-  })];
   // Never silently omit the fulfillment notice because an optional secret was
   // not configured. This fallback is the store contact documented in
   // EMAIL_SETUP.md; ORDER_NOTIFICATION_TO remains the preferred override.
   const merchantEmail = env("ORDER_NOTIFICATION_TO") ||
     env("ORDER_EMAIL_REPLY_TO") ||
     "quillsandcologne@gmail.com";
-  if (merchantEmail.toLowerCase() !== order.email.toLowerCase()) {
+  const manageUrl = new URL("/admin", site);
+  manageUrl.searchParams.set("order", order.id);
+  const manageHref = escapeHtml(manageUrl.href);
+  const merchantHtml = `<div style="font-family:Arial,Helvetica,sans-serif;max-width:620px;margin:auto;padding:28px;color:#241d1a"><p style="color:#a86d43;letter-spacing:.08em">PARRFUMS VAULT · ORDER DESK</p><h1>${paid ? "Payment confirmed" : "New order needs review"}</h1><p>Order <strong>${escapeHtml(reference)}</strong> · ${escapeHtml(order.status)}</p><p>Total: <strong>${money(order.total_inr)}</strong></p><p style="margin:28px 0"><a href="${manageHref}" style="display:inline-block;padding:14px 22px;background:#a86d43;color:#fff;text-decoration:none;font-weight:bold">Manage this order</a></p><p style="color:#746c65;font-size:13px">Sign in with the authorized store-admin account and complete MFA. This link opens only this order; it does not grant administrator access.</p></div>`;
+  const merchantText = [
+    paid ? "Payment confirmed" : "New order needs review",
+    `Order ${reference} · ${paymentStatusLabel}`,
+    `Total: ${money(order.total_inr)}`,
+    `Manage this order: ${manageUrl.href}`,
+    "Admin sign-in and MFA are required.",
+  ].join("\n");
+  const sends = [];
+  if (event === "status") {
+    const labels = {
+      confirmed: "confirmed by the store",
+      packed: "packed",
+      shipped: "shipped",
+      delivered: "delivered",
+      cancelled: "cancelled",
+      refunded: "refund processed",
+    };
+    const label = labels[status];
+    const orderUrl = escapeHtml(`${site}/#orders/${encodeURIComponent(order.id)}`);
+    sends.push(send({
+      to: order.email,
+      subject: `Order ${reference} update: ${label}`,
+      idempotencyKey: `pv-status-${order.id}-${status}`,
+      html: `<div style="font-family:Arial,Helvetica,sans-serif;max-width:620px;margin:auto;padding:28px;color:#241d1a"><p style="color:#a86d43;letter-spacing:.08em">PARRFUMS VAULT</p><h1>Your order status changed</h1><p>Order <strong>${escapeHtml(reference)}</strong> is now <strong>${escapeHtml(label)}</strong>.</p><p><a href="${orderUrl}" style="display:inline-block;padding:14px 22px;background:#a86d43;color:#fff;text-decoration:none;font-weight:bold">View order status</a></p><p style="color:#746c65;font-size:13px">This update contains no payment credentials. Payment status is confirmed separately by the payment provider.</p></div>`,
+      text: `Order ${reference} is now ${label}. View status: ${site}/#orders/${encodeURIComponent(order.id)}`,
+    }));
+    const results = await Promise.allSettled(sends);
+    const failure = results.find((result) => result.status === "rejected");
+    if (failure) throw failure.reason;
+    return true;
+  }
+  if (merchantEmail.toLowerCase() !== order.email.toLowerCase())
     sends.push(send({
       to: merchantEmail,
-      subject: `${paid ? "Order paid" : "New order"}: ${reference} — ${status}`,
+      subject: `${paid ? "Payment confirmed" : "Action needed: new order"} ${reference} — ${paymentStatusLabel}`,
       idempotencyKey: `pv-merchant-${event}-${order.id}`,
-      variables: {
-        ...template.variables,
-        EVENT_TITLE: paid ? "Order payment confirmed" : "New order received",
-        EVENT_MESSAGE: paid
-          ? "has been paid. Prepare this order for fulfillment."
-          : "was placed. Review the delivery and payment details below.",
-      },
+      html: merchantHtml,
+      text: merchantText,
     }));
-  }
+  // The customer receives the itemized receipt only when provider verification
+  // confirms payment. Pending-order notifications are store-only.
+  if (paid) sends.push(send({
+    to: order.email,
+    subject: `Payment received for order ${reference}`,
+    idempotencyKey: `pv-paid-${order.id}`,
+  }));
   const results = await Promise.allSettled(sends);
   const failure = results.find((result) => result.status === "rejected");
   if (failure) throw failure.reason;

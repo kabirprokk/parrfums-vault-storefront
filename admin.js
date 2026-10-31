@@ -17,7 +17,13 @@ Object.assign(
       page: 0,
       ascending: false,
       status: "",
+      orderTargetApplied: false,
     };
+    try {
+      const requestedOrder = new URLSearchParams(location.search).get("order");
+      if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestedOrder || ""))
+        sessionStorage.setItem("pv-admin-order-target", requestedOrder);
+    } catch {}
     let generation=0;
     const tabs = [
       "overview",
@@ -396,6 +402,20 @@ Object.assign(
         return '<section class="page-shell"><h1>Administration</h1><p role="status">Checking authorization…</p></section>';
       if (!Commerce.cache.admin)
         return `<section class="page-shell"><h1>Protected administration</h1><p>This area requires owner-granted database membership and an authenticated MFA session.</p><button class="btn" data-admin-mfa>Verify with authenticator</button><div data-mfa-panel></div><p class="error" data-admin-error role="alert"></p><a href="#account">Return to account</a></section>`;
+      if (!model.orderTargetApplied) {
+        model.orderTargetApplied = true;
+        try {
+          const target = sessionStorage.getItem("pv-admin-order-target") || "";
+          if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(target)) {
+            model.adminView = "details";
+            model.tab = "orders";
+            model.filter = target;
+            model.page = 0;
+            model.rows = null;
+            sessionStorage.removeItem("pv-admin-order-target");
+          }
+        } catch {}
+      }
       if (model.adminView === "menu")
         return `<section class="page-shell admin-page"><div class="section-head"><div><p class="eyebrow">Parrfums Vault</p><h1 class="page-title">Administration</h1></div></div><div class="stat-grid"><button class="btn primary" data-admin-website>Update website</button><button class="btn" data-admin-details>Update details</button></div><p class="sub">Update website opens the live site in edit mode. Update details opens the catalogue, orders, coupons and reviews console.</p></section>`;
       if (model.rows === null && !model.loading) queueMicrotask(load);
@@ -647,6 +667,7 @@ Object.assign(
             .split("\n")
             .map((s) => s.trim())
             .filter(Boolean);
+      let customerStatusEmailSent = null;
       try {
         if (model.tab === "products")
           await Commerce.rpc("admin_save_product", { p_data: data });
@@ -687,7 +708,7 @@ Object.assign(
             p_products: data.products,
           });
         }
-        if (model.tab === "orders")
+        if (model.tab === "orders") {
           await Commerce.rpc("admin_update_order", {
             p_order_id: data.id,
             p_status: data.status,
@@ -698,6 +719,26 @@ Object.assign(
               estimated_delivery: data.estimated_delivery || null,
             },
           });
+          if (data.status !== model.editing.status) {
+            customerStatusEmailSent = false;
+            try {
+              const { data: sessionData } = await supabaseClient.auth.getSession();
+              if (sessionData.session) {
+                const response = await fetch(SUPABASE_URL + "/functions/v1/order-email", {
+                  method: "POST",
+                  headers: {
+                    Authorization: "Bearer " + sessionData.session.access_token,
+                    apikey: CATALOGUE_KEY,
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({ order_id: data.id, event: "status", status: data.status }),
+                  signal: AbortSignal.timeout(10000),
+                });
+                customerStatusEmailSent = response.ok;
+              }
+            } catch {}
+          }
+        }
         if (model.tab === "reviews")
           await Commerce.rpc("admin_moderate_review", {
             p_id: data.id,
@@ -707,7 +748,9 @@ Object.assign(
         model.rows = null;
         await load();
         await loadCatalogue();
-        toast(model.tab === "offers"
+        toast(customerStatusEmailSent === false
+          ? "Order status saved. The customer email update could not be sent; the new status is visible in their account."
+          : model.tab === "offers"
           ? "Offer saved. Storefront pages are refreshing. Add to Bag still needs a fixed recipe and counted stock for every required bottle."
           : "Saved. Storefront pages are refreshing for visitors.");
       } catch (error) {

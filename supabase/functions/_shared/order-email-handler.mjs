@@ -39,9 +39,27 @@ export function createOrderEmailHandler({ env, fetcher = fetch }) {
       if (!auth.ok) return respond(401, { code: "AUTH_REQUIRED" });
       const user = await auth.json();
       const body = await request.json();
-      const event = body.event === "paid" ? "paid" : "placed";
+      const event = body.event || "placed";
+      if (!["placed", "paid", "status"].includes(event))
+        return respond(400, { code: "INVALID_REQUEST" });
       if (!uuid.test(user.id || "") || !uuid.test(body.order_id || ""))
         return respond(400, { code: "INVALID_REQUEST" });
+      if (event === "status") {
+        if (!["confirmed", "packed", "shipped", "delivered", "cancelled", "refunded"].includes(body.status))
+          return respond(400, { code: "INVALID_REQUEST" });
+        const adminCheck = await fetcher(`${env("SUPABASE_URL")}/rest/v1/rpc/is_admin`, {
+          method: "POST",
+          headers: {
+            apikey: env("SUPABASE_SERVICE_ROLE_KEY"),
+            Authorization: authorization,
+            "Content-Type": "application/json",
+          },
+          body: "{}",
+          signal: AbortSignal.timeout(10000),
+        });
+        if (!adminCheck.ok || (await adminCheck.json()) !== true)
+          return respond(403, { code: "ADMIN_REQUIRED" });
+      }
       if (!env("RESEND_API_KEY") || !env("ORDER_EMAIL_FROM"))
         return respond(503, { code: "EMAIL_NOT_CONFIGURED" });
       await sendOrderEmail({
@@ -49,7 +67,8 @@ export function createOrderEmailHandler({ env, fetcher = fetch }) {
         fetcher,
         orderId: body.order_id,
         event,
-        userId: user.id,
+        ...(event === "placed" || event === "paid" ? { userId: user.id } : {}),
+        ...(event === "status" ? { status: body.status } : {}),
       });
       return respond(202, { sent: true });
     } catch (error) {

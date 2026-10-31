@@ -13,6 +13,8 @@ const base = process.env.PV_TEST_URL || "http://127.0.0.1:8000";
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto(base + "/#shop", { waitUntil: "networkidle" });
   await page.waitForFunction(() => catalogueReady);
+  assert.equal(await page.locator(".footer-to-top").count(), 0,
+    "the back-to-top button is removed from the storefront");
   for (const query of ["", "a", "!!!", "हिंदी", "🌸", "<img src=x onerror=alert(1)>"]) {
     await page.locator("#catalogue-search").fill(query);
     await page.locator("[data-apply-filters]").click();
@@ -327,6 +329,10 @@ const base = process.env.PV_TEST_URL || "http://127.0.0.1:8000";
     await page.evaluate((route) => render(route), route);
     await a11y(route + " accessibility");
   }
+  await page.evaluate(() => render("cancellation"));
+  assert.match(await page.locator(".policy-page").textContent(), /once the seller confirms your order for processing, it can no longer be cancelled/i);
+  await page.evaluate(() => render("returns"));
+  assert.match(await page.locator(".policy-page").textContent(), /seller initiates the refund through the original payment provider/i);
   await page.evaluate(() => render("unknown-route"));
   assert.match(await page.locator("#app").textContent(), /This page isn’t here/);
   assert.equal(await page.locator(".not-found-actions a").count(), 2);

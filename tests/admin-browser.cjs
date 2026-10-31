@@ -144,6 +144,18 @@ const { chromium } = require("playwright"),
   await page.waitForFunction(() => !document.querySelector("#admin-editor"));
   assert.equal(writes.at(-1).name, "admin_save_coupon");
   assert.equal(writes.at(-1).args.p_data.usage_limit, "1");
+  const deepLinkedOrder = "00000000-0000-4000-8000-000000000099";
+  await page.goto(`${process.env.PV_TEST_URL || "http://127.0.0.1:8000"}/admin?order=${deepLinkedOrder}`, { waitUntil: "networkidle" });
+  await page.evaluate(() => {
+    authUser = { id: "00000000-0000-4000-8000-000000000001" };
+    authReady = true;
+    Commerce.cache.admin = true;
+    Commerce.cache.adminChecked = true;
+    render("admin");
+  });
+  await page.waitForFunction(() => document.querySelector('[data-admin-tab="orders"][aria-pressed="true"]'));
+  assert.equal(await page.locator("#admin-search").inputValue(), deepLinkedOrder,
+    "a store email deep link opens the exact order filter after admin authorization");
   assert.deepEqual(errors, []);
   await browser.close();
   console.log(
