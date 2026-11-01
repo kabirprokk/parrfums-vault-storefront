@@ -85,6 +85,9 @@ assert.ok(adminAuth.includes("public.admin_users"));
 assert.doesNotMatch(adminAuth, /auth\.jwt\(\).*aal/i);
 assert.ok(read("admin.js").includes("signInWithOtp"));
 assert.ok(read("admin.js").includes('verifyOtp({ email: model.otpEmail'));
+for (const file of ["admin.js", "commerce.js", "edit-mode.js"])
+  assert.doesNotMatch(read(file), /MFA|authenticator/i,
+    file + " must not direct authorized admins to an MFA flow that is not configured");
 const foundation = read("supabase/migrations/20261022105858_commerce_foundation.sql");
 assert.ok(foundation.includes("revoke create on schema public"));
 for (const match of [

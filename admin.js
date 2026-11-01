@@ -12,7 +12,6 @@ Object.assign(
       filter: "",
       inventoryUnlimited: false,
       inventoryModeLoaded: false,
-      mfa: null,
       stats: null,
       page: 0,
       ascending: false,
@@ -222,7 +221,7 @@ Object.assign(
             "text",
             'maxlength="500"',
           ) +
-          '<p class="sub">Count the bottles you can sell in this size. Enter 0 if none are available. Save updates the storefront; do not estimate. If Save is rejected, choose “Verify with authenticator” in Admin and retry.</p>';
+          '<p class="sub">Count the bottles you can sell in this size. Enter 0 if none are available. Save updates the storefront; do not estimate. If Save is rejected, confirm you are signed in with an authorized admin account and retry.</p>';
       if (t === "offers")
         fields =
           field(
@@ -812,7 +811,6 @@ Object.assign(
         generation++;model.loading=false;model.page=0;
         model.rows = null;
         model.editing = null;
-        model.mfa = null;
         model.error = "";
       },
     };

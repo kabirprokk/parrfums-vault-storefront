@@ -16,8 +16,7 @@ const Commerce = (() => {
   };
   const messages = {
     AUTH_REQUIRED: "Please sign in again to continue.",
-    ADMIN_REQUIRED: "Admin access or MFA verification is missing. In Admin, choose Verify with authenticator, complete the code, then retry.",
-    AUTH_MFA_REQUIRED: "Verify your authenticator to complete this protected action, then try again.",
+    ADMIN_REQUIRED: "This action is available only to an authorized administrator. Sign in with an approved admin account, then retry.",
     INVALID_ADDRESS:
       "Check your name, email, mobile number and complete Indian delivery address.",
     INVALID_QUANTITY: "Choose a valid quantity, up to 20 per item.",

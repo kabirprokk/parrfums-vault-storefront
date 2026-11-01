@@ -147,13 +147,13 @@ export async function sendOrderEmail({
   const manageUrl = new URL("/admin", site);
   manageUrl.searchParams.set("order", order.id);
   const manageHref = escapeHtml(manageUrl.href);
-  const merchantHtml = `<div style="font-family:Arial,Helvetica,sans-serif;max-width:620px;margin:auto;padding:28px;color:#241d1a"><p style="color:#a86d43;letter-spacing:.08em">PARRFUMS VAULT · ORDER DESK</p><h1>${paid ? "Payment confirmed" : "New order needs review"}</h1><p>Order <strong>${escapeHtml(reference)}</strong> · ${escapeHtml(order.status)}</p><p>Total: <strong>${money(order.total_inr)}</strong></p><p style="margin:28px 0"><a href="${manageHref}" style="display:inline-block;padding:14px 22px;background:#a86d43;color:#fff;text-decoration:none;font-weight:bold">Manage this order</a></p><p style="color:#746c65;font-size:13px">Sign in with the authorized store-admin account and complete MFA. This link opens only this order; it does not grant administrator access.</p></div>`;
+  const merchantHtml = `<div style="font-family:Arial,Helvetica,sans-serif;max-width:620px;margin:auto;padding:28px;color:#241d1a"><p style="color:#a86d43;letter-spacing:.08em">PARRFUMS VAULT · ORDER DESK</p><h1>${paid ? "Payment confirmed" : "New order needs review"}</h1><p>Order <strong>${escapeHtml(reference)}</strong> · ${escapeHtml(order.status)}</p><p>Total: <strong>${money(order.total_inr)}</strong></p><p style="margin:28px 0"><a href="${manageHref}" style="display:inline-block;padding:14px 22px;background:#a86d43;color:#fff;text-decoration:none;font-weight:bold">Manage this order</a></p><p style="color:#746c65;font-size:13px">Sign in with an authorized store-admin account. This link opens only this order; it does not grant administrator access.</p></div>`;
   const merchantText = [
     paid ? "Payment confirmed" : "New order needs review",
     `Order ${reference} · ${paymentStatusLabel}`,
     `Total: ${money(order.total_inr)}`,
     `Manage this order: ${manageUrl.href}`,
-    "Admin sign-in and MFA are required.",
+    "Sign-in with an authorized admin account is required.",
   ].join("\n");
   const sends = [];
   if (event === "status") {

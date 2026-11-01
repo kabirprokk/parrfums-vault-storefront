@@ -525,7 +525,7 @@
       try {
         toast(
           failureMessage.includes("ADMIN_REQUIRED")
-            ? "Saved on this device only — verify with your authenticator to publish for everyone."
+            ? "Saved on this device only — sign in with an authorized admin account to publish for everyone."
             : "Saved on this device only. The live publish could not be completed.",
         );
       } catch {}

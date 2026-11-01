@@ -73,6 +73,8 @@ assert.equal(customerPlaced, undefined, "pending orders do not send a detailed c
 assert.ok(merchantPlaced);
 assert.match(merchantPlaced.body.html, /New order needs review/);
 assert.match(merchantPlaced.body.html, /Manage this order/);
+assert.doesNotMatch(merchantPlaced.body.html, /MFA|authenticator/i,
+  "admin email instructions match the membership-based sign-in policy");
 assert.match(merchantPlaced.body.html, new RegExp(`/admin\\?order=${oid}`));
 assert.doesNotMatch(merchantPlaced.body.html, /9999999999|buyer@example|123 Test Road|Kabir/,
   "pending store alert contains no customer contact/address details");
@@ -108,7 +110,7 @@ assert.equal((await handler(statusRequest())).status, 403,
 assert.equal(sent.length, 0);
 adminAllowed = true;
 assert.equal((await handler(statusRequest())).status, 202,
-  "MFA-verified admins can send the customer status notification after updating the order");
+  "authorized admins can send the customer status notification after updating the order");
 assert.equal(sent.length, 1);
 assert.equal(sent[0].body.to[0], "buyer@example.invalid");
 
