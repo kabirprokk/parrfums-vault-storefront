@@ -679,19 +679,18 @@ Object.assign(
       },
       returns: {
         title: "Return & Refund Policy",
-        text: "You may request a refund within 7 days of receiving your product. During this 7-day period, the perfume bottle must remain unused, unbroken and undamaged to be eligible for a return. Contact the store with your order reference to request it. If approved, the seller initiates the refund through the original payment provider; the order is marked refunded only after verified provider information is received. The time for funds to appear depends on the payment provider and bank. Contact the store if the refund status has not updated.",
-        missing:
-          "Please contact the store with your order reference to ask about return shipping.",
+        text: "You may request a return and refund within 24 hours of placing your order. Contact the store with your order reference at +91 85919 35352 to request it. If approved, the seller initiates the refund through the original payment provider; the order is marked refunded only after verified provider information is received. The time for funds to appear depends on the payment provider and bank.",
+        missing: "",
       },
       cancellation: {
         title: "Cancellation Policy",
-        text: "You may request to cancel your order within 48 hours after placing it. Cancellation is not available after 48 hours. Contact the store with your order reference to request a cancellation. A cancellation is effective only when the order status in your account shows Cancelled. If payment was already collected, any approved refund is handled under the Return & Refund Policy and applicable law.",
+        text: "You may request to cancel your order within 48 hours after placing it. Cancellation is not available after 48 hours. Contact the store with your order reference at +91 85919 35352 to request a cancellation. A cancellation is effective only when the order status in your account shows Cancelled. If payment was already collected, any approved refund is handled under the Return & Refund Policy and applicable law.",
         missing:
           "",
       },
       contact: {
         title: "Contact",
-        text: "Parrfums Vault · Mumbai, India. Contact the store by phone, WhatsApp or Instagram using the verified links below.",
+        text: "Parrfums Vault · A-1 Smriti Mandir, opposite Hira Mongi Hospital, Valji Laddha Road, Mulund West, Mumbai 400080. Phone: +91 85919 35352. Contact by phone, WhatsApp or Instagram using the links below.",
       },
       faq: {
         title: "Frequently Asked Questions",

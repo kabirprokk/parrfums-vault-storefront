@@ -72,12 +72,18 @@ export function createPaymentHandler({
   };
   return async (request) => {
     const origin = request.headers.get("origin");
-    const allowed = (env("ALLOWED_ORIGINS") || "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
+    // Keep the deployed first-party storefront hosts working even if an
+    // environment allowlist was configured with only one of its aliases.
+    // These are exact origins (never wildcard subdomains); API authorization
+    // still independently requires the customer's Supabase session.
+    const allowed = new Set([
+      "https://parrfumsvault.in",
+      "https://www.parrfumsvault.in",
+      "https://parrfums-vault.vercel.app",
+      ...(env("ALLOWED_ORIGINS") || "").split(",").map((s) => s.trim()).filter(Boolean),
+    ]);
     const cors =
-      origin && allowed.includes(origin)
+      origin && allowed.has(origin)
         ? {
             "Access-Control-Allow-Origin": origin,
             "Access-Control-Allow-Headers":
@@ -95,7 +101,7 @@ export function createPaymentHandler({
           ...cors,
         },
       });
-    if (origin && !allowed.includes(origin))
+    if (origin && !allowed.has(origin))
       return respond(403, {
         code: "ORIGIN_NOT_ALLOWED",
         message: "This website is not configured for payments yet.",

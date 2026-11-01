@@ -1,6 +1,6 @@
 # Parrfums Vault — Brand Source of Truth
 
-## Owner update — 22 October 2026
+## Owner update — 1 November 2026
 
 The owner's direct instructions and supplied media supersede the earlier Instagram-derived details below.
 
@@ -9,6 +9,8 @@ The owner's direct instructions and supplied media supersede the earlier Instagr
 - Combos remain **The Duo Plus ₹1,600** and **The Festive Four ₹2,600**, as printed on the supplied posters. Free fragrance choices are Guilty Man or Vanilla 28; confirm the customer's selection personally on WhatsApp.
 - Use the owner's product portraits and campaign posters from `Downloads/Parrfum vault`. Web exports and source filenames are recorded in `assets/media/manifest.json`.
 - The supplied product portraits identify Leather and Vanilla 28 as unisex. Scent notes now follow these portraits.
+- Cancellation requests are accepted within 48 hours of order placement. Return/refund requests must be made within 24 hours of order placement.
+- Business contact: **+91 85919 35352**. Address: **A-1 Smriti Mandir, opposite Hira Mongi Hospital, Valji Laddha Road, Mulund West, Mumbai 400080**.
 - Visual direction: warm ivory, espresso, terracotta, expressive serif headings, clear buying actions and subtle motion.
 
 > Everything below was extracted from the live Instagram profile `@parrfums.vault`
@@ -23,7 +25,7 @@ The owner's direct instructions and supplied media supersede the earlier Instagr
 | Handle | `@parrfums.vault` |
 | Phone | **+91 85919 35352** |
 | WhatsApp | https://chat.whatsapp.com/LGYOr1IxhvgEX4HIp7J5Ts |
-| Location | Mumbai, India |
+| Location | **A-1 Smriti Mandir, opposite Hira Mongi Hospital, Valji Laddha Road, Mulund West, Mumbai 400080** |
 | Reach | Pan-India delivery |
 | Profile | 99 posts · ~797 followers · 48 following |
 

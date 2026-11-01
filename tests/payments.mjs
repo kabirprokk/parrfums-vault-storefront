@@ -121,6 +121,18 @@ assert.equal(
   (await handler(req({}, { origin: "https://evil.example.invalid" }))).status,
   403,
 );
+for (const origin of [
+  "https://parrfumsvault.in",
+  "https://www.parrfumsvault.in",
+  "https://parrfums-vault.vercel.app",
+]) {
+  const preflight = await handler(new Request("https://function.example.invalid", {
+    method: "OPTIONS",
+    headers: { origin, "access-control-request-method": "POST", "access-control-request-headers": "authorization, apikey, content-type, x-client-info" },
+  }));
+  assert.equal(preflight.status, 204, `${origin} payment preflight is accepted`);
+  assert.equal(preflight.headers.get("access-control-allow-origin"), origin);
+}
 assert.equal((await handler(req(verify, { authorization: "" }))).status, 401);
 authValid = false;
 assert.equal((await handler(req(verify))).status, 401);
