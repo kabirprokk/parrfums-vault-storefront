@@ -426,7 +426,7 @@ function landing() {
     <div class="landing-bg" role="img" aria-label="Parrfums Vault fragrance photography"></div>
     <div class="landing-scrim" aria-hidden="true"></div>
     <div class="landing-top"><span class="brand landing-brand" role="img" aria-label="Parrfums Vault">${brandMark}</span><div class="landing-top-actions"><button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to dark mode">${themeIcon()}</button></div></div>
-    <div class="landing-inner"><p class="landing-eyebrow">Parrfums Vault · Handmade in ${BRAND.city}</p><h1 class="landing-brand-name">A fragrance.<br>A signature.<br><em>An impression.</em></h1><p class="landing-sub">Discover distinctive fragrances, thoughtfully crafted in Mumbai.</p><div class="landing-actions"><a class="landing-enter landing-primary" href="#shop">Fragrances ${arrowSvg}</a><a class="landing-enter landing-secondary" href="#finder">Find Your Scent ${arrowSvg}</a></div></div>
+    <div class="landing-inner"><p class="landing-eyebrow">Parrfums Vault · Handmade in ${BRAND.city}</p><h1 class="landing-brand-name">A fragrance.<br>A signature.<br><em>An impression.</em></h1><p class="landing-sub">Discover distinctive fragrances, thoughtfully crafted in Mumbai.</p><div class="landing-actions"><button class="landing-enter landing-primary" type="button" data-navigate="#shop">Fragrances ${arrowSvg}</button><a class="landing-enter landing-secondary" href="#finder">Find Your Scent ${arrowSvg}</a></div></div>
     <div class="landing-foot"><span>Handmade in ${BRAND.city}</span><span>Unique · Timeless</span><span>Six signature scents</span><button class="landing-scroll" type="button" data-scroll-to="landing-story" aria-label="Discover the Parrfums Vault story below">${arrowDownSvg}</button></div>
   </section>${landingShowcase()}`;
 }
@@ -1205,6 +1205,8 @@ function flashAdded(btn) {
 }
 
 document.addEventListener('click', e => {
+  const navigate = e.target.closest('[data-navigate]');
+  if (navigate) { location.hash = navigate.dataset.navigate; return; }
   const signIn = e.target.closest('[data-auth-sign-in]');
   if (signIn) { void startGoogleSignIn(signIn.dataset.returnTo || '#account'); return; }
   if (e.target.closest('[data-auth-sign-out]')) {
