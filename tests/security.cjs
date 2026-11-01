@@ -5,6 +5,9 @@ const assert = require("node:assert/strict"),
 const root = path.resolve(__dirname, ".."),
   read = (f) => fs.readFileSync(path.join(root, f), "utf8");
 const config = JSON.parse(read("vercel.json"));
+assert.doesNotMatch(read("app.js"), /does not process payments/i,
+  "privacy copy must acknowledge the configured online payment provider");
+assert.match(read("app.js"), /Online payments are initiated through the configured payment provider/);
 const adminHeaders = Object.fromEntries(
   config.headers.find((r) => r.source === "/admin/:path*").headers.map((h) => [h.key, h.value]),
 );

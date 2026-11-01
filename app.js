@@ -884,7 +884,7 @@ function account() {
 function privacyNotice() {
   return `<section class="page-shell"><p class="eyebrow">Your information</p><h1 class="page-title">Privacy &amp; account data</h1>
     <p>This storefront uses Google sign-in through Supabase. If you create an account, Supabase stores your account identity. Details you choose to save include your name, phone number, wishlist, and delivery addresses. When you submit an order request while signed in, the store saves its items, server-calculated prices, delivery details, and pending/unpaid status so you can see its history.</p>
-    <p>This storefront does not collect your Google password or payment-card details and does not process payments. If you choose WhatsApp ordering, you send that message to WhatsApp yourself. The Supabase project is hosted in Mumbai, India.</p>
+    <p>This storefront does not collect your Google password or payment-card details. Online payments are initiated through the configured payment provider, which processes payment details; the store records payment status only after provider verification. If you choose WhatsApp ordering, you send that message to WhatsApp yourself. The Supabase project is hosted in Mumbai, India.</p>
     <p>To ask the store to correct or remove your account information, contact Parrfums Vault at <a href="tel:+918591935352">+91 85919 35352</a> or <a href="https://wa.me/918591935352" target="_blank" rel="noreferrer">WhatsApp</a>. Account deletion currently requires store-admin assistance.</p>
     <p class="sub">Owner review required before production: confirm this notice, data-retention period, and contact process with the client. This plain-language draft is not legal advice.</p>
     <a class="btn ghost" href="#account">Back to account</a>
