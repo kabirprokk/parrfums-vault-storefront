@@ -102,6 +102,20 @@ for (const match of [
   ).matchAll(/security definer/gi),
 ])
   assert.ok(match.index >= 0);
+const migrationFiles = fs.readdirSync(path.join(root, "supabase/migrations"))
+  .filter((file) => file.endsWith(".sql"))
+  .sort();
+const migrationBundle = read("supabase/ALL_MIGRATIONS.sql").replace(/\r\n/g, "\n");
+for (const file of migrationFiles) {
+  const marker = `-- ===== ${file} =====`;
+  const start = migrationBundle.indexOf(marker);
+  assert.notEqual(start, -1, `${file} must be included in the consolidated migration bundle`);
+  const bodyStart = start + marker.length;
+  const next = migrationBundle.indexOf("\n-- ===== ", bodyStart);
+  const bundledBody = migrationBundle.slice(bodyStart, next === -1 ? undefined : next).trim();
+  assert.equal(bundledBody, read(`supabase/migrations/${file}`).trim(),
+    `${file} bundle body must match its ordered source migration`);
+}
 console.log(
   "PASS: restrictive CSP and security.txt, vendored SDK integrity, frontend secret/dynamic-code checks, ignored secrets, legacy checkout removal and membership-based admin authorization.",
 );
