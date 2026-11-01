@@ -1484,7 +1484,8 @@ function startPresence() {
     });
     presenceChannel.subscribe(async (status) => {
       if (status === "SUBSCRIBED") {
-        try { await presenceChannel.track({ path: location.hash || location.pathname, at: new Date().toISOString() }); } catch {}
+        // Presence only needs an anonymous count; never broadcast private routes or timestamps.
+        try { await presenceChannel.track({}); } catch {}
       }
     });
   } catch (e) { console.warn("presence failed", e); }
