@@ -8,6 +8,9 @@ const config = JSON.parse(read("vercel.json"));
 assert.doesNotMatch(read("app.js"), /does not process payments/i,
   "privacy copy must acknowledge the configured online payment provider");
 assert.match(read("app.js"), /Online payments are initiated through the configured payment provider/);
+assert.doesNotMatch(read("README.md") + read("HANDOFF.md"), /unknown (?:inventory|stock).*block(?:s|ed).*checkout/i,
+  "operational docs must not claim unknown counts block checkout while unlimited availability is active");
+assert.match(read("README.md"), /unlimited-availability policy.*overselling is possible/i);
 const adminHeaders = Object.fromEntries(
   config.headers.find((r) => r.source === "/admin/:path*").headers.map((h) => [h.key, h.value]),
 );
