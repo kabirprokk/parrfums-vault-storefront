@@ -8,10 +8,15 @@ const { chromium } = require("playwright"),
   const errors = [],
     writes = [],
     server = [];
+  let failNextWrite = false;
   page.on("pageerror", (e) => errors.push(e.message));
   await require("./catalogue-fixture.cjs")(page);
   await page.route("**/rest/v1/rpc/admin_save_site_content", async (r) => {
     const body = r.request().postDataJSON();
+    if (failNextWrite) {
+      failNextWrite = false;
+      return r.fulfill({ status: 400, json: { message: "ADMIN_REQUIRED" } });
+    }
     writes.push(body);
     server.push({ key: body.p_key, kind: body.p_kind, content: body.p_content });
     return r.fulfill({ json: null });
@@ -66,6 +71,22 @@ const { chromium } = require("playwright"),
   assert.equal(writes.length, 1, "the change is published through the admin RPC");
   assert.equal(writes[0].p_kind, "html");
   assert.match(writes[0].p_content.html, /A headline the owner changed/);
+
+  /* a failed publish keeps the local edit and reports failure without a page error */
+  await enterEdit();
+  await page.locator(".intro-copy h1").click();
+  await page.evaluate(() => {
+    document.querySelector(".intro-copy h1").textContent = "A local-only edit";
+  });
+  failNextWrite = true;
+  await page.locator("#edit-save").click();
+  await page.waitForTimeout(100);
+  assert.match(await page.locator("#toast").innerText(), /saved on this device only/i);
+  assert.match(await page.locator(".intro-copy h1").innerText(), /A local-only edit/);
+  assert.deepEqual(errors, [], "a rejected publish does not cause a page error");
+  await page.evaluate(() => localStorage.removeItem("pv-site-content-v1"));
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForFunction(() => catalogueReady);
 
   /* the published copy is restored on the next visit */
   await page.reload({ waitUntil: "networkidle" });

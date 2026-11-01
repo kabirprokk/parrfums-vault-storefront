@@ -503,6 +503,7 @@
 
     let saved = 0;
     let failed = false;
+    let failureMessage = "";
     for (const change of changes) {
       try {
         await Commerce.rpc("admin_save_site_content", {
@@ -515,15 +516,15 @@
         saved += 1;
       } catch (error) {
         failed = true;
+        failureMessage = String(error?.message || "");
         break;
       }
     }
     writePending();
     if (failed) {
-      const message = String((error && error.message) || "");
       try {
         toast(
-          message.includes("ADMIN_REQUIRED")
+          failureMessage.includes("ADMIN_REQUIRED")
             ? "Saved on this device only — verify with your authenticator to publish for everyone."
             : "Saved on this device only. The live publish could not be completed.",
         );

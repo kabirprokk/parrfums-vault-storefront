@@ -3,6 +3,7 @@ const Commerce = (() => {
   const pending = new Map(),
     recentKey = "pv-recent-v1";
   let authIdentity = null;
+  let filtersOpen = false;
   const cache = {
     reviews: new Map(),
     orders: new Map(),
@@ -246,7 +247,7 @@ const Commerce = (() => {
   }
   function filters() {
     const f = state.filters || {};
-    return `<details class="commerce-filters-wrap" open><summary>Filters &amp; search</summary><div class="commerce-filters"><div class="field"><label for="catalogue-search">Search fragrance</label><input id="catalogue-search" type="search" value="${esc(state.query)}" maxlength="100" placeholder="Name, notes or family"></div><div class="field"><label for="filter-family">Fragrance family</label><select id="filter-family" class="select"><option value="">All families</option>${[
+    return `<details class="commerce-filters-wrap"${filtersOpen ? " open" : ""}><summary>Filters &amp; search</summary><div class="commerce-filters"><div class="field"><label for="catalogue-search">Search fragrance</label><input id="catalogue-search" type="search" value="${esc(state.query)}" maxlength="100" placeholder="Name, notes or family"></div><div class="field"><label for="filter-family">Fragrance family</label><select id="filter-family" class="select"><option value="">All families</option>${[
       ...new Set(products.map((p) => p.fragrance_family).filter(Boolean)),
     ]
       .sort()
@@ -445,6 +446,10 @@ const Commerce = (() => {
       analytics("search", { result_count: list(products).length });
     }
   });
+  document.addEventListener("toggle", (e) => {
+    if (e.target.matches?.(".commerce-filters-wrap"))
+      filtersOpen = e.target.open;
+  }, true);
   document.addEventListener("keydown", (e) => {
     if (e.target.id === "catalogue-search" && e.key === "Enter") {
       e.preventDefault();

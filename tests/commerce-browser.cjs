@@ -15,6 +15,9 @@ const base = process.env.PV_TEST_URL || "http://127.0.0.1:8000";
   await page.waitForFunction(() => catalogueReady);
   assert.equal(await page.locator(".footer-to-top").count(), 0,
     "the back-to-top button is removed from the storefront");
+  assert.equal(await page.locator(".commerce-filters-wrap").evaluate((el) => el.open), false,
+    "filters and search are collapsed by default");
+  await page.locator(".commerce-filters-wrap > summary").click();
   for (const query of ["", "a", "!!!", "हिंदी", "🌸", "<img src=x onerror=alert(1)>"]) {
     await page.locator("#catalogue-search").fill(query);
     await page.locator("[data-apply-filters]").click();
