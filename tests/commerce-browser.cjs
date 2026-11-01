@@ -47,7 +47,7 @@ const base = process.env.PV_TEST_URL || "http://127.0.0.1:8000";
   await page.locator("[data-reset]").click();
   for (const sort of ["price-asc", "price-desc", "newest", "popular"])
     await page.locator("#sort").selectOption(sort);
-  await page.locator(".product-card").first().locator("a").first().click();
+  await page.locator(".product-card").first().locator("[data-site-action]").first().click();
   assert.match(page.url(), /\/product\//);
   assert.equal(await page.locator(".detail h1").count(), 1);
   assert.equal(await page.locator("link[rel=canonical]").count(), 1);
@@ -115,7 +115,7 @@ const base = process.env.PV_TEST_URL || "http://127.0.0.1:8000";
   await page.evaluate(() => loadCatalogue());
   await page.goto(base + "/#missing-product-route", { waitUntil: "networkidle" });
   assert.equal(await page.locator(".not-found-page h1").innerText(), "This page isn’t here.");
-  assert.equal(await page.locator(".not-found-actions a").count(), 2);
+  assert.equal(await page.locator(".not-found-actions [data-site-action]").count(), 2);
   await page.goto(base + "/#product/angel-share", { waitUntil: "networkidle" });
   const a11y = async (label) => {
     const scan = await new AxeBuilder({ page })
@@ -361,7 +361,7 @@ const base = process.env.PV_TEST_URL || "http://127.0.0.1:8000";
   assert.match(await page.locator(".policy-page").textContent(), /\+91 85919 35352/);
   await page.evaluate(() => render("unknown-route"));
   assert.match(await page.locator("#app").textContent(), /This page isn’t here/);
-  assert.equal(await page.locator(".not-found-actions a").count(), 2);
+  assert.equal(await page.locator(".not-found-actions [data-site-action]").count(), 2);
   assert.deepEqual(errors, []);
   await browser.close();
   console.log(

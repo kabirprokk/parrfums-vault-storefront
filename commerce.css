@@ -272,6 +272,39 @@ select,
 textarea {
   touch-action: manipulation;
 }
+.site-action-link { cursor: pointer; }
+button.site-action-link:not(.btn):not(.text-link):not(.icon-btn):not(.contact-item):not(.landing-enter):not(.announcement-link):not(.landing-combos) {
+  appearance: none;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+}
+.site-header .main-nav .site-action-link { position: relative; transition: color .2s ease; }
+.site-header .main-nav .site-action-link:hover { color: var(--accent); }
+.site-header .main-nav .site-action-link::after { content: ""; position: absolute; left: 0; right: 100%; bottom: -8px; height: 1px; background: var(--accent); transition: right .2s ease; }
+.site-header .main-nav .site-action-link:hover::after,
+.site-header .main-nav .site-action-link:focus-visible::after,
+.site-header .main-nav .site-action-link[aria-current="page"]::after { right: 0; }
+.footer-col .footer-links .site-action-link { display: flex; align-items: center; gap: 9px; color: var(--ink); text-align: left; }
+.footer-col .footer-links .site-action-link:hover { color: var(--accent); }
+.product-image .site-action-link,
+.product-meta .site-action-link,
+.combo-poster.site-action-link,
+.campaign-grid .site-action-link,
+.landing-gallery .site-action-link,
+.landing-signoff-link.site-action-link { display: block; width: 100%; }
+.landing-enter.site-action-link { background: rgba(253,249,244,.08); border: 1px solid rgba(253,249,244,.32); color: #fdf9f4; }
+.landing-enter.landing-primary.site-action-link { background: #e0b083; border-color: #e0b083; color: #241d1a; }
+.landing-enter.landing-secondary.site-action-link { background: rgba(253,249,244,.08); }
+.announcement-link.site-action-link { appearance: none; border: 0; padding: 0; background: transparent; color: #f4d6a6; font: inherit; }
+.contact-item.site-action-link { width: 100%; border: 0; color: var(--ink); text-align: left; font: inherit; cursor: pointer; }
+.collection-card > .site-action-link { display: block; overflow: hidden; border: 1px solid var(--line); border-radius: 4px; background: var(--paper); transition: transform .25s ease, box-shadow .25s ease; }
+.collection-card > .site-action-link:hover { transform: translateY(-3px); box-shadow: var(--shadow-soft); }
+.main-nav .site-action-link, .footer-links .site-action-link { position: relative; transition: color .2s ease; }
+.footer-links .site-action-link:hover { color: var(--accent); }
 :focus-visible {
   outline: 2px solid var(--ink, #222);
   outline-offset: 4px;
@@ -561,7 +594,7 @@ button.text-link {
   .admin-console-brand span { font-size: 16px; }
   .admin-console-actions { grid-column: 2; grid-row: 1 / span 2; gap: 6px; }
   .admin-console-actions .btn { padding: 7px 8px; }
-  .admin-console-actions > a[href="/"] { display: none; }
+   .admin-console-actions > [data-site-action="/"] { display: none; }
 }
 .admin-page .inventory-help{margin:18px 0 24px;padding:18px 20px;border:1px solid var(--line);border-left:3px solid var(--accent);background:var(--cream);color:var(--ink);line-height:1.65}
 .admin-page .inventory-help p{margin:0 0 10px}

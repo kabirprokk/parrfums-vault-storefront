@@ -125,7 +125,7 @@ const { chromium } = require("playwright"),
 
   /* a double click behaves exactly like it does for a shopper */
   await enterEdit();
-  await page.locator(".intro-actions a.btn").first().dblclick();
+  await page.locator(".intro-actions button.btn").first().dblclick();
   await page.waitForFunction(() => location.hash === "#shop");
   assert.equal(new URL(page.url()).hash, "#shop", "double click follows the link");
 

@@ -21,10 +21,10 @@
     "SCRIPT", "STYLE", "INPUT", "TEXTAREA", "SELECT", "OPTION", "SVG", "IMG",
     "VIDEO", "CANVAS", "IFRAME", "PATH",
   ]);
-  const ANCHOR_ATTRS = ["data-pv-anchor", "data-product", "data-id", "data-gallery", "data-wish", "data-add", "href"];
+  const ANCHOR_ATTRS = ["data-pv-anchor", "data-product", "data-id", "data-gallery", "data-wish", "data-add", "href", "data-site-action"];
   const SAFE_HTML_TAGS = new Set([
     "A", "ABBR", "B", "BLOCKQUOTE", "BR", "CITE", "CODE", "DEL", "DIV",
-    "EM", "I", "INS", "LI", "MARK", "OL", "P", "Q", "S", "SMALL",
+    "BUTTON", "EM", "I", "INS", "LI", "MARK", "OL", "P", "Q", "S", "SMALL",
     "SPAN", "STRONG", "SUB", "SUP", "U", "UL",
   ]);
   const SAFE_SVG_TAGS = new Set(["svg", "g", "path", "circle", "rect", "line", "polyline", "polygon"]);
@@ -297,6 +297,9 @@
       else if (tag === "A" && attr === "href") value = safeHref(attribute.value);
       else if (tag === "A" && attr === "target" && ["_blank", "_self"].includes(attribute.value)) value = attribute.value;
       else if (tag === "A" && attr === "rel") value = "noopener noreferrer";
+      else if (tag === "BUTTON" && attr === "type" && attribute.value === "button") value = "button";
+      else if (tag === "BUTTON" && attr === "data-site-action") value = safeHref(attribute.value);
+      else if (tag === "BUTTON" && attr === "data-site-target" && attribute.value === "_blank") value = "_blank";
       if (value !== null) clean.setAttribute(attr, value);
     }
     if (!isSvg && tag === "A" && clean.getAttribute("target") === "_blank") clean.setAttribute("rel", "noopener noreferrer");

@@ -1104,11 +1104,72 @@ let currentPath = null;
 function setActiveNav(path) {
   const map = { shop: '#shop', combos: '#combos', collections: '#collections', finder: '#finder', about: '#about', offers: '#combos', account: '#account' };
   const active = path.startsWith('product/') ? '#shop' : (map[path] || (path === 'home' ? '#home' : ''));
-  document.querySelectorAll('.main-nav a').forEach(a => {
-    const href = a.getAttribute('href');
+  document.querySelectorAll('.main-nav [data-site-action]').forEach(a => {
+    const href = a.dataset.siteAction;
     if (active && href === active) a.setAttribute('aria-current', 'page');
     else a.removeAttribute('aria-current');
   });
+}
+
+function convertSiteLinks(root = document) {
+  root.querySelectorAll?.('a[href]').forEach((link) => {
+    const action = document.createElement('button');
+    action.type = 'button';
+    action.className = `${link.className} site-action-link`.trim();
+    action.dataset.siteAction = link.getAttribute('href');
+    if (link.target) action.dataset.siteTarget = link.target;
+    if (link.rel) action.dataset.siteRel = link.rel;
+    for (const attribute of link.attributes) {
+      if (['href', 'target', 'rel', 'class'].includes(attribute.name)) continue;
+      action.setAttribute(attribute.name, attribute.value);
+    }
+    action.setAttribute('role', 'link');
+    action.innerHTML = link.innerHTML;
+    link.replaceWith(action);
+  });
+}
+
+function activateSiteLink(action) {
+  const destination = action.dataset.siteAction || '';
+  if (destination.startsWith('#')) {
+    const route = destination.slice(1);
+    if (route === 'top' || route === 'app') {
+      (route === 'top' ? document.documentElement : document.getElementById('app'))
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    if (route.startsWith('product/')) {
+      history.pushState(null, '', '/' + route);
+      render(route);
+      return;
+    }
+    if (ROUTES.has(route) || route.startsWith('orders/')) {
+      if (location.hash === destination) render(route);
+      else location.hash = destination;
+      return;
+    }
+    const target = document.getElementById(route);
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+  let url;
+  try { url = new URL(destination, location.href); } catch { return; }
+  if (url.origin === location.origin && url.pathname.startsWith('/product/')) {
+    const route = 'product/' + decodeURIComponent(url.pathname.slice('/product/'.length));
+    history.pushState(null, '', url.pathname);
+    render(route);
+    return;
+  }
+  if (url.origin === location.origin && url.pathname === '/admin') {
+    if (location.pathname !== '/admin') history.pushState(null, '', '/admin');
+    render('admin');
+    return;
+  }
+  if (action.dataset.siteTarget === '_blank') {
+    window.open(url.href, '_blank', 'noopener,noreferrer');
+    return;
+  }
+  location.assign(url.href);
 }
 
 const ROUTES = new Set(['landing', 'home', 'shop', 'combos', 'collections', 'finder', 'about', 'offers', 'cart', 'checkout', 'checkout-review', 'wishlist', 'account', 'privacy', 'terms', 'shipping', 'returns', 'cancellation', 'contact', 'faq', 'tracking', 'admin']);
@@ -1160,6 +1221,7 @@ function render(route, opts = {}) {
   app.innerHTML = path === 'admin'
     ? `<div class="admin-console"><header class="admin-console-header"><a class="admin-console-brand" href="/" aria-label="Parrfums Vault storefront"><img src="assets/parrfums-vault-logo.png" width="42" height="42" alt=""><span>Parrfums <i>Vault</i></span></a><p class="admin-console-label">Secure administration</p><div class="admin-console-actions"><button class="icon-btn" type="button" data-theme-toggle aria-label="Switch theme"></button>${authUser ? '<button class="btn small" type="button" data-admin-menu>Menu</button><button class="btn small" type="button" data-auth-sign-out>Sign out</button>' : '<a class="btn small" href="/">Storefront</a>'}</div></header>${view}<div class="admin-console-footer">Private administrator workspace · Access is verified by Supabase for protected operations.</div></div>`
     : view;
+  convertSiteLinks(app);
   document.body.classList.toggle('is-product', path.startsWith('product/'));
   if (routeChanged && currentPath && !matchMedia('(prefers-reduced-motion: reduce)').matches && typeof app.animate === 'function') {
     app.animate([{ opacity: 0.94, transform: 'translateY(4px)' }, { opacity: 1, transform: 'translateY(0)' }], {
@@ -1346,12 +1408,25 @@ document.addEventListener('click', e => {
   const closeSearch = e.target.closest('.close-search');
   if (closeSearch) { closeDrawer(); return; }
 
-  if (e.target.closest('.site-header a')) {
+  if (e.target.closest('.site-header a, .site-header [data-site-action]')) {
     document.querySelector('.main-nav')?.classList.remove('open');
     document.querySelector('.menu-toggle')?.setAttribute('aria-expanded', 'false');
     document.querySelector('.menu-toggle')?.setAttribute('aria-label', 'Open menu');
   }
 });
+
+document.addEventListener('click', (event) => {
+  if (event.defaultPrevented) return;
+  const action = event.target.closest('[data-site-action]');
+  if (action) activateSiteLink(action);
+});
+
+convertSiteLinks(document.body);
+new MutationObserver((records) => {
+  for (const record of records)
+    for (const node of record.addedNodes)
+      if (node.nodeType === Node.ELEMENT_NODE) convertSiteLinks(node);
+}).observe(document.body, { childList: true, subtree: true });
 
 document.addEventListener('change', e => {
   if (e.target.id === 'order-consent') {
@@ -1401,7 +1476,7 @@ function closeDrawer() {
 function trapFocus(e) {
   if (e.key === 'Escape') { closeDrawer(); return; }
   if (e.key !== 'Tab') return;
-  const focusables = drawer.querySelectorAll('a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])');
+  const focusables = drawer.querySelectorAll('a[href], [data-site-action], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])');
   if (!focusables.length) return;
   const first = focusables[0];
   const last = focusables[focusables.length - 1];
@@ -1553,9 +1628,9 @@ startLiveStorefrontUpdates();
     else if(target.closest('[data-wish],.heart'))type='save';
     else if(target.closest('[data-add],.quick-add'))type='bag';
     else if(target.closest('.theme-toggle,[data-theme-toggle]'))type='theme';
-    else if(target.closest('a[href*="wa.me"],a[href*="whatsapp"],.wa-btn'))type='chat';
-    else if(target.closest('a[href] img,.gallery-main img,.detail-image img'))type='view';
-    else if(target.closest('a[href],button,[role="button"],summary'))type='link';
+    else if(target.closest('[data-site-action*="wa.me" i],[data-site-action*="whatsapp" i],.wa-btn'))type='chat';
+    else if(target.closest('[data-site-action] img,.gallery-main img,.detail-image img'))type='view';
+    else if(target.closest('[data-site-action],button,[role="button"],summary'))type='link';
     cursor.dataset.state=type;
   }
   document.addEventListener('pointermove',e=>{cursor.style.left=e.clientX+'px';cursor.style.top=e.clientY+'px';if(!visible){visible=true;cursor.classList.add('is-visible');}update(e.target);},{passive:true});
