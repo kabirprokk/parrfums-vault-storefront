@@ -90,8 +90,21 @@ Object.assign(
             if(model.status)q=q.eq('status',model.status);
             if(model.filter){const term=model.filter.replace(/[^a-zA-Z0-9@+ ._-]/g,'').slice(0,120);if(/^[0-9a-f-]{36}$/i.test(term))q=q.eq('id',term);else if(term)q=q.or(['recipient_name','email','phone','order_number'].map(column=>column+'.ilike.%'+term+'%').join(','));}
           }
-          const { data, error } = await q;
+          let { data, error } = await q;
           if (error) throw error;
+          if (tab === "variants") {
+            const { data: costs, error: costError } = await supabaseClient
+              .from("product_variant_costs")
+              .select("product_id,size_ml,cost_inr");
+            if (costError) throw costError;
+            const costByVariant = new Map(
+              costs.map((cost) => [`${cost.product_id}:${cost.size_ml}`, cost.cost_inr]),
+            );
+            data = data.map((variant) => ({
+              ...variant,
+              cost_inr: costByVariant.get(`${variant.product_id}:${variant.size_ml}`) ?? "",
+            }));
+          }
           if(ticket===generation)model.rows = data;
           if (tab === "inventory") {
             const { data: settings, error: settingsError } = await supabaseClient
@@ -142,8 +155,11 @@ Object.assign(
             "Gallery paths (one per line)",
             e.gallery_paths,
           ) +
-          area("description", "Description", e.description) +
-          ["top_notes", "heart_notes", "base_notes", "occasion", "season"]
+           area("description", "Description", e.description) +
+           (!e.id
+             ? `<fieldset class="full-field"><legend>First size and pricing</legend><p class="sub">A new product needs a size, selling price and stock count before it can be sold. Cost is private and only visible to administrators.</p>${field("size_ml", "First size (ml)", e.size_ml || 30, "number", 'required min="1" max="1000"')}${field("price_inr", "Selling price (₹)", e.price_inr, "number", 'required min="1"')}${field("cost_inr", "Your cost (₹, optional)", e.cost_inr, "number", 'min="0"')}${field("initial_quantity", "Initial bottles in stock", e.initial_quantity ?? 0, "number", 'required min="0" max="1000000"')}</fieldset>`
+             : "") +
+           ["top_notes", "heart_notes", "base_notes", "occasion", "season"]
             .map((n) =>
               area(
                 n,
@@ -188,6 +204,13 @@ Object.assign(
             e.price_inr,
             "number",
             'required min="1"',
+          ) +
+          field(
+            "cost_inr",
+            "Your cost (₹, private)",
+            e.cost_inr,
+            "number",
+            'min="0" step="1"',
           ) +
           field(
             "low_stock_threshold",
@@ -455,6 +478,7 @@ Object.assign(
                   "size_ml",
                   "sku",
                   "price_inr",
+                  "cost_inr",
                   "available_quantity",
                   "low_stock_threshold",
                   "active",
@@ -528,7 +552,9 @@ Object.assign(
           return;
         }
         if (e.target.closest("[data-admin-new]")) {
-          model.editing = {};
+          model.editing = model.tab === "products"
+            ? { gender: "Unisex", active: true, size_ml: 30 }
+            : {};
           render("admin", { keepScroll: true });
           return;
         }
@@ -659,8 +685,31 @@ Object.assign(
             .filter(Boolean);
       let customerStatusEmailSent = null;
       try {
-        if (model.tab === "products")
-          await Commerce.rpc("admin_save_product", { p_data: data });
+        if (model.tab === "products") {
+          const creating = !model.editing.id;
+          const productId = await Commerce.rpc("admin_save_product", { p_data: data });
+          if (creating) {
+            const size = Number(data.size_ml);
+            await Commerce.rpc("admin_save_variant", {
+              p_data: {
+                product_id: productId,
+                size_ml: size,
+                sku: `PV-${productId.toUpperCase()}-${size}`,
+                price_inr: Number(data.price_inr),
+                cost_inr: data.cost_inr,
+                active: data.active,
+                low_stock_threshold: 0,
+              },
+            });
+            await Commerce.rpc("admin_adjust_inventory", {
+              p_product_id: productId,
+              p_size_ml: size,
+              p_quantity: Number(data.initial_quantity),
+              p_request_key: crypto.randomUUID(),
+              p_note: "Initial stock for new product",
+            });
+          }
+        }
         if (model.tab === "variants")
           await Commerce.rpc("admin_save_variant", { p_data: data });
         if (model.tab === "inventory") {

@@ -31,6 +31,9 @@ const { chromium } = require("playwright"),
         active: true,
       },
     ],
+    product_variant_costs: [
+      { product_id: "angel-share", size_ml: 50, cost_inr: 300 },
+    ],
     offers: [],
     coupons: [],
     customer_orders: [],
@@ -43,7 +46,10 @@ const { chromium } = require("playwright"),
       return r.fulfill({
         json: { orders: 0, paid_revenue_inr: 0, low_stock: 1 },
       });
-    writes.push({ name, args: r.request().postDataJSON() });
+    const args = r.request().postDataJSON();
+    writes.push({ name, args });
+    if (name === "admin_save_product")
+      return r.fulfill({ json: args.p_data.id || "test-fragrance" });
     return r.fulfill({ json: null });
   });
   await page.goto(
@@ -156,6 +162,40 @@ const { chromium } = require("playwright"),
   await page.waitForFunction(() => document.querySelector('[data-admin-tab="orders"][aria-pressed="true"]'));
   assert.equal(await page.locator("#admin-search").inputValue(), deepLinkedOrder,
     "a store email deep link opens the exact order filter after admin authorization");
+  await page.goto(
+    (process.env.PV_TEST_URL || "http://127.0.0.1:8000") + "/admin",
+    { waitUntil: "networkidle" },
+  );
+  await page.evaluate(() => {
+    authUser = { id: "00000000-0000-4000-8000-000000000001" };
+    authReady = true;
+    Commerce.cache.admin = true;
+    Commerce.cache.adminChecked = true;
+    render("admin");
+  });
+  await page.locator("[data-admin-details]").click();
+  await page.locator("[data-admin-tab=products]").click();
+  await page.locator("[data-admin-new]").click();
+  assert.equal(await page.locator("#admin-gender").inputValue(), "Unisex",
+    "new product gets a valid default gender accepted by the database constraint");
+  await page.locator("#admin-id").fill("test-fragrance");
+  await page.locator("#admin-name").fill("Payment Test Fragrance");
+  await page.locator("#admin-image_path").fill("assets/media/angel-share-1080.webp");
+  await page.locator("#admin-price_inr").fill("1");
+  await page.locator("#admin-cost_inr").fill("1");
+  await page.locator("#admin-initial_quantity").fill("5");
+  await page.locator("#admin-editor [type=submit]").click();
+  await page.waitForFunction(() => !document.querySelector("#admin-editor"));
+  const createdProductWrites = writes.slice(-3);
+  assert.deepEqual(createdProductWrites.map(({ name }) => name), [
+    "admin_save_product",
+    "admin_save_variant",
+    "admin_adjust_inventory",
+  ]);
+  assert.equal(createdProductWrites[0].args.p_data.gender, "Unisex");
+  assert.equal(createdProductWrites[1].args.p_data.price_inr, 1);
+  assert.equal(createdProductWrites[1].args.p_data.cost_inr, "1");
+  assert.equal(createdProductWrites[2].args.p_quantity, 5);
   assert.deepEqual(errors, []);
   await browser.close();
   console.log(

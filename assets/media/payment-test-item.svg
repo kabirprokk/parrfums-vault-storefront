@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1100" viewBox="0 0 900 1100" role="img" aria-labelledby="title desc">
+  <title id="title">Payment test item</title>
+  <desc id="desc">A simple amber fragrance bottle on a pale background.</desc>
+  <rect width="900" height="1100" fill="#f6f4ee"/>
+  <circle cx="450" cy="470" r="290" fill="#e9e3d8"/>
+  <rect x="365" y="205" width="170" height="110" rx="14" fill="#26372e"/>
+  <rect x="335" y="300" width="230" height="535" rx="54" fill="#a86d43" stroke="#68432f" stroke-width="10"/>
+  <rect x="358" y="390" width="184" height="280" rx="8" fill="#f6f4ee"/>
+  <text x="450" y="485" text-anchor="middle" fill="#26372e" font-family="Arial,sans-serif" font-size="27" letter-spacing="4">PARRFUMS</text>
+  <text x="450" y="535" text-anchor="middle" fill="#26372e" font-family="Arial,sans-serif" font-size="31" font-weight="700">TEST ITEM</text>
+  <text x="450" y="590" text-anchor="middle" fill="#69716a" font-family="Arial,sans-serif" font-size="22">PAYMENT CHECK</text>
+  <text x="450" y="955" text-anchor="middle" fill="#26372e" font-family="Arial,sans-serif" font-size="34" letter-spacing="3">TEST PRODUCT · ₹1</text>
+</svg>
