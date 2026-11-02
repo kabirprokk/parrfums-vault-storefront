@@ -95,6 +95,18 @@ assert.ok(adminAuth.includes("public.admin_users"));
 assert.doesNotMatch(adminAuth, /auth\.jwt\(\).*aal/i);
 assert.ok(read("admin.js").includes("signInWithOtp"));
 assert.ok(read("admin.js").includes('verifyOtp({ email: model.otpEmail'));
+const repricingMigration = read(
+  "supabase/migrations/20261102150000_reprice_pending_checkouts.sql",
+);
+assert.match(repricingMigration, /QUOTE_REQUIRED/,
+  "checkout commits must carry the server quote hash");
+assert.match(repricingMigration, /pricing_hash=p_quote_hash/,
+  "pending orders are reused only for the same quoted price");
+assert.match(read("commerce-views.js"), /p_quote_hash: checkoutState\.quote\.quote_hash/,
+  "the storefront must pass the server quote hash at checkout");
+for (const file of ["app.js", "commerce-views.js"])
+  assert.doesNotMatch(read(file), /payment-test-item/i,
+    file + " must not expose the retired payment-test listing");
 for (const file of ["admin.js", "commerce.js", "edit-mode.js"])
   assert.doesNotMatch(read(file), /MFA|authenticator/i,
     file + " must not direct authorized admins to an MFA flow that is not configured");

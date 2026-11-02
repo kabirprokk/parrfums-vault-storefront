@@ -43,7 +43,6 @@ Object.assign(
     function checkout() {
       if (!state.cart.length)
         return `<section class="page-shell"><h1 class="page-title">Your bag is empty.</h1><p class="sub">Choose a fragrance before checkout.</p><a class="btn" href="#shop">Explore fragrance</a></section>`;
-      const freeTestItemShipping = state.cart.every(i => i.id === "payment-test-item" && !i.combo);
       Commerce.analytics("begin_checkout");
       if (!authUser)
       return `<section class="page-shell"><p class="eyebrow">Choose how to continue</p><h1 class="page-title">Your next signature.</h1><p class="page-intro">Sign in to check availability, apply a coupon and save a persistent order. Prefer to speak to us? Guest enquiries remain available on WhatsApp.</p><button class="btn primary" data-auth-sign-in>Sign in for checkout</button>${waLink(orderMessage(state.cart.reduce((n, i) => n + i.price * i.qty, 0)), "Enquire on WhatsApp", "btn ghost wa-btn")}<p class="sub">A WhatsApp enquiry does not automatically create an order or reserve stock.</p><a class="text-link" href="#cart">Return to bag</a></section>`;
@@ -97,7 +96,7 @@ Object.assign(
           6,
         ],
       ];
-      return `<section class="page-shell"><p class="eyebrow">Almost yours</p><h1 class="page-title">Checkout</h1><p class="page-intro">Review the server-confirmed price, availability and delivery total before placing your order. Payment is verified separately.</p><div class="checkout"><form id="checkout-form" novalidate><div class="form-grid">${fields.map(([id, label, value, auto, max]) => `<div class="field ${["email", "phone", "address", "address2"].includes(id) ? "full-field" : ""}"><label for="${id}">${label}</label><input id="${id}" name="${id}" value="${esc(value)}" maxlength="${max}" autocomplete="${auto}" type="${id === "email" ? "email" : id === "phone" ? "tel" : "text"}" ${["last", "address2"].includes(id) ? "" : "required"} ${["phone", "pin"].includes(id) ? 'inputmode="numeric"' : ""} aria-describedby="err-${id}"><span id="err-${id}" class="field-error"></span></div>`).join("")}</div><div class="field coupon-field"><label for="coupon">Coupon (optional)</label><input id="coupon" name="coupon" maxlength="40" autocomplete="off" value="${esc(checkoutState.payload?.p_coupon || "")}"></div><label class="order-consent"><input type="checkbox" id="order-consent"> I agree to save these delivery details and this order to my account. <a href="#privacy">Privacy information</a>.</label><div id="form-error" class="error" role="alert">${esc(checkoutState.error)}</div><p class="sub" data-checkout-notice role="status">${esc(checkoutState.notice)}</p><div class="checkout-actions"><button class="btn ghost" type="button" data-quote-checkout ${!catalogueReady ? "disabled" : ""}>Review availability & total</button><button class="btn primary" type="submit" disabled ${!catalogueReady ? "disabled" : ""}>Review order</button></div>${!catalogueReady ? '<p class="error">Online checkout is temporarily unavailable. Your bag is saved; you can contact the store.</p>' : ""}<p class="sub">${freeTestItemShipping ? "Free shipping applies to the Payment Test Item only." : "Shipping is extra on other products: Mumbai \u20b9100 \u00b7 Outside Mumbai \u20b9120."}</p></form><aside class="summary" data-server-summary>${summary()}</aside></div></section>`;
+      return `<section class="page-shell"><p class="eyebrow">Almost yours</p><h1 class="page-title">Checkout</h1><p class="page-intro">Review the server-confirmed price, availability and delivery total before placing your order. Payment is verified separately.</p><div class="checkout"><form id="checkout-form" novalidate><div class="form-grid">${fields.map(([id, label, value, auto, max]) => `<div class="field ${["email", "phone", "address", "address2"].includes(id) ? "full-field" : ""}"><label for="${id}">${label}</label><input id="${id}" name="${id}" value="${esc(value)}" maxlength="${max}" autocomplete="${auto}" type="${id === "email" ? "email" : id === "phone" ? "tel" : "text"}" ${["last", "address2"].includes(id) ? "" : "required"} ${["phone", "pin"].includes(id) ? 'inputmode="numeric"' : ""} aria-describedby="err-${id}"><span id="err-${id}" class="field-error"></span></div>`).join("")}</div><div class="field coupon-field"><label for="coupon">Coupon (optional)</label><input id="coupon" name="coupon" maxlength="40" autocomplete="off" value="${esc(checkoutState.payload?.p_coupon || "")}"></div><label class="order-consent"><input type="checkbox" id="order-consent"> I agree to save these delivery details and this order to my account. <a href="#privacy">Privacy information</a>.</label><div id="form-error" class="error" role="alert">${esc(checkoutState.error)}</div><p class="sub" data-checkout-notice role="status">${esc(checkoutState.notice)}</p><div class="checkout-actions"><button class="btn ghost" type="button" data-quote-checkout ${!catalogueReady ? "disabled" : ""}>Review availability & total</button><button class="btn primary" type="submit" disabled ${!catalogueReady ? "disabled" : ""}>Review order</button></div>${!catalogueReady ? '<p class="error">Online checkout is temporarily unavailable. Your bag is saved; you can contact the store.</p>' : ""}<p class="sub">Shipping is extra: Mumbai &#8377;100 &middot; Outside Mumbai &#8377;120.</p></form><aside class="summary" data-server-summary>${summary()}</aside></div></section>`;
     }
     function summary() {
       const q = checkoutState.quote;
@@ -219,6 +218,18 @@ Object.assign(
       }
       return id;
     }
+    async function clearRequestKey(p) {
+      const bytes = await crypto.subtle.digest(
+        "SHA-256",
+        new TextEncoder().encode(authUser.id + JSON.stringify(p)),
+      );
+      const hash = [...new Uint8Array(bytes)]
+        .map((n) => n.toString(16).padStart(2, "0"))
+        .join("");
+      try {
+        localStorage.removeItem("pv-checkout-request:" + hash);
+      } catch {}
+    }
     async function submit(form) {
       if (checkoutState.busy) return;
       if (!authUser) {
@@ -309,7 +320,10 @@ Object.assign(
         else notice(Commerce.safeError(error), true);
         if (String(error.message).includes("PRICING_CHANGED")) {
           checkoutState.quote = null;
-          document.querySelector("[data-server-summary]").innerHTML = summary();
+          await clearRequestKey(p);
+          checkoutState.error = "";
+          checkoutState.notice = "The price or shipping changed. Please review the updated total.";
+          location.hash = "#checkout";
         }
       } finally {
         busy(false);

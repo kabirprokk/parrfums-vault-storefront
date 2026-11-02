@@ -23,7 +23,10 @@ const user='00000000-0000-4000-8000-000000000001',other='00000000-0000-4000-8000
  await role(admin);assert.equal((await db.query("select id from public.products where id='angel-share'")).rows.length,1);assert.equal((await db.query("select product_id from public.product_prices where product_id='angel-share'")).rows.length,3);assert.equal((await db.query("select id from public.offers where id='festive-four'")).rows.length,1);
  await root();await db.exec("update public.products set active=true where id='angel-share';update public.offers set active=true where id='festive-four'");await role(user);
  const item={kind:'product',id:'angel-share',size_ml:50,quantity:1};
- const checkout=async(items=[item],key=crypto.randomUUID(),address=delivery,coupon=null)=>(await db.query('select public.checkout_order($1,$2,$3,$4) id',[JSON.stringify(items),JSON.stringify(address),key,coupon])).rows[0].id;
+  const checkout=async(items=[item],key=crypto.randomUUID(),address=delivery,coupon=null,quoteHash=null)=>{
+   if(!quoteHash)quoteHash=(await db.query('select public.quote_checkout($1,$2,$3) q',[JSON.stringify(items),JSON.stringify(address),coupon])).rows[0].q.quote_hash;
+   return (await db.query('select public.checkout_order($1,$2,$3,$4,$5) id',[JSON.stringify(items),JSON.stringify(address),key,coupon,quoteHash])).rows[0].id;
+  };
  await role(user);
  await assert.rejects(checkout(),/STOCK_NOT_CONFIGURED/);
  await assert.rejects(db.query('select public.admin_adjust_inventory($1,50,5,$2)',[item.id,crypto.randomUUID()]),/ADMIN_REQUIRED/);
@@ -94,8 +97,9 @@ const user='00000000-0000-4000-8000-000000000001',other='00000000-0000-4000-8000
  await root();await db.exec("update public.product_prices set active=false where product_id='angel-share' and size_ml=30");await role(user);await assert.rejects(checkout([small],crypto.randomUUID(),freshAddress),/PRODUCT_UNAVAILABLE/);
  await root();await db.exec("update public.product_prices set active=true,available_quantity=1 where product_id='angel-share' and size_ml=30");await role(user);
  await assert.rejects(checkout([small,small],crypto.randomUUID(),freshAddress),/INSUFFICIENT_STOCK/);
- const expiryOrder=await checkout([small],crypto.randomUUID(),freshAddress);
- assert.equal(await checkout([small],crypto.randomUUID(),freshAddress),expiryOrder,'Different request keys across tabs still deduplicate an identical pending order');
+  const expiryQuote=(await db.query('select public.quote_checkout($1,$2,null) q',[JSON.stringify([small]),JSON.stringify(freshAddress)])).rows[0].q.quote_hash;
+  const expiryOrder=await checkout([small],crypto.randomUUID(),freshAddress,null,expiryQuote);
+  assert.equal(await checkout([small],crypto.randomUUID(),freshAddress,null,expiryQuote),expiryOrder,'Different request keys across tabs still deduplicate an identical pending order');
  await root();await db.query("update public.customer_orders set reservation_expires_at=now()-interval '1 minute' where id=$1",[expiryOrder]);await role(null,true);await db.exec('select public.expire_order_reservations();select public.expire_order_reservations()');
  await root();assert.equal((await db.query("select available_quantity from public.product_prices where product_id='angel-share' and size_ml=30")).rows[0].available_quantity,1,'Expiry releases inventory exactly once');
  assert.equal((await db.query('select status from public.customer_orders where id=$1',[expiryOrder])).rows[0].status,'cancelled');

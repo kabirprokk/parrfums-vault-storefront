@@ -69,17 +69,6 @@ fs.mkdirSync(artifacts,{recursive:true});
  await page.goto(base+'/#cart',{waitUntil:'networkidle'});
   assert.equal(await page.locator('#delivery-zone').count(),0,'shipping zone is no longer manually selected in the bag');
   assert.match(await page.locator('.summary').textContent(),/calculated from your delivery address/i);
-  const testShippingSummary=await page.evaluate(()=>{
-    state.cart=[{id:'payment-test-item',name:'Payment Test Item',size:30,qty:1,price:1,combo:false}];
-    return cartSummary(1);
-  });
-  assert.match(testShippingSummary,/Shipping<\/span><span>₹0/,'test-only cart displays free shipping');
-  assert.match(testShippingSummary,/<span>Total<\/span><span>₹1/,'test-only total remains ₹1');
-  const mixedShippingSummary=await page.evaluate(()=>{
-    state.cart.push({id:'angel-share',name:'Angel Share',size:30,qty:1,price:400,combo:false});
-    return cartSummary(401);
-  });
-  assert.match(mixedShippingSummary,/₹100–₹120/,'mixed cart still shows normal shipping');
  assert.ok(!/complimentary/i.test(await page.locator('#app').textContent()));
  let whatsapp=await page.locator('.summary [data-site-action].wa-btn').getAttribute('data-site-action');
   assert.match(decodeURIComponent(whatsapp),/Shipping extra: Mumbai ₹100 \/ outside Mumbai ₹120/);

@@ -770,23 +770,18 @@ function notFound() {
 }
 
 function cartSummary(total) {
-  const freeTestItemShipping = state.cart.length > 0 && state.cart.every(i => i.id === 'payment-test-item' && !i.combo);
-  const shippingCopy = freeTestItemShipping
-    ? 'Free shipping applies to the Payment Test Item only.'
-    : 'Shipping extra on other products · Mumbai ₹100 · Outside Mumbai ₹120';
   return `<aside class="summary"><h2>Summary</h2>
     <div class="sum-line"><span>Subtotal</span><span>${money(total)}</span></div>
-    <div class="sum-line"><span>Shipping</span><span>${freeTestItemShipping ? money(0) : '₹100–₹120'}</span></div>
-    <p class="sub">${shippingCopy}${freeTestItemShipping ? '' : ' · Calculated from your delivery address.'}</p>
-    <div class="sum-line total"><span>${freeTestItemShipping ? 'Total' : 'Total before address'}</span><span>${freeTestItemShipping ? money(total) : `${money(total)} + shipping`}</span></div>
+    <div class="sum-line"><span>Shipping</span><span>₹100–₹120</span></div>
+    <p class="sub">Shipping is calculated from your delivery address.</p>
+    <div class="sum-line total"><span>Total before address</span><span>${money(total)} + shipping</span></div>
     ${authUser ? '<a class="btn primary full" href="#checkout">Continue to checkout</a>' : '<button class="btn primary full" type="button" data-auth-sign-in>Sign in to checkout</button>'}
     ${waLink(orderMessage(total), 'Send this order on WhatsApp', 'btn ghost full wa-btn')}
   </aside>`;
 }
 
 function orderMessage(total, ship = null) {
-  const freeTestItemShipping = state.cart.length > 0 && state.cart.every(i => i.id === 'payment-test-item' && !i.combo);
-  return `Hi Parrfums Vault! I'd like to order:\n${state.cart.map(i => `• ${i.name} (${i.combo ? i.badge : i.size + 'ml'}) × ${i.qty} — ${money(i.price * i.qty)}`).join('\n')}\nSubtotal: ${money(total)}\n${ship === null ? (freeTestItemShipping ? 'Shipping: Free for the Payment Test Item.' : 'Shipping extra: Mumbai ₹100 / outside Mumbai ₹120.') : `Shipping: ${money(ship)}\nTotal: ${money(total + ship)}`}\nPlease confirm availability${state.cart.some(i=>i.combo) ? ' and my fragrance choices' : ''}.`;
+  return `Hi Parrfums Vault! I'd like to order:\n${state.cart.map(i => `• ${i.name} (${i.combo ? i.badge : i.size + 'ml'}) × ${i.qty} — ${money(i.price * i.qty)}`).join('\n')}\nSubtotal: ${money(total)}\n${ship === null ? 'Shipping extra: Mumbai ₹100 / outside Mumbai ₹120.' : `Shipping: ${money(ship)}\nTotal: ${money(total + ship)}`}\nPlease confirm availability${state.cart.some(i=>i.combo) ? ' and my fragrance choices' : ''}.`;
 }
 
 function normalizeCart() {
@@ -801,10 +796,9 @@ function cart() {
   if (!state.cart.length) return `<section class="page-shell"><p class="eyebrow">Your ritual, gathered</p><h1 class="page-title">Your bag</h1>
     <div class="empty" role="status"><h2>Your bag is waiting.</h2><p>Discover something new for your shelf.</p><a class="btn" href="#shop">Shop fragrance</a></div></section>`;
   const total = state.cart.reduce((n, i) => n + i.price * i.qty, 0);
-  const freeTestItemShipping = state.cart.length > 0 && state.cart.every(i => i.id === 'payment-test-item' && !i.combo);
   return `<section class="page-shell">
     <p class="eyebrow">Your ritual, gathered</p><h1 class="page-title">Your bag</h1>
-    <div class="shipping-notice">${icon('truck')} ${freeTestItemShipping ? 'Free shipping on the Payment Test Item.' : 'Shipping extra on other products · Mumbai ₹100 · Outside Mumbai ₹120'}</div>
+    <div class="shipping-notice">${icon('truck')} Shipping extra on every order · Mumbai ₹100 · Outside Mumbai ₹120</div>
     <div class="cart-layout">
       <div>${state.cart.map((i, n) => `<div class="cart-item">
         ${imgTag(i.img, i.name)}
