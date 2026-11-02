@@ -16,6 +16,10 @@ const path=require('node:path');
   await db.query('insert into auth.users(id) values ($1),($2)',[user,other]);
   // Explicit fixture quantities/components are test-only, never production seeds.
   await db.exec(`update public.product_prices set available_quantity=100;
+    insert into public.products(id,name,category,gender,notes,description,image_path,sizes_ml)
+      values('payment-test-item','Payment Test Item','Test','Unisex','Test','Test','test.svg',array[30]);
+    insert into public.product_prices(product_id,size_ml,price_inr,sku,available_quantity,active,low_stock_threshold)
+      values('payment-test-item',30,1,'TEST-ITEM-30',100,true,0);
     insert into public.offer_components values('festive-four','angel-share',100,2),('festive-four','vanilla-28',30,2),('duo-plus','angel-share',50,2),('duo-plus','guilty-man',30,1);`);
   await db.exec(`set role authenticated; select set_config('request.jwt.claim.sub','${user}',false)`);
   const delivery={recipient_name:'Test Customer',email:'test@example.invalid',phone:'9876543210',address_line1:'123 Test Road',city:'Mumbai',state:'Maharashtra',postal_code:'400001'};
@@ -29,6 +33,21 @@ const path=require('node:path');
     assert.equal(Number(row.shipping_inr),100,'Mumbai shipping never becomes free');
     assert.equal(Number(row.total_inr),price+100);
   }
+  await db.exec('reset role; delete from public.commerce_rate_limits; set role authenticated');
+  for(const city of ['Mumbai','Pune']){
+    const id=await order([{kind:'product',id:'payment-test-item',size_ml:30,quantity:1}],city);
+    const row=(await db.query('select subtotal_inr,shipping_inr,total_inr from public.customer_orders where id=$1',[id])).rows[0];
+    assert.equal(Number(row.subtotal_inr),1);
+    assert.equal(Number(row.shipping_inr),0,'Payment Test Item ships free in every city');
+    assert.equal(Number(row.total_inr),1);
+  }
+  const mixed=await order([
+    {kind:'product',id:'payment-test-item',size_ml:30,quantity:1},
+    {kind:'product',id:'angel-share',size_ml:30,quantity:1},
+  ]);
+  const mixedTotal=(await db.query('select shipping_inr,total_inr from public.customer_orders where id=$1',[mixed])).rows[0];
+  assert.equal(Number(mixedTotal.shipping_inr),100,'mixed carts retain normal Mumbai shipping');
+  assert.equal(Number(mixedTotal.total_inr),501);
   for(const city of [' Mumbai ','MUMBAI','Bombay']){
     const id=await order([{kind:'offer',id:'festive-four',quantity:1}],city);
     const row=(await db.query('select shipping_inr,total_inr from public.customer_orders where id=$1',[id])).rows[0];
@@ -47,7 +66,7 @@ const path=require('node:path');
   await assert.rejects(db.query("select public.admin_save_site_content('probe','html','{}'::jsonb)"),/ADMIN_REQUIRED/,'Non-admins cannot publish site text');
   await assert.rejects(db.query("select public.admin_delete_site_content('probe')"),/ADMIN_REQUIRED/,'Non-admins cannot delete site text');
   await db.exec("reset role; set role anon; select set_config('request.jwt.claim.sub','',false)");
-  assert.equal((await db.query('select * from public.product_prices')).rows.length,18);
+  assert.equal((await db.query('select * from public.product_prices')).rows.length,19);
   assert.equal((await db.query('select * from public.site_content')).rows.length,0,'Published site text is readable by visitors');
   await assert.rejects(db.exec("insert into public.site_content(key,kind,content) values('probe','html','{}')"),/permission denied/i,'Visitors cannot write site text');
   await assert.rejects(db.exec("select public.admin_save_site_content('probe','html','{}')"),/permission denied/i);
