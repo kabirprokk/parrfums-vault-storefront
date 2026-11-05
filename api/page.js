@@ -29,7 +29,7 @@ module.exports = async function (req, res) {
     combo = false,
     ratings = [];
   try {
-    if (id !== "festive-four" && /^[a-z0-9]+(-[a-z0-9]+)*$/.test(id) && id.length <= 100) {
+    if (/^[a-z0-9]+(-[a-z0-9]+)*$/.test(id) && id.length <= 100) {
       product = (
         await query(
           "products",
@@ -67,7 +67,7 @@ module.exports = async function (req, res) {
       .send("The catalogue is temporarily unavailable. Please try again.");
   }
   const title = product
-    ? product.name + " | Parrfums Vault"
+    ? product.name + (combo ? " Fragrance Gift Set | Parrfums Vault" : " Perfume | Parrfums Vault")
     : "Product unavailable | Parrfums Vault";
   html = html.replace(
     /<title>[^<]*<\/title>/,
@@ -80,9 +80,13 @@ module.exports = async function (req, res) {
     html = html.replace(re, (_, prefix) => prefix + escape(value));
   };
   if (product) {
-    meta("description", product.description || product.name);
+    const description = (combo
+      ? `${product.description || product.name} Signature fragrance gift set from Mumbai, with Pan-India delivery.`
+      : `${product.description || product.name} Available in signature perfume sizes with Pan-India delivery from Mumbai.`
+    ).slice(0, 180);
+    meta("description", description);
     meta("og:title", title);
-    meta("og:description", product.description || product.name);
+    meta("og:description", description);
     const site = process.env.SITE_URL;
     if (site && /^https:\/\/[^/?#]+\/?$/.test(site)) {
       const origin = site.replace(/\/$/, "");

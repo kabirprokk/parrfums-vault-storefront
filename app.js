@@ -467,7 +467,7 @@ function storefrontSections() {
     <div class="product-grid">${products.map(card).join('')}</div>
   </section>
   <section class="ritual-section"><div class="ritual-art">${imgTag(media('editorial-gifting'), 'Lavender Oud wrapped as a gift')}${imgTag(media('editorial-evening'), 'A Parrfums Vault fragrance for an evening out')}</div><div class="ritual-copy"><p class="eyebrow">Made for the moments</p><h2>Some gifts stay<br>with <em>you.</em></h2><p>For the celebrations, the everyday rituals, and the people who make both special. Handmade in Mumbai. Always personal.</p><a class="btn" href="#combos">Find their next favourite ${arrowSvg}</a><a class="text-link" href="#finder">Or find your own scent</a></div></section>
-  ${contactBand('Ordering', 'Order on WhatsApp.', 'Send us your list and we will confirm stock, price and delivery personally — usually within a few hours.')}`;
+  <p class="section-link"><a class="text-link" href="/perfumes-mumbai">Read our Mumbai perfume guide</a></p>${contactBand('Ordering', 'Order on WhatsApp.', 'Send us your list and we will confirm stock, price and delivery personally — usually within a few hours.')}`;
 }
 
 function comboSlideshow({ showcase = false } = {}) {

@@ -27,6 +27,9 @@ const adminHeaders = Object.fromEntries(
 assert.match(adminHeaders["Cache-Control"], /no-store/);
 assert.match(adminHeaders["X-Robots-Tag"], /noindex/);
 assert.match(read("robots.txt"), /Disallow: \/admin/);
+assert.match(read("robots.txt"), /Sitemap: https:\/\/parrfumsvault\.in\/sitemap\.xml/);
+assert.match(read("index.html"), /<link rel="canonical" href="https:\/\/parrfumsvault\.in\/">/);
+assert.match(read("vercel.json"), /"source": "\/perfumes-mumbai"/);
 const headers = Object.fromEntries(
   config.headers
     .find((r) => r.source === "/(.*)")

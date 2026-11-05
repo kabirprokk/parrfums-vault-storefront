@@ -62,6 +62,10 @@
       "destination": "/index.html"
     },
     {
+      "source": "/perfumes-mumbai",
+      "destination": "/api/collection"
+    },
+    {
       "source": "/product/:id",
       "destination": "/api/page?id=:id"
     },
