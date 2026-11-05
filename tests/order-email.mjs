@@ -12,13 +12,19 @@ const envValues = {
   ORDER_EMAIL_REPLY_TO: "quillsandcologne@gmail.com",
   ORDER_NOTIFICATION_TO: "store@example.invalid",
   SITE_URL: "https://parrfumsvault.in",
+  PUSH_DISPATCH_SECRET: "test-push-secret",
 };
 const env = (key) => envValues[key];
-let paymentStatus = "unpaid",
+let pushes = [],
+  paymentStatus = "unpaid",
   orderStatus = "pending",
   adminAllowed = false,
   sent = [];
 const fetcher = async (url, options = {}) => {
+  if (url.endsWith("/functions/v1/push-notifications")) {
+    pushes.push(JSON.parse(options.body));
+    return Response.json({ sent: true });
+  }
   if (url.endsWith("/auth/v1/user")) return Response.json({ id: uid });
   if (url.endsWith("/rest/v1/rpc/is_admin")) return Response.json(adminAllowed);
   if (url.includes("/rest/v1/customer_orders?")) {
@@ -98,6 +104,15 @@ assert.doesNotMatch(sent[0].body.html, /9999999999|123 Test Road|Angel Share/,
 assert.equal(sent[0].options.headers["Idempotency-Key"], `pv-status-${oid}-confirmed`);
 
 const handler = createOrderEmailHandler({ env, fetcher });
+const placedRequest = () => new Request("https://project.example.invalid/functions/v1/order-email", {
+  method: "POST",
+  headers: { authorization: "Bearer browser-session", "content-type": "application/json" },
+  body: JSON.stringify({ order_id: oid, event: "placed" }),
+});
+assert.equal((await handler(placedRequest())).status, 202);
+assert.equal(pushes.length, 1, "a verified new order triggers the owner push endpoint");
+assert.equal(pushes[0].event, "placed");
+assert.match(pushes[0].order_id, new RegExp(oid));
 const statusRequest = () => new Request("https://project.example.invalid/functions/v1/order-email", {
   method: "POST",
   headers: { authorization: "Bearer browser-session", "content-type": "application/json" },

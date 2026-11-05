@@ -14,6 +14,7 @@ const settings = {
   RAZORPAY_KEY_SECRET: "unit-secret",
   RAZORPAY_WEBHOOK_SECRET: "unit-webhook",
   ALLOWED_ORIGINS: "https://store.example.invalid",
+  PUSH_DISPATCH_SECRET: "test-push-secret",
 };
 const env = (k) => settings[k];
 const uid = "00000000-0000-4000-8000-000000000001",
@@ -74,6 +75,7 @@ const req = (body, headers = {}) =>
   });
 let calls = [],
   saved = [],
+  pushes = [],
   seen = new Set(),
   state = { ...captured },
   authValid = true,
@@ -95,6 +97,10 @@ const fetcher = async (url, options = {}) => {
     seen.add(event.p_event_id);
     saved.push(event);
     return json({ duplicate, status: event.p_status });
+  }
+  if (url.endsWith("/functions/v1/push-notifications")) {
+    pushes.push(JSON.parse(options.body));
+    return json({ sent: true });
   }
   if (url.endsWith("/rpc/begin_payment_attempt"))
     return json({
@@ -161,6 +167,7 @@ assert.equal(
 state = { ...captured };
 assert.equal((await handler(req(verify))).status, 200);
 assert.equal(saved.at(-1).p_status, "paid");
+assert.equal(pushes.length, 1, "a newly verified paid order triggers an owner push");
 assert.equal(
   (await handler(req({ ...verify, action: "initiate", request_key: uid })))
     .status,
@@ -219,12 +226,15 @@ const headers = {
   "x-razorpay-event-id": "unit-event",
 };
 assert.equal((await webhook(req(raw, headers))).status, 200);
+assert.equal(pushes.length, 2, "the payment webhook also requests delivery; server-side event dedupe prevents repeats");
+assert.equal(pushes[0].event, "paid");
 assert.equal(
   saved.at(-1).p_amount_paise,
   85000,
   "Webhook body prices are ignored; provider API is authoritative",
 );
 assert.equal((await (await webhook(req(raw, headers))).json()).duplicate, true);
+assert.equal(pushes.length, 2, "duplicate webhook deliveries do not request another push");
 assert.equal((await webhook(req(raw + " ", headers))).status, 401);
 assert.equal((await handler(req("invalid json"))).status, 400);
 assert.equal((await handler(req("x".repeat(17000)))).status, 400);

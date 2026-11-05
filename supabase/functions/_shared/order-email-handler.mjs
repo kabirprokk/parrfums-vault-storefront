@@ -1,4 +1,5 @@
 import { sendOrderEmail } from "./order-email.mjs";
+import { dispatchPush } from "./push-notification.mjs";
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -60,9 +61,16 @@ export function createOrderEmailHandler({ env, fetcher = fetch }) {
         if (!adminCheck.ok || (await adminCheck.json()) !== true)
           return respond(403, { code: "ADMIN_REQUIRED" });
       }
-      if (!env("RESEND_API_KEY") || !env("ORDER_EMAIL_FROM"))
-        return respond(503, { code: "EMAIL_NOT_CONFIGURED" });
-      await sendOrderEmail({
+      let push = { status: "not_sent" };
+      if (event === "placed") {
+        const order = await fetcher(
+          `${env("SUPABASE_URL")}/rest/v1/customer_orders?select=id&id=eq.${body.order_id}&user_id=eq.${user.id}`,
+          { headers: { apikey: env("SUPABASE_SERVICE_ROLE_KEY"), Authorization: `Bearer ${env("SUPABASE_SERVICE_ROLE_KEY")}` } },
+        );
+        if (!order.ok || !(await order.json()).length) return respond(404, { code: "ORDER_NOT_FOUND" });
+        push = await dispatchPush({ env, fetcher, event: "placed", orderId: body.order_id });
+      }
+      const emailSent = await sendOrderEmail({
         env,
         fetcher,
         orderId: body.order_id,
@@ -70,7 +78,9 @@ export function createOrderEmailHandler({ env, fetcher = fetch }) {
         ...(event === "placed" || event === "paid" ? { userId: user.id } : {}),
         ...(event === "status" ? { status: body.status } : {}),
       });
-      return respond(202, { sent: true });
+      if (!emailSent && (!env("RESEND_API_KEY") || !env("ORDER_EMAIL_FROM")))
+        return respond(503, { code: "EMAIL_NOT_CONFIGURED", push_notification: push });
+      return respond(202, { sent: emailSent, push_notification: push });
     } catch (error) {
       console.error("Order email delivery failed:", error?.code || error?.message || "UNKNOWN");
       const rawCode = String(error?.code || error?.message || "EMAIL_DELIVERY_UNAVAILABLE");

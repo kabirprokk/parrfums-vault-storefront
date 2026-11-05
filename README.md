@@ -13,6 +13,7 @@ Install the pinned development tools with `npm ci`, then run `npm start` and ope
 - `edit-mode.js`: owner edit mode. In edit mode a single click edits a text in place, a double click behaves like a normal click for every visitor (links open, buttons fire), grid/flex blocks can be dragged to a new order, and a fixed bottom-left toolbar holds Done/Save, Discard and Reset all. Saving publishes the edits through the admin RPC so every visitor sees them.
 - `api/`: Vercel server-rendered product metadata and sitemap endpoints. `robots.txt` controls crawlers. `vercel.json` contains rewrites and security/cache headers.
 - `supabase/migrations/`: ordered, versioned SQL changes. `supabase/functions/`: isolated payment initiation, verification and webhook handlers.
+- `public-sw.js` and `supabase/functions/push-notifications/`: opt-in admin Web Push for order and verified-payment alerts when the storefront is closed.
 - `tests/`: PGlite database invariants, payment provider fixtures, frontend/security/SEO checks, browser journeys, accessibility audit, and optional read-only live smoke test.
 - `assets/` and `vendor/`: supplied media, optimized responsive image exports, and pinned self-hosted Supabase SDK.
 
@@ -48,6 +49,10 @@ A signed-in administrator can open edit mode from the admin menu. The toolbar st
 ## Required owner setup before production checkout
 
 See [SECURITY.md](SECURITY.md) and the deployment settings. Google OAuth and email OTP sign-in are available; approved admin identities are held in `admin_users`, not shown in the UI. Configure the Supabase Magic Link email template to include `{{ .Token }}` and ensure production email delivery is configured for OTP codes. This setup intentionally does not require an authenticator second factor, so protect the approved email accounts. Enter counted stock for the actual 18 variants and actual component recipes for each online combo. Configure Razorpay test/live credentials and webhook signing secret only as Supabase Edge Function secrets; set the actual Vercel origin allowlist. Enter and approve the store's privacy, terms, shipping, refund, cancellation and contact wording. Exact values and steps are listed in `HANDOFF.md`; do not add secrets to Git or the frontend.
+
+## Owner device notifications
+
+Web Push is opt-in per admin device/browser. Apply `20261105120000_admin_web_push.sql`, deploy the `push-notifications` Edge Function plus updated `order-email`, `payments`, and `payment-webhook` functions, and set Edge Function secrets `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, and a random `PUSH_DISPATCH_SECRET`. The same dispatch secret must be available to the order/payment functions. Generate a VAPID key pair with `npx --yes web-push@3.6.7 generate-vapid-keys`; store both values only as Supabase secrets. Then sign in as admin, open Update details, and choose **Enable on this device** while allowing browser notifications. Repeat on other devices. Email remains enabled as before. Browsers/OSes may delay notifications or require the browser to be allowed to run in the background.
 
 ## Brand and media
 

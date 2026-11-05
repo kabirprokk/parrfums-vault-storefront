@@ -600,6 +600,10 @@ button.text-link {
 .admin-page .inventory-help p{margin:0 0 10px}
 .admin-page .inventory-help p:last-of-type{margin-bottom:14px}
 @media(max-width:560px){.admin-page .inventory-help{padding:15px;margin:14px 0 20px}.admin-page .inventory-help .btn{width:100%;min-height:46px}}
+.admin-page .admin-push-settings{margin:18px 0;padding:18px 20px}
+.admin-page .admin-push-settings h2{margin:0 0 8px}
+.admin-page .admin-push-settings [data-admin-push-status]:empty{display:none}
+@media(max-width:560px){.admin-page .admin-push-settings{padding:15px}.admin-page .admin-push-settings .btn{width:100%;margin:4px 0}}
 .spaced-top-small { margin-top: 10px; }
 .spaced-top-medium { margin-top: 18px; }
 .account-address-card { padding: 18px; margin-bottom: 12px; }

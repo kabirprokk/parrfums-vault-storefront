@@ -508,10 +508,51 @@ Object.assign(
             ? '<div class="sub inventory-help"><p><strong>Unlimited availability is ON.</strong> Every active bottle size is available, and orders do not reduce stock counts.</p><p>When the client provides real counts, switch to tracked counts. This clears old counts so each size must be recounted before tracked sales resume.</p><button class="btn" type="button" data-admin-inventory-mode="tracked">Switch to tracked counts</button></div>'
             : '<div class="sub inventory-help"><p><strong>Tracked stock is ON.</strong> Enter the physical bottles ready to sell for each size. Use 0 for none; never estimate.</p><button class="btn" type="button" data-admin-inventory-mode="unlimited">Enable unlimited availability</button></div>'
         : "";
-      return `<section class="page-shell admin-page"><div class="section-head"><div><p class="eyebrow">Parrfums Vault</p><h1 class="page-title">Administration</h1></div><button class="btn" data-admin-refresh>Refresh</button></div><nav class="admin-tabs" aria-label="Administration sections">${tabs.map((t) => `<button class="btn ${model.tab === t ? "primary" : ""}" data-admin-tab="${t}" aria-pressed="${model.tab === t}">${esc(Commerce.statusLabel(t))}</button>`).join("")}</nav>${model.error ? `<p class="error" role="alert">${esc(model.error)}</p>` : ""}${model.loading ? '<p role="status">Loading…</p>' : ""}${inventoryHelp}${addEditor}${model.tab === "overview" ? overview : `<div class="admin-toolbar"><label for="admin-search">Search ${esc(model.tab)}</label><input id="admin-search" type="search" maxlength="120" value="${esc(model.filter)}">${model.tab==='orders'?`<label for="admin-order-status">Status</label><select id="admin-order-status" class="select"><option value="">All statuses</option>${['pending','confirmed','packed','shipped','delivered','cancelled','refunded'].map(v=>`<option value="${v}" ${model.status===v?'selected':''}>${Commerce.statusLabel(v)}</option>`).join('')}</select>`:''}<button class="btn" data-admin-search>Search</button><button class="btn" data-admin-sort>Reverse sort</button>${["products", "variants", "offers", "coupons"].includes(model.tab) ? '<button class="btn primary" data-admin-new>Add new</button>' : ""}</div><p class="sub">Page ${model.page+1} · Up to 50 records per page. Search orders across all pages by customer name, phone, email, order ID or reference.</p><div class="table-scroll"><table><thead><tr>${columns.map((c) => `<th scope="col">${esc(columnLabel(c))}</th>`).join("")}<th scope="col">Manage</th></tr></thead><tbody>${rows.map((row) => `<tr>${columns.map((c) => `<td>${esc(cellValue(row,c))}${c === "available_quantity" && !model.inventoryUnlimited && row[c] !== null && row[c] <= row.low_stock_threshold ? " · Low stock" : ""}</td>`).join("")}<td>${model.tab === "inventory" && model.inventoryUnlimited ? '<span class="sub">Not tracked</span>' : `<button class="btn small" data-admin-edit="${esc(row.id || row.product_id)}" data-admin-size="${row.size_ml || ""}">${model.tab === "inventory" ? "Set count" : "Manage"}</button>`}</td></tr>${editorMatches(row) ? `<tr class="admin-inline-editor-row"><td colspan="${columns.length + 1}">${editor()}</td></tr>` : ""}`).join("")}</tbody></table><div class="offer-actions"><button class="btn" data-admin-page="-1" ${model.page===0?'disabled':''}>Previous page</button><button class="btn" data-admin-page="1" ${(model.rows?.length||0)<50?'disabled':''}>Next page</button></div>${!rows.length ? '<p role="status">No matching records.</p>' : ""}</div>`}<p class="sub">All administrative writes are authorized in PostgreSQL and recorded in an audit log.</p></section>`;
+      return `<section class="page-shell admin-page"><div class="section-head"><div><p class="eyebrow">Parrfums Vault</p><h1 class="page-title">Administration</h1></div><button class="btn" data-admin-refresh>Refresh</button></div><aside class="summary admin-push-settings"><h2>Device notifications</h2><p class="sub">Get alerts for new orders and verified payments, even when this site is closed. Enable notifications on each device you want alerts on.</p><button class="btn primary" type="button" data-admin-push-enable>Enable on this device</button> <button class="btn" type="button" data-admin-push-disable>Turn off on this device</button><p class="sub" data-admin-push-status role="status" aria-live="polite"></p></aside><nav class="admin-tabs" aria-label="Administration sections">${tabs.map((t) => `<button class="btn ${model.tab === t ? "primary" : ""}" data-admin-tab="${t}" aria-pressed="${model.tab === t}">${esc(Commerce.statusLabel(t))}</button>`).join("")}</nav>${model.error ? `<p class="error" role="alert">${esc(model.error)}</p>` : ""}${model.loading ? '<p role="status">Loading…</p>' : ""}${inventoryHelp}${addEditor}${model.tab === "overview" ? overview : `<div class="admin-toolbar"><label for="admin-search">Search ${esc(model.tab)}</label><input id="admin-search" type="search" maxlength="120" value="${esc(model.filter)}">${model.tab==='orders'?`<label for="admin-order-status">Status</label><select id="admin-order-status" class="select"><option value="">All statuses</option>${['pending','confirmed','packed','shipped','delivered','cancelled','refunded'].map(v=>`<option value="${v}" ${model.status===v?'selected':''}>${Commerce.statusLabel(v)}</option>`).join('')}</select>`:''}<button class="btn" data-admin-search>Search</button><button class="btn" data-admin-sort>Reverse sort</button>${["products", "variants", "offers", "coupons"].includes(model.tab) ? '<button class="btn primary" data-admin-new>Add new</button>' : ""}</div><p class="sub">Page ${model.page+1} · Up to 50 records per page. Search orders across all pages by customer name, phone, email, order ID or reference.</p><div class="table-scroll"><table><thead><tr>${columns.map((c) => `<th scope="col">${esc(columnLabel(c))}</th>`).join("")}<th scope="col">Manage</th></tr></thead><tbody>${rows.map((row) => `<tr>${columns.map((c) => `<td>${esc(cellValue(row,c))}${c === "available_quantity" && !model.inventoryUnlimited && row[c] !== null && row[c] <= row.low_stock_threshold ? " · Low stock" : ""}</td>`).join("")}<td>${model.tab === "inventory" && model.inventoryUnlimited ? '<span class="sub">Not tracked</span>' : `<button class="btn small" data-admin-edit="${esc(row.id || row.product_id)}" data-admin-size="${row.size_ml || ""}">${model.tab === "inventory" ? "Set count" : "Manage"}</button>`}</td></tr>${editorMatches(row) ? `<tr class="admin-inline-editor-row"><td colspan="${columns.length + 1}">${editor()}</td></tr>` : ""}`).join("")}</tbody></table><div class="offer-actions"><button class="btn" data-admin-page="-1" ${model.page===0?'disabled':''}>Previous page</button><button class="btn" data-admin-page="1" ${(model.rows?.length||0)<50?'disabled':''}>Next page</button></div>${!rows.length ? '<p role="status">No matching records.</p>' : ""}</div>`}<p class="sub">All administrative writes are authorized in PostgreSQL and recorded in an audit log.</p></section>`;
+    }
+    async function adminPushAction(action) {
+      const status = document.querySelector("[data-admin-push-status]");
+      const say = (message) => { if (status) status.textContent = message; };
+      if (!window.isSecureContext || !("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+        say("Push notifications are not supported by this browser or connection.");
+        return;
+      }
+      try {
+        if (action === "subscribe") {
+          const permission = await Notification.requestPermission();
+          if (permission !== "granted") { say("Allow notifications in your browser settings to receive alerts."); return; }
+        }
+        const registration = await navigator.serviceWorker.register("/public-sw.js", { scope: "/" });
+        if (action === "unsubscribe") {
+          const subscription = await registration.pushManager.getSubscription();
+          if (subscription) {
+            const { error } = await supabaseClient.functions.invoke("push-notifications", {
+              body: { action: "unsubscribe", endpoint: subscription.endpoint },
+            });
+            if (error) throw error;
+            await subscription.unsubscribe();
+          }
+          say("Notifications are off on this device.");
+          return;
+        }
+        const { data: keyData, error: keyError } = await supabaseClient.functions.invoke("push-notifications", { body: { action: "public-key" } });
+        if (keyError || !keyData?.publicKey) throw keyError || Error("Push is not configured on the server yet.");
+        const key = Uint8Array.from(atob(keyData.publicKey.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
+        let subscription = await registration.pushManager.getSubscription();
+        if (!subscription) subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+        const { error } = await supabaseClient.functions.invoke("push-notifications", {
+          body: { action: "subscribe", subscription: subscription.toJSON() },
+        });
+        if (error) throw error;
+        say("This device will receive new-order and verified-payment alerts, even when the site is closed.");
+      } catch (error) {
+        say(Commerce.safeError(error) || "Could not enable notifications. Please try again.");
+      }
     }
     document.addEventListener("click", async (e) => {
       try {
+        if (e.target.closest("[data-admin-push-enable]")) return void await adminPushAction("subscribe");
+        if (e.target.closest("[data-admin-push-disable]")) return void await adminPushAction("unsubscribe");
         if (e.target.closest("[data-admin-email-change]")) { model.otpEmail = ""; model.otpMessage = ""; model.error = ""; render("admin", { keepScroll: true }); return; }
         if (e.target.closest("[data-admin-menu]")) { model.adminView = "menu"; render("admin"); return; }
         if (e.target.closest("[data-admin-website]")) { location.href = "/?edit=1"; return; }

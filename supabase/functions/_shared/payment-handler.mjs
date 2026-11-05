@@ -1,5 +1,6 @@
 import { paymentProvider } from "./payment-provider.mjs";
 import { sendOrderEmail } from "./order-email.mjs";
+import { dispatchPush } from "./push-notification.mjs";
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 async function readBody(request, max) {
   if (Number(request.headers.get("content-length") || 0) > max)
@@ -158,10 +159,14 @@ export function createPaymentHandler({
           p_refunded_paise: payment.refunded,
           p_body_hash: hash,
         });
-        const emailNotification = result.status === "paid"
+        const newlyPaid = result.status === "paid" && !result.duplicate;
+        const emailNotification = newlyPaid
           ? await notifyPaidOrder(result.order_id)
           : { status: "not_sent" };
-        return respond(200, { ...result, email_notification: emailNotification });
+        const pushNotification = newlyPaid
+          ? await dispatchPush({ env, fetcher, event: "paid", orderId: result.order_id })
+          : { status: "not_sent" };
+        return respond(200, { ...result, email_notification: emailNotification, push_notification: pushNotification });
       }
       const token = request.headers.get("authorization");
       if (!token?.startsWith("Bearer "))
@@ -303,10 +308,14 @@ export function createPaymentHandler({
           p_currency: payment.currency,
           p_refunded_paise: payment.refunded,
         });
-        const emailNotification = result.status === "paid"
+        const newlyPaid = result.status === "paid" && !result.duplicate;
+        const emailNotification = newlyPaid
           ? await notifyPaidOrder(result.order_id || body.order_id)
           : { status: "not_sent" };
-        return respond(200, { ...result, email_notification: emailNotification });
+        const pushNotification = newlyPaid
+          ? await dispatchPush({ env, fetcher, event: "paid", orderId: result.order_id || body.order_id })
+          : { status: "not_sent" };
+        return respond(200, { ...result, email_notification: emailNotification, push_notification: pushNotification });
       }
       return respond(400, { code: "INVALID_ACTION" });
     } catch (error) {

@@ -15,6 +15,12 @@ assert.doesNotMatch(read("app.js"), /presenceChannel\.track\(\{[^}]*location\.(?
 assert.doesNotMatch(read("README.md") + read("HANDOFF.md"), /unknown (?:inventory|stock).*block(?:s|ed).*checkout/i,
   "operational docs must not claim unknown counts block checkout while unlimited availability is active");
 assert.match(read("README.md"), /unlimited-availability policy.*overselling is possible/i);
+assert.match(read("admin.js"), /data-admin-push-enable/);
+assert.match(read("admin.js"), /pushManager\.subscribe/);
+assert.match(read("public-sw.js"), /showNotification/);
+assert.match(read("supabase/migrations/20261105120000_admin_web_push.sql"), /revoke all.*authenticated/i);
+assert.match(read("supabase/functions/push-notifications/index.ts"), /ADMIN_REQUIRED/);
+assert.match(read("supabase/functions/_shared/payment-handler.mjs"), /dispatchPush\(\{ env, fetcher, event: "paid"/);
 const adminHeaders = Object.fromEntries(
   config.headers.find((r) => r.source === "/admin/:path*").headers.map((h) => [h.key, h.value]),
 );
