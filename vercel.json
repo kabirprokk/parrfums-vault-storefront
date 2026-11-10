@@ -65,6 +65,12 @@
       "source": "/perfumes-mumbai",
       "destination": "/api/collection"
     },
+    { "source": "/best-perfume-india", "destination": "/api/collection?page=best" },
+    { "source": "/perfumes-for-men", "destination": "/api/collection?page=men" },
+    { "source": "/perfumes-for-women", "destination": "/api/collection?page=women" },
+    { "source": "/unisex-perfumes", "destination": "/api/collection?page=unisex" },
+    { "source": "/perfumes-under-1000", "destination": "/api/collection?page=under1000" },
+    { "source": "/perfume-gift-sets", "destination": "/api/collection?page=gifts" },
     {
       "source": "/product/:id",
       "destination": "/api/page?id=:id"

@@ -31,6 +31,7 @@ const response = () => ({
                 {
                   id: "unit-product",
                   name: "Test $& <script>name</script>",
+                  gender: "Women",
                   description:
                     "A description </script><script>alert(1)</script>",
                   image_path: "assets/media/angel-share-1080.webp",
@@ -108,6 +109,8 @@ const response = () => ({
   assert.equal(r.code, 200);
   assert.ok(r.body.includes("<urlset"));
   assert.match(r.body, /https:\/\/unit\.example\.invalid\/perfumes-mumbai/);
+  assert.match(r.body, /https:\/\/unit\.example\.invalid\/best-perfume-india/);
+  assert.match(r.body, /https:\/\/unit\.example\.invalid\/perfumes-for-men/);
   assert.match(r.body, /https:\/\/unit\.example\.invalid\/product\/duo-plus/);
   delete process.env.SITE_URL;
   r = response();
@@ -115,11 +118,17 @@ const response = () => ({
   assert.equal(r.code, 200, "The confirmed production domain provides a sitemap fallback");
   assert.ok(r.body.includes("https://parrfumsvault.in/"));
   global.fetch = async (url) => new Response(JSON.stringify(
-    url.includes("/products?") ? [{
-      id: "candy", name: "Candy", description: "Sweet vanilla and fruit.", image_path: "assets/media/candy.webp",
-    }] : url.includes("/offers?") ? [{
-      id: "duo-plus", name: "The Duo Plus", description: "Three fragrances for gifting.", price_inr: 1600, image_path: "assets/media/duo.webp",
-    }] : [{ product_id: "candy", size_ml: 30, price_inr: 400, active: true }]), { status: 200 });
+      url.includes("/products?") ? [{
+       id: "candy", name: "Candy", gender: "Women", description: "Sweet vanilla and fruit.", image_path: "assets/media/candy.webp",
+     }, {
+       id: "guilty-man", name: "Guilty Man", gender: "Men", description: "Woody and fresh spicy.", image_path: "assets/media/guilty-man.webp",
+     }] : url.includes("/offers?") ? [{
+       id: "duo-plus", name: "The Duo Plus", description: "Three fragrances for gifting.", price_inr: 1600, image_path: "assets/media/duo.webp",
+     }] : [
+       { product_id: "candy", size_ml: 30, price_inr: 400, active: true },
+       { product_id: "guilty-man", size_ml: 30, price_inr: 400, active: true },
+     ]), { status: 200 });
+  process.env.SITE_URL = "https://unit.example.invalid";
   r = response();
   await collection({}, r);
   assert.equal(r.code, 200);
@@ -129,6 +138,30 @@ const response = () => ({
   assert.match(r.body, /The Duo Plus/);
   assert.match(r.body, /CollectionPage/);
   assert.match(r.body, /canonical/);
+  r = response();
+  await collection({ query: { page: "men" } }, r);
+  assert.equal(r.code, 200);
+  assert.match(r.body, /Men’s perfumes and unisex scents/);
+  assert.match(r.body, /href="https:\/\/unit\.example\.invalid\/perfumes-for-men"/);
+  assert.match(r.body, /Guilty Man perfume/);
+  assert.doesNotMatch(r.body, /The Duo Plus/);
+  r = response();
+  await collection({ query: { page: "gifts" } }, r);
+  assert.equal(r.code, 200);
+  assert.match(r.body, /Perfume gift sets for sharing/);
+  assert.match(r.body, /The Duo Plus/);
+  for (const [key, slug, title] of [
+    ["best", "best-perfume-india", "How to Choose the Best Perfume"],
+    ["women", "perfumes-for-women", "Perfumes for Women"],
+    ["unisex", "unisex-perfumes", "Unisex Perfumes"],
+    ["under1000", "perfumes-under-1000", "Perfumes Under ₹1,000"],
+  ]) {
+    r = response();
+    await collection({ query: { page: key } }, r);
+    assert.equal(r.code, 200, `${key} collection must render`);
+    assert.ok(r.body.includes(title), `${key} page must have its own metadata`);
+    assert.ok(r.body.includes(`https://unit.example.invalid/${slug}`), `${key} page must have its own canonical`);
+  }
   global.fetch = async () => {
     throw Error("offline");
   };

@@ -23,6 +23,12 @@ module.exports = async function (req, res) {
     const paths = [
       "/",
       "/perfumes-mumbai",
+      "/best-perfume-india",
+      "/perfumes-for-men",
+      "/perfumes-for-women",
+      "/unisex-perfumes",
+      "/perfumes-under-1000",
+      "/perfume-gift-sets",
       ...[...products, ...offers]
         .filter((p) => /^[a-z0-9]+(-[a-z0-9]+)*$/.test(p.id))
         .map((p) => "/product/" + p.id),
