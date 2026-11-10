@@ -1,4 +1,5 @@
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
 const page = require("../api/page"),
   sitemap = require("../api/sitemap"),
   collection = require("../api/collection");
@@ -19,6 +20,11 @@ const response = () => ({
   },
 });
 (async () => {
+  const notFoundPage = fs.readFileSync(require.resolve("../404.html"), "utf8");
+  assert.match(notFoundPage, /<meta name="robots" content="noindex,follow">/);
+  assert.match(notFoundPage, /Lost <span>in the notes\.<\/span>/);
+  assert.match(notFoundPage, /href="\/#shop"/);
+  assert.match(notFoundPage, /prefers-reduced-motion/);
   process.env.SITE_URL = "https://unit.example.invalid";
   let missing = false;
   global.fetch = async (url) =>

@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,follow">
+  <meta name="theme-color" content="#f4efe7">
+  <title>Lost in the Notes | Parrfums Vault</title>
+  <style>
+    :root{color-scheme:light;--paper:#f4efe7;--ink:#28231f;--muted:#73685e;--rust:#9a5738;--line:#cfc3b5;--olive:#73745a}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;background:var(--paper);color:var(--ink);font:16px/1.6 "DM Sans",Arial,sans-serif}
+    a{color:inherit}
+    .page{min-height:100vh;display:grid;grid-template-rows:auto 1fr auto;padding:0 clamp(22px,6vw,88px)}
+    header,footer{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:26px 0;border-bottom:1px solid var(--line)}
+    .brand{font:600 24px/1 Georgia,"Times New Roman",serif;letter-spacing:.02em;text-decoration:none}
+    .brand span{color:var(--rust);font-weight:400;font-style:italic}
+    .edition,.eyebrow,.coordinates{font-size:.72rem;font-weight:700;letter-spacing:.17em;text-transform:uppercase}
+    .edition{color:var(--muted)}
+    main{width:min(1120px,100%);margin:auto;display:grid;grid-template-columns:1fr .9fr;align-items:center;gap:clamp(30px,8vw,120px);padding:64px 0}
+    .copy{position:relative;z-index:1}
+    .eyebrow{display:flex;align-items:center;gap:12px;color:var(--rust)}
+    .eyebrow:before{content:"";width:28px;height:1px;background:currentColor}
+    h1{margin:23px 0 16px;font:400 clamp(3.6rem,9vw,7.8rem)/.84 Georgia,"Times New Roman",serif;letter-spacing:-.07em}
+    h1 span{display:block;color:var(--rust);font-style:italic;font-size:.68em;letter-spacing:-.055em;margin:13px 0 0 9%}
+    .intro{max-width:410px;color:var(--muted);font-size:1.05rem}
+    .actions{display:flex;align-items:center;gap:23px;flex-wrap:wrap;margin-top:30px}
+    .button{display:inline-flex;align-items:center;gap:12px;padding:13px 18px;background:var(--ink);color:var(--paper);text-decoration:none;font-size:.9rem;transition:background .2s,transform .2s}
+    .button:hover{background:var(--rust);transform:translateY(-2px)}
+    .button:focus-visible,.text-link:focus-visible,.brand:focus-visible{outline:3px solid var(--rust);outline-offset:4px}
+    .button svg{width:17px;height:17px}
+    .text-link{font-size:.9rem;text-underline-offset:4px;text-decoration-color:var(--line)}
+    .still-life{position:relative;min-height:480px;display:grid;place-items:center;isolation:isolate}
+    .still-life:before,.still-life:after{position:absolute;content:"";border:1px solid var(--line);border-radius:50%;z-index:-1}
+    .still-life:before{width:min(39vw,430px);aspect-ratio:1}
+    .still-life:after{width:min(30vw,330px);aspect-ratio:1;border-style:dashed;opacity:.8}
+    .orbit{position:absolute;width:min(48vw,520px);aspect-ratio:1;border:1px solid transparent;border-top-color:var(--rust);border-radius:50%;transform:rotate(-35deg);z-index:-1}
+    .orbit:after{content:"";position:absolute;width:8px;height:8px;right:13%;top:13%;border-radius:50%;background:var(--rust);box-shadow:0 0 0 6px var(--paper),0 0 0 7px var(--rust)}
+    .bottle{width:min(62%,290px);height:auto;filter:drop-shadow(0 20px 18px #49372a20);animation:drift 6s ease-in-out infinite}
+    .coordinates{position:absolute;color:var(--muted);font-size:.61rem;writing-mode:vertical-rl}
+    .coordinates.top{top:8%;right:9%}.coordinates.bottom{bottom:10%;left:5%;writing-mode:horizontal-tb}
+    .spark{position:absolute;color:var(--olive);font:30px Georgia,serif}.spark.one{top:18%;left:16%}.spark.two{right:14%;bottom:20%;font-size:20px}
+    footer{border-top:1px solid var(--line);border-bottom:0;color:var(--muted);font-size:.75rem;letter-spacing:.04em}
+    footer a{text-decoration:none;text-underline-offset:4px}footer a:hover{color:var(--rust);text-decoration:underline}
+    @keyframes drift{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-10px) rotate(1deg)}}
+    @media(max-width:700px){.page{padding:0 22px}header{padding:20px 0}.edition{font-size:.58rem;text-align:right}main{grid-template-columns:1fr;gap:0;padding:52px 0 24px}.copy{grid-row:1}h1{font-size:clamp(4rem,18vw,6.8rem)}.intro{max-width:360px}.still-life{grid-row:2;min-height:340px;margin-top:18px}.still-life:before{width:min(72vw,330px)}.still-life:after{width:min(56vw,255px)}.orbit{width:min(88vw,390px)}.bottle{width:min(55%,220px)}footer{align-items:flex-start;flex-direction:column;gap:8px;padding:18px 0}}
+    @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <a class="brand" href="/" aria-label="Parrfums Vault home">Parrfums <span>Vault</span></a>
+      <span class="edition">The missing note · No. 404</span>
+    </header>
+    <main>
+      <section class="copy" aria-labelledby="title">
+        <p class="eyebrow">A little off the scent trail</p>
+        <h1 id="title">Lost <span>in the notes.</span></h1>
+        <p class="intro">This page has slipped out of the formula. The good scents are still right where you left them.</p>
+        <div class="actions">
+          <a class="button" href="/#shop">Find your fragrance <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3.5 10h12m-5-5 5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+          <a class="text-link" href="/">Back to the beginning</a>
+        </div>
+      </section>
+      <div class="still-life" role="img" aria-label="Illustration of a perfume bottle drifting among scent-map rings">
+        <span class="orbit" aria-hidden="true"></span><span class="spark one" aria-hidden="true">✳</span><span class="spark two" aria-hidden="true">✦</span>
+        <span class="coordinates top" aria-hidden="true">SCENT ROUTE · 19°04′N</span><span class="coordinates bottom" aria-hidden="true">TOP NOTE — ??? &nbsp; / &nbsp; BASE NOTE — HOME</span>
+        <svg class="bottle" viewBox="0 0 300 390" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M116 35h68v48h-68z" fill="#73745A" stroke="#28231F" stroke-width="2"/><path d="M126 18h48v17h-48z" fill="#9A5738" stroke="#28231F" stroke-width="2"/>
+          <path d="M104 83h92c8 0 14 7 14 15v23c0 8 9 15 17 21 12 10 19 24 19 40v154c0 19-15 34-34 34H88c-19 0-34-15-34-34V182c0-16 7-30 19-40 8-6 17-13 17-21V98c0-8 6-15 14-15Z" fill="#D7BCA0" stroke="#28231F" stroke-width="2.5"/>
+          <path d="M108 99h84v23h-84z" fill="#F4EFE7" stroke="#28231F" stroke-width="2"/>
+          <path d="M68 187c0-12 5-23 14-31m136 0c9 8 14 19 14 31" stroke="#fff" stroke-opacity=".65" stroke-width="3" stroke-linecap="round"/>
+          <path d="M79 160v168c0 7 2 13 6 18" stroke="#fff" stroke-opacity=".55" stroke-width="3" stroke-linecap="round"/>
+          <path d="M84 208h132v85H84z" fill="#F4EFE7" stroke="#28231F" stroke-width="1.5"/>
+          <path d="M100 225h100" stroke="#9A5738" stroke-width="1.5"/>
+          <text x="150" y="252" fill="#28231F" font-family="Georgia,serif" font-size="14" text-anchor="middle" letter-spacing="2">PARRFUMS</text>
+          <text x="150" y="272" fill="#73745A" font-family="Arial,sans-serif" font-size="8" text-anchor="middle" letter-spacing="3">VAULT · MUMBAI</text>
+          <path d="M100 282h100" stroke="#9A5738" stroke-width="1.5"/>
+          <circle cx="150" cy="311" r="5" stroke="#9A5738" stroke-width="1.5"/>
+        </svg>
+      </div>
+    </main>
+    <footer><span>Handmade in Mumbai · Worn everywhere</span><span>Need a hand? <a href="https://wa.me/918591935352">Talk to our team</a></span></footer>
+  </div>
+</body>
+</html>
