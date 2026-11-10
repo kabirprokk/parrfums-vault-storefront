@@ -82,7 +82,7 @@ module.exports = async function (req, res) {
   if (product) {
     const description = (combo
       ? `${product.description || product.name} Signature fragrance gift set from Mumbai, with Pan-India delivery.`
-      : `${product.description || product.name} Available in signature perfume sizes with Pan-India delivery from Mumbai.`
+      : `${product.description || product.name} Long-lasting signature perfume, available in multiple sizes with Pan-India delivery from Mumbai.`
     ).slice(0, 180);
     meta("description", description);
     meta("og:title", title);

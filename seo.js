@@ -44,12 +44,12 @@ Object.assign(
       const description = p
         ? String(`${p.desc || p.notes || p.name} ${isCombo(p) ? "Explore this fragrance gift set from Mumbai" : "Shop this signature perfume from Mumbai"}, with Pan-India delivery.`).slice(0, 180)
         : ["landing", "home"].includes(route)
-          ? "Explore signature perfumes from Mumbai: distinctive fragrances, gift sets, clear prices from ₹400, and Pan-India delivery."
+          ? "Explore long-lasting, affordable perfumes from Mumbai, signature scents from ₹400, gift sets, and Pan-India delivery."
           : `${label}. Discover Parrfums Vault fragrances and the current collection.`;
       document.title = p
         ? `${p.name} ${isCombo(p) ? "Fragrance Gift Set" : "Perfume"} | Parrfums Vault`
         : ["landing", "home"].includes(route)
-          ? "Perfumes in Mumbai | Parrfums Vault"
+          ? "Long-Lasting Perfumes in Mumbai | Parrfums Vault"
           : label + " | Parrfums Vault";
       meta("description", description);
       meta("og:title", document.title, true);
